@@ -1,15 +1,15 @@
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import type { Database } from '@/types/database.types'
 
 /** Role → dashboard route mapping */
 const ROLE_ROUTES: Record<string, string> = {
-  super_admin: '/dashboard',
-  school_admin: '/dashboard',
-  teacher: '/dashboard',
-  manager: '/dashboard',
-  cashier: '/dashboard',
-  parent: '/dashboard',
+  super_admin: '/super-admin/dashboard',
+  school_admin: '/school-admin/dashboard',
+  teacher: '/teacher/dashboard',
+  manager: '/manager/dashboard',
+  cashier: '/manager/dashboard',
+  parent: '/parent/dashboard',
 }
 
 /** Routes that don't require authentication */
@@ -26,7 +26,7 @@ export async function updateSession(request: NextRequest) {
         getAll() {
           return request.cookies.getAll()
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
@@ -54,19 +54,9 @@ export async function updateSession(request: NextRequest) {
   // Authenticated on public route → redirect to role dashboard
   if (user && isPublicRoute && pathname !== '/auth/callback') {
     const role = (user.user_metadata?.role as string | undefined) ?? 'school_admin'
-    const rolePrefix =
-      role === 'super_admin'
-        ? '/super-admin'
-        : role === 'school_admin'
-          ? '/school-admin'
-          : role === 'teacher'
-            ? '/teacher'
-            : role === 'manager' || role === 'cashier'
-              ? '/manager'
-              : '/parent'
-
+    const dashboardPath = ROLE_ROUTES[role] ?? '/school-admin/dashboard'
     const url = request.nextUrl.clone()
-    url.pathname = `${rolePrefix}${ROLE_ROUTES[role] ?? '/dashboard'}`
+    url.pathname = dashboardPath
     return NextResponse.redirect(url)
   }
 

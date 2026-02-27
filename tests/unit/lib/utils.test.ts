@@ -46,7 +46,7 @@ describe('truncate()', () => {
     const long = 'a'.repeat(60)
     const result = truncate(long, 50)
     expect(result).toHaveLength(53) // 50 + '...'
-    expect(result).toEndWith('...')
+    expect(result).toMatch(/\.\.\.$/) 
   })
 
   it('does not truncate short text', () => {
