@@ -48,7 +48,7 @@ CREATE TYPE fee_status AS ENUM (
 -- ─── SCHOOLS ────────────────────────────────────────────────
 
 CREATE TABLE schools (
-  id                        UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name                      TEXT NOT NULL,
   code                      TEXT NOT NULL UNIQUE,
   logo_url                  TEXT,
@@ -69,7 +69,7 @@ CREATE TABLE schools (
 -- ─── USER PROFILES ──────────────────────────────────────────
 
 CREATE TABLE user_profiles (
-  id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   school_id      UUID REFERENCES schools(id) ON DELETE CASCADE,
   auth_user_id   UUID NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
   full_name      TEXT NOT NULL,
@@ -87,7 +87,7 @@ CREATE TABLE user_profiles (
 -- ─── ACADEMIC YEARS ─────────────────────────────────────────
 
 CREATE TABLE academic_years (
-  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   school_id  UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
   name       TEXT NOT NULL,           -- e.g. "2025-26"
   start_date DATE NOT NULL,
@@ -100,7 +100,7 @@ CREATE TABLE academic_years (
 -- ─── CLASSES ────────────────────────────────────────────────
 
 CREATE TABLE classes (
-  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   school_id     UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
   name          TEXT NOT NULL,         -- e.g. "Class 1", "Grade 10"
   display_order INTEGER NOT NULL DEFAULT 0,
@@ -112,7 +112,7 @@ CREATE TABLE classes (
 -- ─── SECTIONS ───────────────────────────────────────────────
 
 CREATE TABLE sections (
-  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   school_id  UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
   class_id   UUID NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
   name       TEXT NOT NULL,           -- e.g. "A", "B", "Rose"
@@ -125,7 +125,7 @@ CREATE TABLE sections (
 -- ─── SUBJECTS ───────────────────────────────────────────────
 
 CREATE TABLE subjects (
-  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   school_id  UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
   class_id   UUID NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
   name       TEXT NOT NULL,
@@ -138,7 +138,7 @@ CREATE TABLE subjects (
 -- ─── STUDENTS ───────────────────────────────────────────────
 
 CREATE TABLE students (
-  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   school_id         UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
   admission_number  TEXT NOT NULL,
   full_name         TEXT NOT NULL,
@@ -161,7 +161,7 @@ CREATE TABLE students (
 -- ─── PARENTS ────────────────────────────────────────────────
 
 CREATE TABLE parents (
-  id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   school_id      UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
   student_id     UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
   full_name      TEXT NOT NULL,
@@ -176,7 +176,7 @@ CREATE TABLE parents (
 -- ─── TEACHERS ───────────────────────────────────────────────
 
 CREATE TABLE teachers (
-  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   school_id         UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
   user_profile_id   UUID NOT NULL REFERENCES user_profiles(id) ON DELETE CASCADE,
   employee_id       TEXT,
@@ -191,7 +191,7 @@ CREATE TABLE teachers (
 
 -- Teacher ↔ Section assignment
 CREATE TABLE teacher_section_assignments (
-  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   school_id   UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
   teacher_id  UUID NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
   section_id  UUID NOT NULL REFERENCES sections(id) ON DELETE CASCADE,
@@ -205,7 +205,7 @@ CREATE TABLE teacher_section_assignments (
 -- ─── ATTENDANCE ──────────────────────────────────────────────
 
 CREATE TABLE attendance_records (
-  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   school_id   UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
   student_id  UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
   class_id    UUID NOT NULL REFERENCES classes(id),
@@ -221,7 +221,7 @@ CREATE TABLE attendance_records (
 -- ─── FEE STRUCTURE ──────────────────────────────────────────
 
 CREATE TABLE fee_categories (
-  id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   school_id    UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
   name         TEXT NOT NULL,          -- e.g. "Tuition", "Transport"
   description  TEXT,
@@ -231,7 +231,7 @@ CREATE TABLE fee_categories (
 );
 
 CREATE TABLE fee_structures (
-  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   school_id       UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
   class_id        UUID NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
   category_id     UUID NOT NULL REFERENCES fee_categories(id),
@@ -246,7 +246,7 @@ CREATE TABLE fee_structures (
 -- ─── FEE PAYMENTS ───────────────────────────────────────────
 
 CREATE TABLE fee_payments (
-  id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   school_id        UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
   student_id       UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
   receipt_number   TEXT NOT NULL,
@@ -263,7 +263,7 @@ CREATE TABLE fee_payments (
 );
 
 CREATE TABLE fee_payment_items (
-  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   payment_id      UUID NOT NULL REFERENCES fee_payments(id) ON DELETE CASCADE,
   category_id     UUID NOT NULL REFERENCES fee_categories(id),
   amount          DECIMAL(12, 2) NOT NULL,

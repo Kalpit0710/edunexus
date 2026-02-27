@@ -1,5 +1,6 @@
 # Supabase project configuration
-# This file is used by the Supabase CLI
+# Remote-only setup (no Docker required)
+# Project: dgmqcrhogtbkzkprzjor
 
 [api]
 port = 54321
@@ -10,7 +11,7 @@ max_rows = 1000
 [db]
 port = 54322
 shadow_port = 54320
-major_version = 15
+major_version = 17
 
 [studio]
 port = 54323
@@ -33,19 +34,13 @@ enable_anonymous_sign_ins = false
 
 [auth.email]
 enable_signup = true
-enable_confirmations = false  # Disable in dev for easier testing
+enable_confirmations = false
 double_confirm_changes = true
 secure_password_change = false
 
 [auth.sms]
 enable_signup = false
 enable_confirmations = false
-
-[[auth.mfa.app_authenticator]]
-enabled = false
-
-[functions]
-verify_jwt = true
 
 [analytics]
 enabled = false
