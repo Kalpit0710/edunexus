@@ -36,6 +36,31 @@ export const PAYMENT_MODES = {
   ONLINE: 'online',
 } as const
 
+// Examinations (Phase 2.1)
+export const EXAM_STATUSES = {
+  DRAFT: 'draft',
+  PUBLISHED: 'published',
+  ONGOING: 'ongoing',
+  COMPLETED: 'completed',
+  LOCKED: 'locked',
+} as const
+
+// Inventory (Phase 2.2)
+export const INVENTORY_CATEGORIES = {
+  BOOK: 'book',
+  STATIONERY: 'stationery',
+  UNIFORM: 'uniform',
+  SPORTS: 'sports',
+  LAB: 'lab',
+  OTHER: 'other',
+} as const
+
+export const STOCK_ADJUSTMENT_TYPES = {
+  ADD: 'add',
+  REMOVE: 'remove',
+  ADJUSTMENT: 'adjustment',
+} as const
+
 // File upload limits
 export const MAX_UPLOAD_SIZE_MB = 5
 export const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']

@@ -5,10 +5,10 @@
 
 ---
 
-## Current Phase: Phase 1 — MVP
+## Current Phase: Phase 1 Exit Review + Phase 2 Backend Kickoff
 
-**Overall Phase 1 Progress:** 0% (not started)  
-**Active Milestone:** Not started — Repository setup pending
+**Overall Phase 1 Progress:** Inconsistent status across docs (exit criteria not formally signed off)  
+**Active Milestone:** Phase 2.1 + 2.2 backend foundation completed; UI implementation pending
 
 ---
 
@@ -26,6 +26,8 @@
 | 1.8 Fee Module Basic | 🔲 Not Started | |
 | 1.9 Role Dashboards | 🔲 Not Started | |
 | 1.10 Testing Sprint | 🔲 Not Started | |
+| 2.1 Examination Module (Backend) | ✅ Completed | Migration, RLS, RPC + server actions created |
+| 2.2 Inventory & POS (Backend) | ✅ Completed | Migration, RLS, RPC + server actions created |
 
 ---
 
@@ -41,11 +43,17 @@
 - What was done: Fully built School Configuration forms (Classes, Sections, Subjects, Grading Rules, Settings). Created a robust Guided Onboarding Wizard to accelerate setup. Constructed extensive Student features (DataTable, Bulk Excel Import/Export, Multi-Step Add form, Avatar/Photo Storage).
 - Tests: TS compilation passed successfully. Forms manage state beautifully with `useAuthStore` scoping queries properly to RLS isolation boundaries.
 
+### 2026-03-14 — Milestones 2.1 & 2.2 — Backend Foundation (Exam + Inventory/POS)
+- Status: ✅ Completed (Backend only)
+- What was done: Added Phase 2 migration with examination and inventory schema (`exams`, `exam_subjects`, `marks`, `inventory_items`, `inventory_sales`, etc.), RLS policies, and RPC functions (`publish_exam_results`, `unlock_exam_results`, `adjust_stock`, `create_inventory_sale`). Added backend action modules for exams and inventory plus pure utility modules for grading/stock/cart logic.
+- Tests: `pnpm type-check` passed; targeted Vitest run passed for new suites: `tests/unit/exams/exam-utils.test.ts` and `tests/unit/inventory/inventory-utils.test.ts`.
+- Notes: UI for Phase 2.1/2.2 intentionally deferred for Antigravity. Phase 1 exit criteria remain unverified and need formal gate sign-off before production go-live.
+
 ---
 
 ## Known Issues / Blockers
 
-*None*
+- Documentation status conflict: `PROGRESS.md` and `README.md` disagree on project phase maturity, and Phase 1 exit checklist in `phases/phase1_mvp.md` remains unchecked.
 
 ---
 

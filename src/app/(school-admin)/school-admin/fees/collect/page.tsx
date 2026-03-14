@@ -1,7 +1,8 @@
 'use client'
 
 import { useAuthStore } from '@/stores/auth.store'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import {
   getStudentFeeStructure,
   collectFeePayment,
@@ -35,9 +36,10 @@ const PAYMENT_MODES: { value: PaymentMode; label: string }[] = [
 
 export default function CollectFeePage() {
   const { school, user } = useAuthStore()
+  const searchParams = useSearchParams()
 
   // Step 1: search
-  const [searchInput, setSearchInput] = useState('')
+  const [searchInput, setSearchInput] = useState(searchParams.get('q') ?? '')
   const [searching, setSearching] = useState(false)
   const [student, setStudent] = useState<any>(null)
   const [structures, setStructures] = useState<FeeStructureRow[]>([])
@@ -54,10 +56,21 @@ export default function CollectFeePage() {
   const [receiptNumber, setReceiptNumber] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
+  // Pre-fill search from query param
+  useEffect(() => {
+    const q = searchParams.get('q')
+    if (q) {
+      setSearchInput(q)
+    }
+  }, [])
+
   const totalSelected = structures
     .filter(s => selectedItems[s.id])
     .reduce((sum, s) => sum + Number(s.amount), 0)
   const netPayable = Math.max(0, totalSelected - Number(discount || 0))
+  const changeDue = paymentMode === 'cash' && Number(paidAmount) > netPayable && netPayable > 0
+    ? Number(paidAmount) - netPayable
+    : 0
 
   const handleSearch = async () => {
     if (!school?.id || !searchInput.trim()) return
@@ -127,6 +140,11 @@ export default function CollectFeePage() {
             <p className="text-lg font-semibold">
               ₹{Number(paidAmount).toLocaleString('en-IN')} collected via <span className="capitalize">{paymentMode}</span>
             </p>
+            {changeDue > 0 && (
+              <div className="text-lg font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg px-4 py-2">
+                💵 Change Due: ₹{changeDue.toLocaleString('en-IN')}
+              </div>
+            )}
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => window.print()}>
                 <PrinterIcon className="mr-2 h-4 w-4" /> Print Receipt
@@ -172,7 +190,7 @@ export default function CollectFeePage() {
             </Button>
           </div>
           {student && (
-            <div className="mt-4 p-3 rounded bg-muted/40 flex items-center justify-between">
+            <div className="mt-4 p-3 rounded-lg bg-muted/40 flex items-center justify-between">
               <div>
                 <p className="font-semibold">{student.full_name}</p>
                 <p className="text-sm text-muted-foreground">
@@ -271,6 +289,12 @@ export default function CollectFeePage() {
               <span>Net Payable</span>
               <span>₹{netPayable.toLocaleString('en-IN')}</span>
             </div>
+            {changeDue > 0 && (
+              <div className="flex items-center justify-between text-base text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg px-4 py-2">
+                <span className="font-medium">💵 Change Due (Cash)</span>
+                <span className="font-bold">₹{changeDue.toLocaleString('en-IN')}</span>
+              </div>
+            )}
             <Button
               className="w-full"
               size="lg"

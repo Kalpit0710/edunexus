@@ -15,6 +15,9 @@ import {
     Settings,
     LogOut,
     School,
+    BarChart2,
+    ClockAlert,
+    History,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -24,6 +27,9 @@ const navItems = [
     { href: '/school-admin/teachers', label: 'Teachers', icon: GraduationCap },
     { href: '/school-admin/attendance', label: 'Attendance', icon: CalendarCheck },
     { href: '/school-admin/fees', label: 'Fees & Billing', icon: IndianRupee },
+    { href: '/school-admin/fees/pending', label: 'Pending Fees', icon: ClockAlert },
+    { href: '/school-admin/fees/history', label: 'Payment History', icon: History },
+    { href: '/school-admin/reports', label: 'Reports', icon: BarChart2 },
     { href: '/school-admin/settings', label: 'Settings', icon: Settings },
 ]
 

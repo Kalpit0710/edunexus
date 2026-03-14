@@ -22,18 +22,18 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
-import { BarChart2, CheckCheck, Save } from 'lucide-react'
+import { BarChart2, CheckCheck, Save, Grid2X2, FileUp } from 'lucide-react'
 import Link from 'next/link'
 
 const STATUS_CONFIG: Record<
   AttendanceStatus,
   { label: string; color: string }
 > = {
-  present:  { label: 'P',  color: 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-400' },
-  absent:   { label: 'A',  color: 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-400' },
-  late:     { label: 'L',  color: 'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400' },
+  present: { label: 'P', color: 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-400' },
+  absent: { label: 'A', color: 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-400' },
+  late: { label: 'L', color: 'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400' },
   half_day: { label: 'HD', color: 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/30 dark:text-orange-400' },
-  holiday:  { label: 'H',  color: 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400' },
+  holiday: { label: 'H', color: 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400' },
 }
 
 const STATUSES: AttendanceStatus[] = ['present', 'absent', 'late', 'half_day', 'holiday']
@@ -131,12 +131,26 @@ export default function AttendancePage() {
           <h2 className="text-2xl font-bold tracking-tight">Daily Attendance</h2>
           <p className="text-muted-foreground">Mark and review student attendance.</p>
         </div>
-        <Link href={'/school-admin/attendance/report' as any}>
-          <Button variant="outline">
-            <BarChart2 className="h-4 w-4 mr-2" />
-            Monthly Report
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link href={'/school-admin/attendance/import' as any}>
+            <Button variant="outline">
+              <FileUp className="h-4 w-4 mr-2" />
+              Import Excel
+            </Button>
+          </Link>
+          <Link href={'/school-admin/attendance/class-view' as any}>
+            <Button variant="outline">
+              <Grid2X2 className="h-4 w-4 mr-2" />
+              Class View
+            </Button>
+          </Link>
+          <Link href={'/school-admin/attendance/report' as any}>
+            <Button variant="outline">
+              <BarChart2 className="h-4 w-4 mr-2" />
+              Monthly Report
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}
@@ -249,11 +263,10 @@ export default function AttendancePage() {
                                     onClick={() =>
                                       setStatusMap((prev) => ({ ...prev, [student.id]: s }))
                                     }
-                                    className={`text-xs px-2 py-0.5 rounded border font-medium transition-all ${
-                                      currentStatus === s
-                                        ? STATUS_CONFIG[s]?.color + ' ring-1 ring-offset-1 ring-current'
-                                        : 'bg-muted/40 text-muted-foreground border-transparent hover:border-border'
-                                    }`}
+                                    className={`text-xs px-2 py-0.5 rounded border font-medium transition-all ${currentStatus === s
+                                      ? STATUS_CONFIG[s]?.color + ' ring-1 ring-offset-1 ring-current'
+                                      : 'bg-muted/40 text-muted-foreground border-transparent hover:border-border'
+                                      }`}
                                   >
                                     {STATUS_CONFIG[s]?.label}
                                   </button>

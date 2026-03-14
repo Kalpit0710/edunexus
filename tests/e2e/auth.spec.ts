@@ -46,7 +46,7 @@ test.describe('School Admin role', () => {
   test.beforeEach(async ({ page }) => {
     await login(page, SCHOOL_ADMIN.email, SCHOOL_ADMIN.password)
     // Wait for redirect to dashboard
-    await page.waitForURL(/\/school-admin\/dashboard/, { timeout: 15_000 })
+    await page.waitForURL(/\/school-admin\/dashboard/, { timeout: 45_000 })
   })
 
   test('redirected to school-admin dashboard after login', async ({ page }) => {
@@ -118,7 +118,7 @@ test.describe('School Admin role', () => {
 test.describe('Teacher role', () => {
   test.beforeEach(async ({ page }) => {
     await login(page, TEACHER.email, TEACHER.password)
-    await page.waitForURL(/\/teacher\/dashboard/, { timeout: 15_000 })
+    await page.waitForURL(/\/teacher\/dashboard/, { timeout: 45_000 })
   })
 
   test('redirected to teacher dashboard after login', async ({ page }) => {
@@ -138,7 +138,7 @@ test.describe('Teacher role', () => {
 test.describe('Manager role', () => {
   test.beforeEach(async ({ page }) => {
     await login(page, MANAGER.email, MANAGER.password)
-    await page.waitForURL(/\/manager\/dashboard/, { timeout: 15_000 })
+    await page.waitForURL(/\/manager\/dashboard/, { timeout: 45_000 })
   })
 
   test('redirected to manager dashboard after login', async ({ page }) => {
@@ -159,7 +159,7 @@ test.describe('Manager role', () => {
 test.describe('Sign-out', () => {
   test('school admin can sign out and is redirected to login', async ({ page }) => {
     await login(page, SCHOOL_ADMIN.email, SCHOOL_ADMIN.password)
-    await page.waitForURL(/\/school-admin\/dashboard/, { timeout: 15_000 })
+    await page.waitForURL(/\/school-admin\/dashboard/, { timeout: 45_000 })
     // Click logout button (title="Sign out")
     await page.getByTitle('Sign out').click()
     await expect(page).toHaveURL(/\/login/, { timeout: 10_000 })

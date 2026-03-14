@@ -1,0 +1,43 @@
+
+> edunexus@0.1.0 type-check
+> tsc --noEmit
+
+src/app/(school-admin)/school-admin/exams/[examId]/marks/page.tsx(56,60): error TS2339: Property 'class_id' does not exist on type 'never'.
+src/app/(school-admin)/school-admin/exams/[examId]/marks/page.tsx(87,56): error TS2339: Property 'student_id' does not exist on type 'never'.
+src/app/(school-admin)/school-admin/exams/[examId]/marks/page.tsx(90,50): error TS2339: Property 'marks_obtained' does not exist on type 'never'.
+src/app/(school-admin)/school-admin/exams/[examId]/marks/page.tsx(91,45): error TS2339: Property 'is_absent' does not exist on type 'never'.
+src/app/(school-admin)/school-admin/exams/[examId]/marks/page.tsx(115,22): error TS2345: Argument of type '(prev: Record<string, MarkEntryInput>) => { [x: string]: MarkEntryInput | { marksObtained: number | null; studentId?: string | undefined; isAbsent?: boolean | undefined; }; }' is not assignable to parameter of type 'SetStateAction<Record<string, MarkEntryInput>>'.
+  Type '(prev: Record<string, MarkEntryInput>) => { [x: string]: MarkEntryInput | { marksObtained: number | null; studentId?: string | undefined; isAbsent?: boolean | undefined; }; }' is not assignable to type '(prevState: Record<string, MarkEntryInput>) => Record<string, MarkEntryInput>'.
+    Type '{ [x: string]: MarkEntryInput | { marksObtained: number | null; studentId?: string | undefined; isAbsent?: boolean; }; }' is not assignable to type 'Record<string, MarkEntryInput>'.
+      'string' index signatures are incompatible.
+        Type 'MarkEntryInput | { marksObtained: number | null; studentId?: string | undefined; isAbsent?: boolean | undefined; }' is not assignable to type 'MarkEntryInput'.
+          Type '{ marksObtained: number | null; studentId?: string | undefined; isAbsent?: boolean; }' is not assignable to type 'MarkEntryInput'.
+            Types of property 'studentId' are incompatible.
+              Type 'string | undefined' is not assignable to type 'string'.
+                Type 'undefined' is not assignable to type 'string'.
+src/app/(school-admin)/school-admin/exams/[examId]/marks/page.tsx(125,22): error TS2345: Argument of type '(prev: Record<string, MarkEntryInput>) => { [x: string]: MarkEntryInput | { isAbsent: boolean; marksObtained: number | null; studentId?: string | undefined; }; }' is not assignable to parameter of type 'SetStateAction<Record<string, MarkEntryInput>>'.
+  Type '(prev: Record<string, MarkEntryInput>) => { [x: string]: MarkEntryInput | { isAbsent: boolean; marksObtained: number | null; studentId?: string | undefined; }; }' is not assignable to type '(prevState: Record<string, MarkEntryInput>) => Record<string, MarkEntryInput>'.
+    Type '{ [x: string]: MarkEntryInput | { isAbsent: boolean; marksObtained: number | null; studentId?: string | undefined; }; }' is not assignable to type 'Record<string, MarkEntryInput>'.
+      'string' index signatures are incompatible.
+        Type 'MarkEntryInput | { isAbsent: boolean; marksObtained: number | null; studentId?: string | undefined; }' is not assignable to type 'MarkEntryInput'.
+          Type '{ isAbsent: boolean; marksObtained: number | null; studentId?: string | undefined; }' is not assignable to type 'MarkEntryInput'.
+            Types of property 'studentId' are incompatible.
+              Type 'string | undefined' is not assignable to type 'string'.
+                Type 'undefined' is not assignable to type 'string'.
+src/app/(school-admin)/school-admin/exams/[examId]/marks/page.tsx(129,28): error TS2532: Object is possibly 'undefined'.
+src/app/(school-admin)/school-admin/exams/[examId]/marks/page.tsx(130,33): error TS2532: Object is possibly 'undefined'.
+src/app/(school-admin)/school-admin/exams/[examId]/marks/page.tsx(130,67): error TS2532: Object is possibly 'undefined'.
+src/app/(school-admin)/school-admin/exams/[examId]/reports/page.tsx(57,60): error TS2339: Property 'class_id' does not exist on type 'never'.
+src/app/(school-admin)/school-admin/exams/[examId]/reports/page.tsx(320,38): error TS2304: Cannot find name 'CardFooter'.
+src/app/(school-admin)/school-admin/exams/[examId]/reports/page.tsx(322,39): error TS2304: Cannot find name 'CardFooter'.
+src/app/(school-admin)/school-admin/exams/new/page.tsx(93,13): error TS2322: Type '{ subjectId?: string | undefined; examDate?: string; startTime?: string; durationMins?: number; maxMarks?: number | undefined; passMarks?: number; }' is not assignable to type 'ExamSubjectInput'.
+  Types of property 'subjectId' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/app/(school-admin)/school-admin/exams/new/page.tsx(117,22): error TS18048: 'sub' is possibly 'undefined'.
+src/app/(school-admin)/school-admin/exams/new/page.tsx(121,36): error TS18048: 'sub' is possibly 'undefined'.
+src/app/(school-admin)/school-admin/exams/new/page.tsx(125,32): error TS18048: 'sub' is possibly 'undefined'.
+src/app/(school-admin)/school-admin/exams/new/page.tsx(126,21): error TS18048: 'sub' is possibly 'undefined'.
+src/app/(school-admin)/school-admin/exams/new/page.tsx(130,21): error TS18048: 'sub' is possibly 'undefined'.
+src/app/(school-admin)/school-admin/exams/new/page.tsx(130,52): error TS18048: 'sub' is possibly 'undefined'.
+src/app/(school-admin)/school-admin/exams/new/page.tsx(130,68): error TS18048: 'sub' is possibly 'undefined'.

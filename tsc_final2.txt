@@ -1,0 +1,6 @@
+
+> edunexus@0.1.0 type-check
+> tsc --noEmit
+
+src/app/(school-admin)/school-admin/exams/[examId]/marks/page.tsx(57,60): error TS2339: Property 'class_id' does not exist on type 'never'.
+src/app/(school-admin)/school-admin/exams/[examId]/reports/page.tsx(62,60): error TS2339: Property 'class_id' does not exist on type 'never'.

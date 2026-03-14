@@ -350,3 +350,120 @@ export async function getDailyCollectionReport(
   const totalCollected = payments.reduce((s, p) => s + Number(p.paid_amount), 0)
   return { totalCollected, paymentCount: payments.length, payments }
 }
+
+// ─── Pending Fees ─────────────────────────────────────────────────────────────
+
+export interface PendingFeeRow {
+  studentId: string
+  studentName: string
+  admissionNumber: string
+  className: string
+  sectionName: string
+  totalFee: number
+  totalPaid: number
+  balance: number
+}
+
+export async function getPendingFees(schoolId: string): Promise<PendingFeeRow[]> {
+  const supabase = await createServerSupabaseClient()
+
+  // Get current academic year
+  const { data: yearData } = await supabase
+    .from('academic_years')
+    .select('id')
+    .eq('school_id', schoolId)
+    .eq('is_current', true)
+    .single()
+  if (!yearData) return []
+  const yearId = (yearData as any).id as string
+
+  // All active students with class info
+  const { data: students } = await supabase
+    .from('students')
+    .select('id, full_name, admission_number, class_id, section_id, classes(name), sections(name)')
+    .eq('school_id', schoolId)
+    .eq('is_active', true)
+
+  if (!students?.length) return []
+
+  // All fee structures for this year
+  const { data: structures } = await supabase
+    .from('fee_structures')
+    .select('class_id, amount')
+    .eq('school_id', schoolId)
+    .eq('academic_year_id', yearId)
+    .eq('is_active', true)
+
+  // All payments for this school
+  const { data: payments } = await supabase
+    .from('fee_payments')
+    .select('student_id, paid_amount')
+    .eq('school_id', schoolId)
+
+  // Build class → total fee map
+  const classFeeMap: Record<string, number> = {}
+    ; (structures ?? []).forEach((s: any) => {
+      classFeeMap[s.class_id] = (classFeeMap[s.class_id] ?? 0) + Number(s.amount)
+    })
+
+  // Build student → total paid map
+  const paidMap: Record<string, number> = {}
+    ; (payments ?? []).forEach((p: any) => {
+      paidMap[p.student_id] = (paidMap[p.student_id] ?? 0) + Number(p.paid_amount)
+    })
+
+  const rows: PendingFeeRow[] = []
+  for (const s of students as any[]) {
+    const totalFee = classFeeMap[s.class_id] ?? 0
+    const totalPaid = paidMap[s.id] ?? 0
+    const balance = totalFee - totalPaid
+    if (balance > 0) {
+      rows.push({
+        studentId: s.id,
+        studentName: s.full_name,
+        admissionNumber: s.admission_number ?? '',
+        className: s.classes?.name ?? '',
+        sectionName: s.sections?.name ?? '',
+        totalFee,
+        totalPaid,
+        balance,
+      })
+    }
+  }
+
+  return rows.sort((a, b) => b.balance - a.balance)
+}
+
+export async function getStudentPaymentHistory(
+  schoolId: string,
+  studentId: string,
+): Promise<FeePaymentRow[]> {
+  return getPaymentsByStudent(schoolId, studentId)
+}
+
+export async function getAllPayments(
+  schoolId: string,
+  opts?: { fromDate?: string; toDate?: string; studentQuery?: string },
+): Promise<FeePaymentRow[]> {
+  const supabase = await createServerSupabaseClient()
+  let query = supabase
+    .from('fee_payments')
+    .select(`*, students(full_name, admission_number, classes(name))`)
+    .eq('school_id', schoolId)
+    .order('payment_date', { ascending: false })
+    .order('created_at', { ascending: false })
+
+  if (opts?.fromDate) query = query.gte('payment_date', opts.fromDate)
+  if (opts?.toDate) query = query.lte('payment_date', opts.toDate)
+
+  const { data, error } = await query
+  if (error) throw new Error(error.message)
+
+  return ((data ?? []) as any[]).map(r => ({
+    ...r,
+    student_name: r.students?.full_name ?? 'Unknown',
+    student_admission_number: r.students?.admission_number,
+    class_name: r.students?.classes?.name,
+  }))
+}
+
