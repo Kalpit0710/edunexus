@@ -220,6 +220,15 @@ export default function LoginPage() {
                   </span>
                 ) : 'Sign in'}
               </Button>
+
+              <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2.5 text-center">
+                <p className="text-xs text-zinc-500">
+                  Parent account not activated yet?{' '}
+                  <Link href="/create-account" className="font-medium text-blue-400 hover:text-blue-300">
+                    Create account
+                  </Link>
+                </p>
+              </div>
             </form>
           </Form>
         </div>

@@ -101,12 +101,38 @@ export async function saveAttendance(
   classId: string,
   sectionId: string,
   date: string,
-  markedBy: string,
+  _markedBy: string,
   records: AttendanceRecord[]
 ): Promise<void> {
   const supabase = await getSupabase()
+  type ProfileIdLookup = { id: string }
+
+  const { data: authData, error: authError } = await supabase.auth.getUser()
+  const actorAuthUserId = authData.user?.id
+
+  if (authError || !actorAuthUserId) {
+    throw new Error('Session expired. Please sign in again and retry.')
+  }
+
+  // Resolve user_profiles.id because attendance_records.marked_by references user_profiles(id).
+  const { data: profileByAuth, error: profileByAuthError } = await supabase
+    .from('user_profiles')
+    .select('id')
+    .eq('school_id', schoolId)
+    .eq('auth_user_id', actorAuthUserId)
+    .maybeSingle() as { data: ProfileIdLookup | null; error: { message: string } | null }
+
+  let resolvedMarkedBy = profileByAuth?.id ?? null
+
+  if (!resolvedMarkedBy) {
+    if (profileByAuthError) {
+      throw new Error(`Unable to resolve attendance marker profile: ${profileByAuthError.message}`)
+    }
+    throw new Error('Your account is not linked to a staff profile for this school.')
+  }
 
   // Delete existing records for this date (clean upsert approach)
+
   await supabase
     .from('attendance_records')
     .delete()
@@ -125,7 +151,7 @@ export async function saveAttendance(
     date,
     status: r.status,
     remarks: r.remarks ?? null,
-    marked_by: markedBy,
+    marked_by: resolvedMarkedBy,
   }))
 
   const { error } = await supabase
@@ -134,6 +160,7 @@ export async function saveAttendance(
     .insert(payload)
 
   if (error) throw new Error(error.message)
+
 
   // Send Attendance Alerts for absent students
   const absentStudents = records.filter(r => r.status === 'absent')

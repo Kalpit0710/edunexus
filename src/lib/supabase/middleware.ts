@@ -13,7 +13,13 @@ const ROLE_ROUTES: Record<string, string> = {
 }
 
 /** Routes that don't require authentication */
-const PUBLIC_ROUTES = ['/login', '/reset-password', '/auth/callback']
+const PUBLIC_ROUTES = [
+  '/login',
+  '/create-account',
+  '/reset-password',
+  '/auth/callback',
+  '/api/auth/parent-register',
+]
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
