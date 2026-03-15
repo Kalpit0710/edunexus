@@ -45,7 +45,7 @@ export async function updateSchoolSettings(schoolId: string, data: Database['pub
 
     const { error } = await supabase
         .from('schools')
-        // @ts-ignore
+        // @ts-expect-error
         .update(data)
         .eq('id', schoolId)
 
@@ -93,7 +93,7 @@ export async function createClass(schoolId: string, name: string, displayOrder: 
     const supabase = await getSupabase()
     const { error } = await supabase
         .from('classes')
-        // @ts-ignore
+        // @ts-expect-error
         .insert([{ school_id: schoolId, name, display_order: displayOrder }])
     if (error) throw new Error(error.message)
 }
@@ -111,7 +111,7 @@ export async function createSection(schoolId: string, classId: string, name: str
     const supabase = await getSupabase()
     const { error } = await supabase
         .from('sections')
-        // @ts-ignore
+        // @ts-expect-error
         .insert([{ school_id: schoolId, class_id: classId, name, capacity }])
     if (error) throw new Error(error.message)
 }
@@ -129,7 +129,7 @@ export async function createSubject(schoolId: string, classId: string, name: str
     const supabase = await getSupabase()
     const { error } = await supabase
         .from('subjects')
-        // @ts-ignore
+        // @ts-expect-error
         .insert([{ school_id: schoolId, class_id: classId, name, code }])
     if (error) throw new Error(error.message)
 }
@@ -161,12 +161,12 @@ export async function createAcademicYear(schoolId: string, name: string, startDa
         // Find existing current and set to false
         const payload = { is_current: false } as any
         const updateReq = supabase.from('academic_years')
-        // @ts-ignore
+        // @ts-expect-error
         await updateReq.update(payload).eq('school_id', schoolId).eq('is_current', true)
     }
 
     const insertReq = supabase.from('academic_years')
-    // @ts-ignore
+    // @ts-expect-error
     const { error } = await insertReq.insert([{ school_id: schoolId, name, start_date: startDate, end_date: endDate, is_current: isCurrent }])
     if (error) throw new Error(error.message)
 }
@@ -195,7 +195,7 @@ export async function createGradingRule(schoolId: string, minMarks: number, maxM
     const supabase = await getSupabase()
     const { error } = await supabase
         .from('grading_rules')
-        // @ts-ignore
+        // @ts-expect-error
         .insert([{ school_id: schoolId, min_marks: minMarks, max_marks: maxMarks, grade_name: gradeName, grade_point: gradePoint }])
     if (error) throw new Error(error.message)
 }

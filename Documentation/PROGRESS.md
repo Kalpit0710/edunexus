@@ -49,11 +49,18 @@
 - Tests: `pnpm type-check` passed; targeted Vitest run passed for new suites: `tests/unit/exams/exam-utils.test.ts` and `tests/unit/inventory/inventory-utils.test.ts`.
 - Notes: UI for Phase 2.1/2.2 intentionally deferred for Antigravity. Phase 1 exit criteria remain unverified and need formal gate sign-off before production go-live.
 
+### 2026-03-14 — Phase 2 Backend Hardening (Edge Functions + Attendance Query Alignment)
+- Status: ✅ Completed
+- What was done: Replaced placeholder Edge Functions with working implementations for `generate-pdf` and `send-email`. Updated attendance data reads to use `attendance_records` in parent summary, school admin dashboard, and reporting actions.
+- Tests: `pnpm type-check` passed; unit tests passed (`89` passed, `0` failed).
+- Notes: `send-email` is restricted to service-role bearer auth and requires `RESEND_API_KEY` + `EMAIL_FROM` env configuration.
+
 ---
 
 ## Known Issues / Blockers
 
 - Documentation status conflict: `PROGRESS.md` and `README.md` disagree on project phase maturity, and Phase 1 exit checklist in `phases/phase1_mvp.md` remains unchecked.
+- E2E suite still has environment-level login redirect timeout failures and needs dedicated auth-flow stabilization before reliable browser validation.
 
 ---
 

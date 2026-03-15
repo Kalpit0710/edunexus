@@ -52,8 +52,8 @@ export async function getDashboardStats(
     db.from('classes').select('*', { count: 'exact', head: true }).eq('school_id', schoolId),
     db.from('fee_payments').select('paid_amount').eq('school_id', schoolId).eq('payment_date', today),
     db.from('academic_years').select('*', { count: 'exact', head: true }).eq('school_id', schoolId),
-    db.from('attendance').select('*', { count: 'exact', head: true }).eq('school_id', schoolId).eq('date', today).eq('status', 'present'),
-    db.from('attendance').select('*', { count: 'exact', head: true }).eq('school_id', schoolId).eq('date', today),
+    db.from('attendance_records').select('*', { count: 'exact', head: true }).eq('school_id', schoolId).eq('date', today).eq('status', 'present'),
+    db.from('attendance_records').select('*', { count: 'exact', head: true }).eq('school_id', schoolId).eq('date', today),
   ])
 
   const totalStudents = studentsRes.count ?? 0

@@ -15,7 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
-import { Users, CalendarCheck, IndianRupee, TrendingUp } from 'lucide-react'
+import { Users, CalendarCheck, IndianRupee } from 'lucide-react'
 
 export default function ReportsPage() {
   const { school } = useAuthStore()

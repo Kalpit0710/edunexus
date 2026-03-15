@@ -53,7 +53,7 @@ export async function getAttendanceSummaryByClass(
             .eq('is_active', true)
 
         const { count: presentCount } = await supabase
-            .from('attendance')
+            .from('attendance_records')
             .select('*', { count: 'exact', head: true })
             .eq('school_id', schoolId)
             .eq('section_id', sec.id)
@@ -65,7 +65,7 @@ export async function getAttendanceSummaryByClass(
         const present = presentCount ?? 0
         // Calculate working days in period
         const { count: attendanceDayCount } = await supabase
-            .from('attendance')
+            .from('attendance_records')
             .select('date', { count: 'exact', head: true })
             .eq('school_id', schoolId)
             .eq('section_id', sec.id)

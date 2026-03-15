@@ -45,7 +45,7 @@ export async function deleteStudent(studentId: string) {
     const supabase = await getSupabase()
     const { error } = await supabase
         .from('students')
-        // @ts-ignore
+        // @ts-expect-error
         .update({ is_active: false } as any)
         .eq('id', studentId)
 
@@ -67,7 +67,7 @@ export async function updateStudent(id: string, payload: any) {
     const supabase = await getSupabase()
     const { error } = await supabase
         .from('students')
-        // @ts-ignore
+        // @ts-expect-error
         .update(payload)
         .eq('id', id)
     if (error) throw new Error(error.message)
@@ -86,7 +86,7 @@ export async function bulkCreateStudents(schoolId: string, studentsData: any[]) 
 
     const { error } = await supabase
         .from('students')
-        // @ts-ignore
+        // @ts-expect-error
         .insert(payloads)
 
     if (error) throw new Error(error.message)

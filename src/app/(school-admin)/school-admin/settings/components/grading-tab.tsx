@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent } from '@/components/ui/card'
+import { CardContent } from '@/components/ui/card'
 import { Trash2, Plus } from 'lucide-react'
 
 export function GradingRulesTab() {

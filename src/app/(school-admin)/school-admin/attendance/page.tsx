@@ -12,7 +12,7 @@ import { getClasses, getSections } from '../settings/actions'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import {
   Select,

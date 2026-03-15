@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
-import { getMonthlyAttendanceReport, getStudentsForAttendance, type AttendanceStatus } from '../actions'
+import { getStudentsForAttendance, type AttendanceStatus } from '../actions'
 import { getClasses, getSections } from '../../settings/actions'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'

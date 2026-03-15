@@ -60,7 +60,7 @@ export async function completeOnboarding(schoolId: string, data: OnboardingData)
         if (data.profile.theme_color) payload.theme_color = data.profile.theme_color
 
         const req = supabase.from('schools')
-        // @ts-ignore
+        // @ts-expect-error
         const { error } = await req.update(payload).eq('id', schoolId);
         if (error) throw new Error("Failed to update school profile: " + error.message);
     }
@@ -68,7 +68,7 @@ export async function completeOnboarding(schoolId: string, data: OnboardingData)
     // 2. Create Academic Year
     if (data.academicYear.name && data.academicYear.start_date && data.academicYear.end_date) {
         const req = supabase.from('academic_years')
-        // @ts-ignore
+        // @ts-expect-error
         const { error } = await req.insert([{
             school_id: schoolId,
             name: data.academicYear.name,
@@ -85,7 +85,7 @@ export async function completeOnboarding(schoolId: string, data: OnboardingData)
             const cls = data.classes[i]!;
 
             const req = supabase.from('classes')
-            // @ts-ignore
+            // @ts-expect-error
             const { data: classData, error: classErr } = await req.insert([{
                 school_id: schoolId,
                 name: cls.name,
@@ -104,7 +104,7 @@ export async function completeOnboarding(schoolId: string, data: OnboardingData)
                     capacity: 40 // Default capacity
                 }));
                 const secReq = supabase.from('sections')
-                // @ts-ignore
+                // @ts-expect-error
                 const { error: secErr } = await secReq.insert(sectionInserts);
                 if (secErr) throw new Error("Failed to create sections: " + secErr.message);
             }
@@ -121,7 +121,7 @@ export async function completeOnboarding(schoolId: string, data: OnboardingData)
             grade_point: rule.grade_point
         }));
         const req = supabase.from('grading_rules')
-        // @ts-ignore
+        // @ts-expect-error
         const { error: gradeErr } = await req.insert(rulesInserts);
         if (gradeErr) throw new Error("Failed to create grading rules: " + gradeErr.message);
     }
@@ -159,7 +159,7 @@ export async function uploadSchoolLogo(formData: FormData) {
         .getPublicUrl(fileName);
 
     const req = supabase.from('schools')
-    // @ts-ignore
+    // @ts-expect-error
     const { error: updateErr } = await req.update({
         logo_url: urlData.publicUrl
     }).eq('id', schoolId);

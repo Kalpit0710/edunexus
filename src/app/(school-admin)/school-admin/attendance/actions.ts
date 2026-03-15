@@ -3,6 +3,8 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import type { Database } from '@/types/database.types'
+import { sendEmail } from '@/lib/email'
+import { AttendanceAlertEmail } from '@/emails/AttendanceAlertEmail'
 
 async function getSupabase() {
   const cookieStore = await cookies()
@@ -128,10 +130,53 @@ export async function saveAttendance(
 
   const { error } = await supabase
     .from('attendance_records')
-    // @ts-ignore
+    // @ts-expect-error
     .insert(payload)
 
   if (error) throw new Error(error.message)
+
+  // Send Attendance Alerts for absent students
+  const absentStudents = records.filter(r => r.status === 'absent')
+  if (absentStudents.length > 0) {
+    try {
+      const studentIds = absentStudents.map(r => r.student_id)
+      
+      const { data: students } = await supabase
+        .from('students')
+        .select('id, full_name, schools(name)')
+        .in('id', studentIds)
+
+      const { data: parents } = await supabase
+        .from('parents')
+        .select('student_id, first_name, email')
+        .in('student_id', studentIds)
+        .eq('is_primary', true)
+
+      if (students && parents) {
+        for (const absent of absentStudents) {
+          const student = students.find((s: any) => s.id === absent.student_id)
+          const parent = parents.find((p: any) => p.student_id === absent.student_id)
+          
+          if (student && parent && (parent as any).email) {
+            await sendEmail({
+              to: (parent as any).email,
+              subject: `Attendance Alert: ${(student as any).full_name}`,
+              react: AttendanceAlertEmail({
+                parentName: (parent as any).first_name,
+                studentName: (student as any).full_name,
+                schoolName: (student as any).schools?.name || 'EduNexus',
+                date: date
+              }),
+              schoolId,
+              event: 'attendance_alert'
+            })
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Failed to send attendance alerts:', e)
+    }
+  }
 }
 
 // ── Monthly report for a section ─────────────────────────────────────────────

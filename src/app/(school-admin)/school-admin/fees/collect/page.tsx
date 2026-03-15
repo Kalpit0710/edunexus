@@ -1,7 +1,7 @@
 'use client'
 
 import { useAuthStore } from '@/stores/auth.store'
-import { useState, useEffect } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import {
   getStudentFeeStructure,
@@ -34,7 +34,7 @@ const PAYMENT_MODES: { value: PaymentMode; label: string }[] = [
   { value: 'online', label: 'Online' },
 ]
 
-export default function CollectFeePage() {
+function CollectFeePageContent() {
   const { school, user } = useAuthStore()
   const searchParams = useSearchParams()
 
@@ -62,7 +62,7 @@ export default function CollectFeePage() {
     if (q) {
       setSearchInput(q)
     }
-  }, [])
+  }, [searchParams])
 
   const totalSelected = structures
     .filter(s => selectedItems[s.id])
@@ -307,5 +307,13 @@ export default function CollectFeePage() {
         </Card>
       )}
     </div>
+  )
+}
+
+export default function CollectFeePage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading fee collector...</div>}>
+      <CollectFeePageContent />
+    </Suspense>
   )
 }

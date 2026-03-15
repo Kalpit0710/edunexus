@@ -1,6 +1,8 @@
 'use server'
 
 import { createClient as createServerSupabaseClient } from '@/lib/supabase/server'
+import { sendEmail } from '@/lib/email'
+import { FeeReceiptEmail } from '@/emails/FeeReceiptEmail'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -295,6 +297,43 @@ export async function collectFeePayment(
     })),
   )
   if (itemErr) throw new Error(itemErr.message)
+
+  // Send Fee Receipt Email
+  try {
+    const { data: parent } = await db
+      .from('parents')
+      .select('first_name, email')
+      .eq('student_id', input.studentId)
+      .eq('is_primary', true)
+      .maybeSingle()
+
+    const { data: student } = await db
+      .from('students')
+      .select('full_name, schools(name)')
+      .eq('id', input.studentId)
+      .single()
+
+    const pEmail = parent?.email
+    if (pEmail && student) {
+      await sendEmail({
+        to: pEmail,
+        subject: `Fee Receipt - ${student.full_name}`,
+        react: FeeReceiptEmail({
+          parentName: parent.first_name,
+          studentName: student.full_name,
+          schoolName: student.schools?.name || 'EduNexus',
+          receiptNumber: receiptNumber,
+          amountPaid: `₹${input.paidAmount}`,
+          paymentMode: input.paymentMode,
+          date: new Date().toLocaleDateString()
+        }),
+        schoolId,
+        event: 'fee_receipt'
+      })
+    }
+  } catch (err) {
+    console.error('Failed to send fee receipt email:', err)
+  }
 
   return { paymentId, receiptNumber }
 }

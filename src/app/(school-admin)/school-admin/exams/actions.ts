@@ -9,6 +9,8 @@ import {
   type ExamStatus,
   type GradingRule,
 } from '@/lib/exam-utils'
+import { sendEmail } from '@/lib/email'
+import { ExamPublishedEmail } from '@/emails/ExamPublishedEmail'
 
 export interface ExamSubjectInput {
   subjectId: string

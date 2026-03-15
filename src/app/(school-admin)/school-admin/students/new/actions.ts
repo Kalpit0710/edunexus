@@ -77,7 +77,7 @@ export async function uploadStudentPhoto(formData: FormData) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
         .from('student-photos')
         .upload(fileName, buffer, {
             contentType: file.type,

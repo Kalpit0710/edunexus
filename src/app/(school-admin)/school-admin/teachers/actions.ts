@@ -4,6 +4,8 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import type { Database } from '@/types/database.types'
+import { sendEmail } from '@/lib/email'
+import { WelcomeEmail } from '@/emails/WelcomeEmail'
 
 // ── Supabase helpers ─────────────────────────────────────────────────────────
 
@@ -223,6 +225,30 @@ export async function createTeacher(
 
     if (teacherError) throw new Error('Teacher record creation failed: ' + teacherError.message)
 
+    // 4. Send Welcome Email
+    try {
+      // Get school name
+      const { data: schoolData } = await admin.from('schools').select('name').eq('id', schoolId).single()
+      
+      await sendEmail({
+        to: payload.email,
+        subject: `Welcome to ${schoolData?.name || 'EduNexus'}`,
+        react: WelcomeEmail({
+          name: payload.full_name,
+          role: 'Teacher',
+          schoolName: schoolData?.name || 'EduNexus',
+          loginUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/login`,
+          temporaryPassword: payload.password
+        }),
+        schoolId,
+        recipientId: authUserId,
+        event: 'welcome'
+      })
+    } catch (e) {
+      console.error('Failed to send welcome email:', e)
+      // We don't throw here to avoid failing the teacher creation if email fails
+    }
+
     return teacherData.id
   } catch (err) {
     // Rollback: delete auth user if subsequent steps failed
@@ -246,7 +272,7 @@ export async function updateTeacher(
 
     const { error } = await supabase
       .from('user_profiles')
-      // @ts-ignore
+      // @ts-expect-error
       .update(profileUpdate as any)
       .eq('id', userProfileId)
     if (error) throw new Error(error.message)
@@ -262,7 +288,7 @@ export async function updateTeacher(
   if (Object.keys(teacherUpdate).length > 0) {
     const { error } = await supabase
       .from('teachers')
-      // @ts-ignore
+      // @ts-expect-error
       .update(teacherUpdate as any)
       .eq('id', teacherId)
     if (error) throw new Error(error.message)
@@ -276,9 +302,9 @@ export async function toggleTeacherStatus(
 ): Promise<void> {
   const supabase = await getSupabase()
   const [teacherRes, profileRes] = await Promise.all([
-    // @ts-ignore
+    // @ts-expect-error
     supabase.from('teachers').update({ is_active: isActive } as any).eq('id', teacherId),
-    // @ts-ignore
+    // @ts-expect-error
     supabase.from('user_profiles').update({ is_active: isActive } as any).eq('id', userProfileId),
   ])
   if (teacherRes.error) throw new Error(teacherRes.error.message)

@@ -1,0 +1,20 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "node scripts/sync-ai-context.js",
+        "windows": "node .\\scripts\\sync-ai-context.js",
+        "timeout": 45
+      }
+    ],
+    "PostToolUse": [
+      {
+        "type": "command",
+        "command": "node scripts/sync-ai-context.js",
+        "windows": "node .\\scripts\\sync-ai-context.js",
+        "timeout": 45
+      }
+    ]
+  }
+}

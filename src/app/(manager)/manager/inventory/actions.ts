@@ -10,6 +10,8 @@ import {
   type InventoryCategory,
   type StockAdjustmentType,
 } from '@/lib/inventory-utils'
+import { sendEmail } from '@/lib/email'
+import { InventoryReceiptEmail } from '@/emails/InventoryReceiptEmail'
 
 export interface InventoryItemInput {
   name: string
@@ -257,6 +259,32 @@ export async function createInventorySale(
   })
 
   if (error) throw new Error(error.message)
+
+  if (input.studentId) {
+    try {
+      const { data: parent } = await db.from('parents').select('first_name, email').eq('student_id', input.studentId).eq('is_primary', true).maybeSingle()
+      const { data: student } = await db.from('students').select('full_name, schools(name)').eq('id', input.studentId).single()
+      
+      if (parent?.email && student) {
+        await sendEmail({
+          to: parent.email,
+          subject: `Purchase Receipt from ${student.schools?.name || 'EduNexus'}`,
+          react: InventoryReceiptEmail({
+            customerName: parent.first_name,
+            schoolName: student.schools?.name || 'EduNexus',
+            billNumber: data.bill_number,
+            totalAmount: `₹${Number(data.total_amount).toFixed(2)}`,
+            paymentMode: input.paymentMode,
+            date: new Date().toLocaleDateString()
+          }),
+          schoolId,
+          event: 'inventory_receipt'
+        })
+      }
+    } catch (e) {
+      console.error('Failed to send POS receipt email', e)
+    }
+  }
 
   return {
     saleId: data.sale_id,
