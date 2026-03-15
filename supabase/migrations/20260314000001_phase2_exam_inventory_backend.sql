@@ -646,9 +646,9 @@ $$;
 
 CREATE OR REPLACE FUNCTION create_inventory_sale(
   p_school_id UUID,
-  p_student_id UUID DEFAULT NULL,
   p_items JSONB,
   p_payment_mode payment_mode,
+  p_student_id UUID DEFAULT NULL,
   p_sold_by UUID DEFAULT NULL
 )
 RETURNS JSONB
@@ -834,5 +834,5 @@ GRANT EXECUTE ON FUNCTION unlock_exam_results(UUID) TO authenticated;
 REVOKE ALL ON FUNCTION adjust_stock(UUID, INTEGER, stock_adjustment_type, TEXT, UUID) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION adjust_stock(UUID, INTEGER, stock_adjustment_type, TEXT, UUID) TO authenticated;
 
-REVOKE ALL ON FUNCTION create_inventory_sale(UUID, UUID, JSONB, payment_mode, UUID) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION create_inventory_sale(UUID, UUID, JSONB, payment_mode, UUID) TO authenticated;
+REVOKE ALL ON FUNCTION create_inventory_sale(UUID, JSONB, payment_mode, UUID, UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION create_inventory_sale(UUID, JSONB, payment_mode, UUID, UUID) TO authenticated;
