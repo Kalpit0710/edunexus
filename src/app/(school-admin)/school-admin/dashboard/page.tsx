@@ -3,14 +3,13 @@
 import { useAuthStore } from '@/stores/auth.store'
 import { useEffect, useState } from 'react'
 import { getDashboardStats, getWeeklyCollectionTrend, type DashboardStats } from './actions'
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import Link from 'next/link'
 import {
   IndianRupee, CalendarCheck, Users, GraduationCap,
-  BookOpen, Rocket, AlertCircle, TrendingUp
+  BookOpen, Rocket, AlertCircle, TrendingUp, ArrowRight
 } from 'lucide-react'
 
 export default function SchoolAdminDashboardPage() {
@@ -37,29 +36,48 @@ export default function SchoolAdminDashboardPage() {
   }, [school?.id])
 
   const statCards = [
-    { label: 'Total Students', value: stats.totalStudents, icon: Users, href: '/school-admin/students', color: 'text-blue-500' },
-    { label: 'Active Teachers', value: stats.activeTeachers, icon: GraduationCap, href: '/school-admin/teachers', color: 'text-violet-500' },
-    { label: 'Classes', value: stats.classCount, icon: BookOpen, href: '/school-admin/settings', color: 'text-amber-500' },
-    { label: "Today's Collection", value: `₹${stats.todayCollection.toLocaleString('en-IN')}`, icon: IndianRupee, href: '/school-admin/fees/collect', color: 'text-emerald-500' },
-    { label: "Today's Attendance", value: `${stats.todayAttendancePct}%`, icon: CalendarCheck, href: '/school-admin/attendance', color: 'text-sky-500' },
-    { label: 'Pending Fees', value: `₹${stats.totalPendingFees.toLocaleString('en-IN')}`, icon: AlertCircle, href: '/school-admin/fees/pending', color: stats.totalPendingFees > 0 ? 'text-destructive' : 'text-muted-foreground' },
+    { label: 'Total Students', value: stats.totalStudents, icon: Users, href: '/school-admin/students', accent: '#3b82f6' },
+    { label: 'Active Teachers', value: stats.activeTeachers, icon: GraduationCap, href: '/school-admin/teachers', accent: '#8b5cf6' },
+    { label: 'Classes', value: stats.classCount, icon: BookOpen, href: '/school-admin/settings', accent: '#f59e0b' },
+    { label: "Today's Collection", value: `₹${stats.todayCollection.toLocaleString('en-IN')}`, icon: IndianRupee, href: '/school-admin/fees/collect', accent: '#10b981' },
+    { label: "Today's Attendance", value: `${stats.todayAttendancePct}%`, icon: CalendarCheck, href: '/school-admin/attendance', accent: '#06b6d4' },
+    { label: 'Pending Fees', value: `₹${stats.totalPendingFees.toLocaleString('en-IN')}`, icon: AlertCircle, href: '/school-admin/fees/pending', accent: stats.totalPendingFees > 0 ? '#ef4444' : '#6b7280' },
+  ]
+
+  const quickActions = [
+    { href: '/school-admin/attendance', label: 'Mark Attendance', icon: CalendarCheck },
+    { href: '/school-admin/fees/collect', label: 'Collect Fee', icon: IndianRupee },
+    { href: '/school-admin/fees/pending', label: 'Pending Fees', icon: AlertCircle },
+    { href: '/school-admin/students', label: 'Manage Students', icon: Users },
+    { href: '/school-admin/teachers', label: 'Manage Teachers', icon: GraduationCap },
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       {/* Hero */}
-      <div className="rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/10 p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-br from-blue-600/10 via-blue-500/5 to-transparent p-6">
+        <div className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full bg-blue-600/10 blur-3xl" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Welcome back 👋</h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              {school?.name} &nbsp;·&nbsp;&nbsp;
-              {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-            </p>
+            <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-blue-500/20 bg-blue-600/10 px-3 py-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
+              <span className="text-xs font-medium text-blue-300 uppercase tracking-wider">
+                {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
+              </span>
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight text-white">
+              Welcome back 👋
+            </h1>
+            <p className="text-sm text-zinc-400 mt-1">{school?.name ?? 'Your school'}</p>
           </div>
           <Link href={'/school-admin/reports' as any}>
-            <Button variant="outline" className="gap-2">
-              <TrendingUp className="h-4 w-4" /> View Reports
+            <Button
+              variant="outline"
+              className="gap-2 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10 hover:border-white/20 transition-all"
+            >
+              <TrendingUp className="h-4 w-4 text-blue-400" />
+              View Reports
+              <ArrowRight className="h-3.5 w-3.5" />
             </Button>
           </Link>
         </div>
@@ -67,98 +85,119 @@ export default function SchoolAdminDashboardPage() {
 
       {/* Onboarding banner */}
       {stats.needsOnboarding && (
-        <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-900/10 dark:border-blue-800">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-300 text-base">
-              <Rocket className="w-5 h-5" /> Let&apos;s Setup Your School
-            </CardTitle>
-            <p className="text-sm text-blue-600/80 dark:text-blue-400/80">
-              Complete the guided setup to configure classes, academic years, and import students.
-            </p>
-          </CardHeader>
-          <CardFooter>
-            <Link href={'/school-admin/onboarding' as any}>
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white">Start Guided Setup</Button>
+        <div className="rounded-2xl border border-blue-500/20 bg-blue-600/8 p-5">
+          <div className="flex items-start gap-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-blue-500/30 bg-blue-600/15">
+              <Rocket className="h-5 w-5 text-blue-400" />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-white">Let&apos;s Setup Your School</p>
+              <p className="text-sm text-zinc-400 mt-0.5">
+                Complete the guided setup to configure classes, academic years, and import students.
+              </p>
+            </div>
+            <Link href={'/school-admin/onboarding' as any} className="shrink-0">
+              <Button className="rounded-full bg-blue-600 text-white hover:bg-blue-500 text-sm shadow-lg shadow-blue-600/20">
+                Start Setup
+              </Button>
             </Link>
-          </CardFooter>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Stats grid */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
         {loading
-          ? Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)
+          ? Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-2xl bg-white/5" />)
           : statCards.map(card => (
             <Link key={card.label} href={card.href as any}>
-              <Card className="hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">{card.label}</CardTitle>
-                  <card.icon className={`h-4 w-4 ${card.color} group-hover:scale-110 transition-transform`} />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{card.value}</div>
-                </CardContent>
-              </Card>
+              <div className="group relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.03] p-5 hover:bg-white/[0.05] hover:border-white/[0.12] transition-all duration-200 cursor-pointer hover:-translate-y-0.5">
+                <div className="pointer-events-none absolute -right-4 -top-4 h-24 w-24 rounded-full blur-2xl opacity-20 transition-opacity group-hover:opacity-40"
+                  style={{ backgroundColor: card.accent }} />
+                <div className="relative">
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">{card.label}</p>
+                    <div
+                      className="flex h-8 w-8 items-center justify-center rounded-xl border"
+                      style={{
+                        backgroundColor: `${card.accent}14`,
+                        borderColor: `${card.accent}30`,
+                        color: card.accent,
+                      }}
+                    >
+                      <card.icon className="h-4 w-4" />
+                    </div>
+                  </div>
+                  <p className="text-2xl font-bold text-white">{card.value}</p>
+                </div>
+              </div>
             </Link>
           ))}
       </div>
 
       {/* Weekly collection chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-emerald-500" />
-            7-Day Fee Collection Trend
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {trendLoading ? (
-            <Skeleton className="h-48 w-full rounded-lg" />
-          ) : (
-            <ResponsiveContainer width="100%" height={180}>
-              <AreaChart data={trend} margin={{ left: -10, right: 10 }}>
-                <defs>
-                  <linearGradient id="collectionGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={v => v > 0 ? `₹${(v / 1000).toFixed(0)}k` : '₹0'} />
-                <Tooltip formatter={(v: number) => [`₹${v.toLocaleString('en-IN')}`, 'Collected']} />
-                <Area
-                  type="monotone"
-                  dataKey="amount"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth={2}
-                  fill="url(#collectionGrad)"
-                  dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 3 }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          )}
-        </CardContent>
-      </Card>
+      <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-5">
+        <div className="mb-5 flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-emerald-500/30 bg-emerald-500/10">
+            <TrendingUp className="h-4 w-4 text-emerald-400" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-white">Fee Collection Trend</p>
+            <p className="text-xs text-zinc-500">Last 7 days</p>
+          </div>
+        </div>
+        {trendLoading ? (
+          <Skeleton className="h-48 w-full rounded-xl bg-white/5" />
+        ) : (
+          <ResponsiveContainer width="100%" height={200}>
+            <AreaChart data={trend} margin={{ left: -10, right: 10 }}>
+              <defs>
+                <linearGradient id="collectionGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.25} />
+                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#71717a' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: '#71717a' }} axisLine={false} tickLine={false} tickFormatter={v => v > 0 ? `₹${(v / 1000).toFixed(0)}k` : '₹0'} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#111',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '12px',
+                  color: '#fff',
+                  fontSize: '13px',
+                }}
+                formatter={(v: number) => [`₹${v.toLocaleString('en-IN')}`, 'Collected']}
+              />
+              <Area
+                type="monotone"
+                dataKey="amount"
+                stroke="#3b82f6"
+                strokeWidth={2}
+                fill="url(#collectionGrad)"
+                dot={{ fill: '#3b82f6', strokeWidth: 0, r: 3 }}
+                activeDot={{ fill: '#3b82f6', r: 4, strokeWidth: 2, stroke: 'rgba(59,130,246,0.3)' }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
+      </div>
 
       {/* Quick actions */}
       <div>
-        <h2 className="text-base font-semibold mb-3">Quick Actions</h2>
-        <div className="flex flex-wrap gap-3">
-          <Link href={'/school-admin/attendance' as any}>
-            <Button variant="outline" className="gap-2"><CalendarCheck className="h-4 w-4" /> Mark Attendance</Button>
-          </Link>
-          <Link href={'/school-admin/fees/collect' as any}>
-            <Button variant="outline" className="gap-2"><IndianRupee className="h-4 w-4" /> Collect Fee</Button>
-          </Link>
-          <Link href={'/school-admin/fees/pending' as any}>
-            <Button variant="outline" className="gap-2"><AlertCircle className="h-4 w-4" /> Pending Fees</Button>
-          </Link>
-          <Link href={'/school-admin/students' as any}>
-            <Button variant="outline" className="gap-2"><Users className="h-4 w-4" /> Manage Students</Button>
-          </Link>
-          <Link href={'/school-admin/teachers' as any}>
-            <Button variant="outline" className="gap-2"><GraduationCap className="h-4 w-4" /> Manage Teachers</Button>
-          </Link>
+        <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-3">Quick Actions</p>
+        <div className="flex flex-wrap gap-2">
+          {quickActions.map(action => (
+            <Link key={action.href} href={action.href as any}>
+              <Button
+                variant="outline"
+                className="gap-2 rounded-full border-white/[0.08] bg-white/[0.04] text-zinc-300 hover:text-white hover:bg-white/[0.08] hover:border-white/[0.14] transition-all text-sm"
+              >
+                <action.icon className="h-3.5 w-3.5 text-blue-400" />
+                {action.label}
+              </Button>
+            </Link>
+          ))}
         </div>
       </div>
     </div>

@@ -105,41 +105,9 @@ SELECT
   NOW()
 FROM demo_users du;
 
-INSERT INTO auth.identities (
-  id,
-  user_id,
-  identity_data,
-  provider,
-  provider_id,
-  last_sign_in_at,
-  created_at,
-  updated_at
-)
-SELECT
-  gen_random_uuid(),
-  u.id,
-  jsonb_build_object(
-    'sub', u.id::TEXT,
-    'email', u.email,
-    'email_verified', TRUE,
-    'phone_verified', FALSE
-  ),
-  'email',
-  u.id::TEXT,
-  NOW(),
-  NOW(),
-  NOW()
-FROM auth.users u
-WHERE u.email IN (
-  'superadmin@edunexus.demo',
-  'admin@demo.school',
-  'teacher1@demo.school',
-  'teacher2@demo.school',
-  'manager@demo.school',
-  'cashier@demo.school',
-  'parent@demo.school'
-)
-ON CONFLICT DO NOTHING;
+-- NOTE:
+-- Avoid writing auth.identities directly in seed SQL because structure can vary
+-- across GoTrue versions. Email/password auth works with auth.users rows.
 
 -- ------------------------------------------------------------
 -- 3) CORE SCHOOL SETUP
@@ -435,10 +403,13 @@ COMMIT;
 -- ------------------------------------------------------------
 -- Demo login credentials
 -- ------------------------------------------------------------
--- superadmin@edunexus.demo / SuperAdmin@123
--- admin@demo.school       / Admin@1234
--- teacher1@demo.school    / Teacher@1234
--- teacher2@demo.school    / Teacher2@1234
--- manager@demo.school     / Manager@1234
--- cashier@demo.school     / Cashier@1234
--- parent@demo.school      / Parent@1234
+-- After running this SQL seed, run:
+--   node scripts/repair-seeded-auth.mjs
+-- Working login credentials:
+-- superadmin.login@edunexus.demo / SuperAdmin@123
+-- admin.login@demo.school        / Admin@1234
+-- teacher1.login@demo.school     / Teacher@1234
+-- teacher2.login@demo.school     / Teacher2@1234
+-- manager.login@demo.school      / Manager@1234
+-- cashier.login@demo.school      / Cashier@1234
+-- parent.login@demo.school       / Parent@1234
