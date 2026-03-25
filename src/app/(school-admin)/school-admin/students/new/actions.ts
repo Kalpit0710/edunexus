@@ -129,7 +129,7 @@ export async function createStudent(_schoolId: string, studentData: StudentCreat
     const payload: Database['public']['Tables']['students']['Insert'] = {
         school_id: effectiveSchoolId,
         full_name: nameParts || studentData.full_name || '',
-        gender: normalizeGender(studentData.gender),
+        gendehir: normalizeGender(studentData.gender),
         date_of_birth: studentData.date_of_birth ?? null,
         admission_date: studentData.admission_date || studentData.date_of_joining || undefined,
         admission_number: studentData.admission_number || '',
