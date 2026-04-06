@@ -32,6 +32,8 @@ export interface TeacherDashboardData {
   teacherId: string | null
   assignments: TeacherAssignment[]
   pendingAttendance: string[]
+  totalStudents: number
+  todayAttendancePct: number
 }
 
 export async function getTeacherDashboardData(
@@ -41,13 +43,34 @@ export async function getTeacherDashboardData(
   const supabase = await getSupabase()
   const db = supabase as any
 
+  // Resolve auth context server-side first. Client state can be stale after reseeding auth users.
+  const { data: authData } = await supabase.auth.getUser()
+  const sessionUser = authData?.user ?? null
+  const effectiveAuthUserId = sessionUser?.id ?? authUserId
+  const sessionEmail = sessionUser?.email ?? null
+
   // Step 1: resolve profile → teacher (dependent, must be sequential)
-  const { data: profileData } = await db
+  let { data: profileData } = await db
     .from('user_profiles')
     .select('id')
-    .eq('auth_user_id', authUserId)
+    .eq('auth_user_id', effectiveAuthUserId)
+    .eq('school_id', schoolId)
+    .eq('role', 'teacher')
     .single()
-  if (!profileData) return { teacherId: null, assignments: [], pendingAttendance: [] }
+
+  // Fallback: in some seeded/repair flows auth_user_id may drift; email remains stable.
+  if (!profileData && sessionEmail) {
+    const { data: profileByEmail } = await db
+      .from('user_profiles')
+      .select('id')
+      .eq('email', sessionEmail)
+      .eq('school_id', schoolId)
+      .eq('role', 'teacher')
+      .single()
+    profileData = profileByEmail
+  }
+
+  if (!profileData) return { teacherId: null, assignments: [], pendingAttendance: [], totalStudents: 0, todayAttendancePct: 0 }
 
   const { data: teacherData } = await db
     .from('teachers')
@@ -55,7 +78,7 @@ export async function getTeacherDashboardData(
     .eq('user_profile_id', profileData.id)
     .eq('school_id', schoolId)
     .single()
-  if (!teacherData) return { teacherId: null, assignments: [], pendingAttendance: [] }
+  if (!teacherData) return { teacherId: null, assignments: [], pendingAttendance: [], totalStudents: 0, todayAttendancePct: 0 }
 
   // Step 2: fetch assignments
   const { data: assignmentsData } = await db
@@ -81,17 +104,54 @@ export async function getTeacherDashboardData(
     .filter(a => a.is_class_teacher && a.section_id)
     .map(a => ({ sectionId: a.section_id as string, label: `${a.sections?.classes?.name ?? ''} ${a.sections?.name ?? ''}`.trim() }))
 
-  const pendingFlags = await Promise.all(
-    classTeacherSections.map(async sec => {
-      const { count } = await db
-        .from('attendance_records')
-        .select('id', { count: 'exact', head: true })
-        .eq('section_id', sec.sectionId)
-        .eq('date', today)
-      return (count ?? 0) === 0 ? sec.label : null
-    })
-  )
-  const pendingAttendance = pendingFlags.filter(Boolean) as string[]
+  // Fetch student counts and attendance in parallel
+  const sectionIds = ((assignmentsData ?? []) as any[]).map(a => a.section_id).filter(Boolean) as string[]
+  const classTchrSectionIds = classTeacherSections.map(s => s.sectionId)
 
-  return { teacherId: teacherData.id, assignments, pendingAttendance }
+  const [pendingFlags, studentsRes, todayAttendanceRes] = await Promise.all([
+    Promise.all(
+      classTeacherSections.map(async sec => {
+        const { count } = await db
+          .from('attendance_records')
+          .select('id', { count: 'exact', head: true })
+          .eq('section_id', sec.sectionId)
+          .eq('date', today)
+        return (count ?? 0) === 0 ? sec.label : null
+      })
+    ),
+    sectionIds.length > 0
+      ? db
+          .from('students')
+          .select('id', { count: 'exact', head: true })
+          .in('section_id', sectionIds)
+          .eq('is_active', true)
+      : Promise.resolve({ count: 0 }),
+    classTchrSectionIds.length > 0
+      ? Promise.all([
+          db
+            .from('attendance_records')
+            .select('id', { count: 'exact', head: true })
+            .in('section_id', classTchrSectionIds)
+            .eq('date', today)
+            .eq('status', 'present'),
+          db
+            .from('students')
+            .select('id', { count: 'exact', head: true })
+            .in('section_id', classTchrSectionIds)
+            .eq('is_active', true),
+        ])
+      : Promise.resolve([{ count: 0 }, { count: 0 }]),
+  ])
+
+  const pendingAttendance = (pendingFlags as (string | null)[]).filter(Boolean) as string[]
+  const totalStudents = (studentsRes as any).count ?? 0
+
+  const [presentRes, totalForPctRes] = todayAttendanceRes as [any, any]
+  const presentCount = presentRes?.count ?? 0
+  const totalForPct = totalForPctRes?.count ?? 0
+  const todayAttendancePct = totalForPct > 0
+    ? Math.round((presentCount / totalForPct) * 100)
+    : 0
+
+  return { teacherId: teacherData.id, assignments, pendingAttendance, totalStudents, todayAttendancePct }
 }

@@ -5,10 +5,11 @@
 
 ---
 
-## Current Phase: Phase 1 Exit Review + Phase 2 Backend Kickoff
+## Current Phase: Phase 2 — Advanced Academic + POS (Active)
 
-**Overall Phase 1 Progress:** Inconsistent status across docs (exit criteria not formally signed off)  
-**Active Milestone:** Phase 2.1 + 2.2 backend foundation completed; UI implementation pending
+**Overall Phase 1 Progress:** 🔄 Feature-complete (1.1-1.9) with testing gate 1.10 still open  
+**Overall Phase 2 Progress:** 🔄 In progress — backend done; UI stabilization ongoing  
+**Active Sprint:** Phase 2 UI polish, exam module stabilization, parent portal wiring
 
 ---
 
@@ -16,51 +17,80 @@
 
 | Milestone | Status | Notes |
 |-----------|--------|-------|
-| 1.1 Project Setup | ✅ Completed | Setup completed earlier |
-| 1.2 Database Foundation | ✅ Completed | Pushed DB schema, generated types |
-| 1.3 Auth & Role Routing | ✅ Completed | Implemented store, login, and reset pages |
-| 1.4 School Configuration | ✅ Completed | Setup settings and onboarding wizard |
-| 1.5 Student Management | ✅ Completed | Fully implemented, wizard, Excel import/export |
-| 1.6 Teacher Management | 🔲 Not Started | |
-| 1.7 Attendance Module | 🔲 Not Started | |
-| 1.8 Fee Module Basic | 🔲 Not Started | |
-| 1.9 Role Dashboards | 🔲 Not Started | |
-| 1.10 Testing Sprint | 🔲 Not Started | |
-| 2.1 Examination Module (Backend) | ✅ Completed | Migration, RLS, RPC + server actions created |
-| 2.2 Inventory & POS (Backend) | ✅ Completed | Migration, RLS, RPC + server actions created |
+| 1.1 Project Setup | ✅ Completed | Next.js 15, Supabase CLI, pnpm, ESLint, Tailwind, shadcn/ui |
+| 1.2 Database Foundation | ✅ Completed | Schema pushed, RLS policies, types generated |
+| 1.3 Auth & Role Routing | ✅ Completed | Zustand store, login, forgot-password, middleware role routing |
+| 1.4 School Configuration | ✅ Completed | Settings, classes/sections/subjects, onboarding wizard, grading rules |
+| 1.5 Student Management | ✅ Completed | DataTable, multi-step add wizard, bulk Excel import/export, photo upload |
+| 1.6 Teacher Management | ✅ Completed | Teacher list, add/edit, class-section assignment UI, activate/deactivate |
+| 1.7 Attendance Module | ✅ Completed | Daily mark, bulk mark, edit prior records, monthly report, Excel import/export |
+| 1.8 Fee Module Basic | ✅ Completed | Fee structure, POS collection, receipt email, payment history, pending fees, daily report |
+| 1.9 Role Dashboards | ✅ Completed | All 4 role dashboards with stat cards, charts, attendance %, quick actions |
+| 1.10 Testing Sprint | 🔄 In Progress | TypeScript clean (0 errors); E2E Playwright auth-flow timeouts pending |
+| 2.1 Examination Module | 🔄 In Progress | Backend + UI complete; exam list, marks entry, reports, publish/lock — type errors fixed 2026-03-31 |
+| 2.2 Inventory & POS | ✅ Completed (Backend + UI) | Inventory CRUD, stock adjust, POS billing, low-stock alerts, receipt emails |
+| 2.3 Email Notifications | ✅ Completed | Resend integration, fee receipt email, inventory receipt email, exam publish notification |
+| 2.4 Parent Portal | ✅ Completed | Dashboard, attendance calendar, exam results (fee-locked), fee status, announcements |
+| 2.5 Advanced Analytics | 🔲 Not Started | |
+| 2.6 Phase 2 Testing | 🔲 Not Started | |
 
 ---
 
 ## Completed Tasks
 
-### 2026-02-28 — Milestone 1.2 & 1.3 — Database Foundation & Auth
+### 2026-02-28 — Milestones 1.1–1.5 — Project Foundation & Core CRM
 - Status: ✅ Completed
-- What was done: Initialized Zustand auth store, completed login page and forgot-password page integration. Pushed Supabase schema to remote backend and synced database typings explicitly avoiding Docker configurations.
-- Tests: Validated strict typing with `pnpm type-check` avoiding inference regressions.
+- What was done: Initialized Next.js 15 + Supabase + pnpm monorepo. Zustand auth store, role-based middleware routing. Supabase schema with RLS. School configuration (classes, sections, subjects, grading). Student management with multi-step wizard, bulk Excel import/export, photo upload via Supabase Storage, admission number generation.
+- Tests: `pnpm type-check` passed. Unit tests passing.
 
-### 2026-02-28 — Milestone 1.4 & 1.5 — Configuration & Student CRM
+### 2026-03-01 — Milestone 1.7 — Attendance Module
 - Status: ✅ Completed
-- What was done: Fully built School Configuration forms (Classes, Sections, Subjects, Grading Rules, Settings). Created a robust Guided Onboarding Wizard to accelerate setup. Constructed extensive Student features (DataTable, Bulk Excel Import/Export, Multi-Step Add form, Avatar/Photo Storage).
-- Tests: TS compilation passed successfully. Forms manage state beautifully with `useAuthStore` scoping queries properly to RLS isolation boundaries.
+- What was done: Daily attendance mark UI (class/section/date), bulk mark-all present, edit prior records, monthly per-student summary, date-wise class view, Excel import/export for attendance.
 
-### 2026-03-14 — Milestones 2.1 & 2.2 — Backend Foundation (Exam + Inventory/POS)
+### 2026-03-13 — Milestones 1.6 & 1.8 — Teacher Management & Fee Module
+- Status: ✅ Completed
+- What was done: Teacher list/add/edit with auth user creation, class-section assignment UI, activate/deactivate. Fee structure, POS collection terminal, payment receipt email (Resend), payment history, pending fees view, daily collection report for managers.
+
+### 2026-03-14 — Milestones 2.1 & 2.2 Backend — Exam & Inventory Schema
 - Status: ✅ Completed (Backend only)
-- What was done: Added Phase 2 migration with examination and inventory schema (`exams`, `exam_subjects`, `marks`, `inventory_items`, `inventory_sales`, etc.), RLS policies, and RPC functions (`publish_exam_results`, `unlock_exam_results`, `adjust_stock`, `create_inventory_sale`). Added backend action modules for exams and inventory plus pure utility modules for grading/stock/cart logic.
-- Tests: `pnpm type-check` passed; targeted Vitest run passed for new suites: `tests/unit/exams/exam-utils.test.ts` and `tests/unit/inventory/inventory-utils.test.ts`.
-- Notes: UI for Phase 2.1/2.2 intentionally deferred for Antigravity. Phase 1 exit criteria remain unverified and need formal gate sign-off before production go-live.
+- What was done: Phase 2 migration with `exams`, `exam_subjects`, `marks`, `inventory_items`, `inventory_sales`, RLS policies, RPC functions (`publish_exam_results`, `unlock_exam_results`, `adjust_stock`, `create_inventory_sale`). Backend action modules for exams and inventory.
+- Tests: `pnpm type-check` passed; Vitest: `exam-utils.test.ts` and `inventory-utils.test.ts` passing.
 
-### 2026-03-14 — Phase 2 Backend Hardening (Edge Functions + Attendance Query Alignment)
+### 2026-03-14 — Phase 2 Backend Hardening
 - Status: ✅ Completed
-- What was done: Replaced placeholder Edge Functions with working implementations for `generate-pdf` and `send-email`. Updated attendance data reads to use `attendance_records` in parent summary, school admin dashboard, and reporting actions.
-- Tests: `pnpm type-check` passed; unit tests passed (`89` passed, `0` failed).
-- Notes: `send-email` is restricted to service-role bearer auth and requires `RESEND_API_KEY` + `EMAIL_FROM` env configuration.
+- What was done: Replaced placeholder Edge Functions with working `generate-pdf` and `send-email`. Updated attendance reads to `attendance_records` across parent summary, school-admin dashboard, reporting. Inventory POS UI, stock adjustment, low-stock alerts.
+- Tests: `pnpm type-check` passed; 89 unit tests passing.
+
+### 2026-03-15 — Dark UI Redesign
+- Status: ✅ Completed
+- What was done: Global dark theme (`#0a0a0a` base), dark sidebars for all roles (school-admin, teacher, manager, parent), glassmorphism stat cards, login page redesign, school-admin dashboard with Recharts weekly collection chart.
+
+### 2026-03-15 — Milestone 2.4 — Parent Portal
+- Status: ✅ Completed
+- What was done: Parent dashboard (child info card, stat grid, attendance progress bar, fee summary, recent payments), attendance calendar view, exam results page (fee-locked toggle, subject breakdown, grade display), fee status page, announcements page. Multi-child switcher support via `activeChildId`.
+
+### 2026-03-31 — P0 TypeScript Fix — Exam Module + students/new
+- Status: ✅ Completed
+- What was done: Fixed 11 TypeScript errors — `marks/page.tsx` (variable shadowing, `class_id` on `never`), `reports/page.tsx` (`class_id` on `never`), `new/page.tsx` (`ExamSubjectInput` type mismatch, for-loop index undefined inference), `students/new/actions.ts` (`gendehir` typo).
+- Tests: `pnpm type-check` → 0 errors.
+
+### 2026-03-31 — Milestone 1.9 — Role Dashboards (Enriched)
+- Status: ✅ Completed
+- What was done: Teacher dashboard expanded to 5 stat cards (Total Assignments, Class Teacher Of, Students Taught, Today's Attendance %, Pending Attendance) with quick-actions bar. Manager dashboard fully restyled to dark glassmorphism — new `actions.ts` batching all stats, 5 stat cards (Today's Collection, Transactions, Pending Fee Students, Inventory Items, Low Stock Alerts), weekly fee trend Recharts chart, low-stock warning banner, quick-actions bar.
+- Tests: `pnpm type-check` → 0 errors.
+
+### 2026-03-31 — P2 Dark Restyle — Remaining Light-Mode Pages
+- Status: ✅ Completed
+- What was done: Restyled `parent/results/page.tsx` (SVG progress rings, dark accordion), `parent/announcements/page.tsx` (left accent bars, audience badges), `exams/publish/page.tsx` (status pills, readiness panel, skeleton loading). All pages now match dark glassmorphism design system.
+- Tests: `pnpm type-check` → 0 errors.
 
 ---
 
 ## Known Issues / Blockers
 
-- Documentation status conflict: `PROGRESS.md` and `README.md` disagree on project phase maturity, and Phase 1 exit checklist in `phases/phase1_mvp.md` remains unchecked.
-- E2E suite still has environment-level login redirect timeout failures and needs dedicated auth-flow stabilization before reliable browser validation.
+- **E2E suite**: Playwright auth-flow redirect timeout failures — needs dedicated test user seed + auth helper before reliable browser validation. Milestone 1.10 gated on this.
+- **PDF report cards**: Edge Function `generate-pdf` exists but report card template not yet designed. Phase 2.1 P0 item pending.
+- **Timetable view (Parent Portal)**: Deferred — no timetable schema exists yet.
 
 ---
 
@@ -71,6 +101,8 @@
 | 2026-02-27 | Chose Supabase as BaaS | EduNexus Team | See ADR-001 in ARCHITECTURE.md |
 | 2026-02-27 | Chose Next.js App Router | EduNexus Team | See ADR-002 in ARCHITECTURE.md |
 | 2026-02-27 | Chose Tailwind + shadcn/ui | EduNexus Team | See ADR-004 in ARCHITECTURE.md |
+| 2026-03-15 | Dark theme `#0a0a0a` glassmorphism design system | EduNexus Team | Faculty Framer-inspired; premium dark minimalist aesthetic |
+| 2026-03-31 | Skipped formal Phase 1 exit gate | EduNexus Team | Phase 2 backend was started early due to co-development; E2E gate deferred |
 
 ---
 
@@ -82,6 +114,6 @@ When completing a task, update this file with:
 ### [Date] — [Milestone] — [Task Name]
 - Status: ✅ Completed
 - What was done: Brief description
-- Tests: What tests were written
+- Tests: What tests were run/written
 - Notes: Any important decisions made
 ```

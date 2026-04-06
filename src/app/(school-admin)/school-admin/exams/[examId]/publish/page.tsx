@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 import { ArrowLeft, Lock, Unlock, Send, AlertTriangle, CheckCircle2, ShieldCheck } from 'lucide-react'
 import Link from 'next/link'
 import { getExamById, publishExamResults, unlockExamResults, getClassPerformanceReport } from '../../actions'
@@ -22,9 +22,7 @@ export default function PublishExamPage() {
     const [notifyParents, setNotifyParents] = useState(false)
 
     useEffect(() => {
-        if (school?.id && examId) {
-            loadInitialData()
-        }
+        if (school?.id && examId) loadInitialData()
     }, [school?.id, examId])
 
     async function loadInitialData() {
@@ -33,205 +31,213 @@ export default function PublishExamPage() {
         try {
             const [ex, perf] = await Promise.all([
                 getExamById(school.id, examId),
-                getClassPerformanceReport(school.id, examId)
+                getClassPerformanceReport(school.id, examId),
             ])
             setExam(ex)
             setPerformance(perf || [])
         } catch (e: any) {
-            toast.error("Failed to load exam details: " + e.message)
+            toast.error('Failed to load exam details: ' + e.message)
         } finally {
             setLoading(false)
         }
     }
 
     const handlePublish = async () => {
-        if (!confirm('Are you sure you want to publish results and lock the exam? This action will notify parents if selected.')) return
-
+        if (!confirm('Publish results and lock the exam? Parents will be notified if selected.')) return
         setActionLoading(true)
         try {
             await publishExamResults(examId, notifyParents)
-            toast.success("Exam results published and locked successfully!")
+            toast.success('Exam results published and locked!')
             await loadInitialData()
         } catch (e: any) {
-            toast.error("Failed to publish: " + e.message)
+            toast.error('Failed to publish: ' + e.message)
         } finally {
             setActionLoading(false)
         }
     }
 
     const handleUnlock = async () => {
-        if (!confirm('Are you sure you want to unlock the exam? This will revert it to "ongoing" status and hide results from parents temporarily.')) return
-
+        if (!confirm('Unlock the exam? Results will be hidden from parents temporarily.')) return
         setActionLoading(true)
         try {
             await unlockExamResults(examId)
-            toast.success("Exam unlocked and results hidden.")
+            toast.success('Exam unlocked — results hidden from parents.')
             await loadInitialData()
         } catch (e: any) {
-            toast.error("Failed to unlock: " + e.message)
+            toast.error('Failed to unlock: ' + e.message)
         } finally {
             setActionLoading(false)
         }
     }
 
     if (loading) {
-        return <div className="p-8 text-center text-muted-foreground">Loading exam details...</div>
+        return (
+            <div className="max-w-3xl mx-auto space-y-5">
+                <Skeleton className="h-10 w-64 rounded-xl bg-white/5" />
+                <div className="grid sm:grid-cols-2 gap-4">
+                    <Skeleton className="h-40 rounded-2xl bg-white/5" />
+                    <Skeleton className="h-40 rounded-2xl bg-white/5" />
+                </div>
+                <Skeleton className="h-48 rounded-2xl bg-white/5" />
+            </div>
+        )
     }
 
     if (!exam) return null
 
     const totalStudents = performance.length > 0 ? performance[0].studentCount : 0
-    // sum marks entries across all subjects? No, performance gives presentCount + absentCount per subject.
-    // If we take the first subject as a baseline for total expected entries
     const firstSub = performance[0]
     const marksEntered = firstSub ? (firstSub.passCount + firstSub.failCount + firstSub.absentCount) : 0
     const isReady = marksEntered > 0 && marksEntered >= totalStudents
 
+    const isLocked = exam.status === 'locked'
+
+    const statusAccent = isLocked
+        ? { color: '#ef4444', bg: '#ef444414', border: '#ef444430', label: 'Locked' }
+        : exam.status === 'published'
+            ? { color: '#3b82f6', bg: '#3b82f614', border: '#3b82f630', label: 'Published' }
+            : { color: '#f59e0b', bg: '#f59e0b14', border: '#f59e0b30', label: 'Ongoing' }
+
     return (
-        <div className="max-w-3xl mx-auto space-y-6">
+        <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
+            {/* Back + title */}
             <div className="flex items-center gap-4">
-                <Link href={"/school-admin/exams" as any}>
-                    <Button variant="outline" size="icon">
-                        <ArrowLeft className="w-4 h-4" />
+                <Link href={'/school-admin/exams' as any}>
+                    <Button variant="outline" size="icon" className="rounded-xl border-white/10 bg-white/5 hover:bg-white/10">
+                        <ArrowLeft className="h-4 w-4" />
                     </Button>
                 </Link>
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight">Publish & Lock: {exam.name}</h2>
-                    <p className="text-muted-foreground">Manage the visibility state of examination results.</p>
+                    <h2 className="text-xl font-bold tracking-tight text-white">Publish & Lock</h2>
+                    <p className="text-sm text-zinc-500 mt-0.5">{exam.name}</p>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="md:col-span-1 space-y-4">
-                    <Card className="shadow-soft">
-                        <CardHeader className="bg-muted/30 pb-4 border-b">
-                            <CardTitle className="flex items-center gap-2">
-                                <ShieldCheck className="w-5 h-5 text-primary" /> Current Status
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="pt-6 space-y-4">
-                            <div className="flex flex-col gap-1">
-                                <span className="text-sm text-muted-foreground">Exam Status</span>
-                                <span className={`inline-flex self-start px-3 py-1 rounded-full text-sm font-semibold uppercase tracking-wide
-                                    ${exam.status === 'locked' ? 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300' :
-                                        exam.status === 'published' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300' :
-                                            'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300'}
-                                `}>
-                                    {exam.status}
+            <div className="grid sm:grid-cols-2 gap-4">
+                {/* Current status card */}
+                <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-5 space-y-4">
+                    <div className="flex items-center gap-2">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-xl border" style={{ backgroundColor: statusAccent.bg, borderColor: statusAccent.border, color: statusAccent.color }}>
+                            <ShieldCheck className="h-4 w-4" />
+                        </div>
+                        <p className="text-sm font-semibold text-white">Current Status</p>
+                    </div>
+                    <div className="space-y-3">
+                        <div>
+                            <p className="text-xs text-zinc-500 mb-1">Exam Status</p>
+                            <span
+                                className="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide"
+                                style={{ color: statusAccent.color, backgroundColor: statusAccent.bg, borderColor: statusAccent.border }}
+                            >
+                                {statusAccent.label}
+                            </span>
+                        </div>
+                        <div>
+                            <p className="text-xs text-zinc-500 mb-1">Result Visibility</p>
+                            {exam.result_visible ? (
+                                <span className="text-emerald-400 text-sm font-medium flex items-center gap-1.5">
+                                    <CheckCircle2 className="h-4 w-4" /> Visible to Parents
+                                </span>
+                            ) : (
+                                <span className="text-zinc-500 text-sm font-medium flex items-center gap-1.5">
+                                    <ShieldCheck className="h-4 w-4" /> Hidden from Parents
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Readiness check */}
+                <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-5 space-y-4">
+                    <div className="flex items-center gap-2">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-amber-500/30 bg-amber-500/10">
+                            <AlertTriangle className="h-4 w-4 text-amber-400" />
+                        </div>
+                        <p className="text-sm font-semibold text-white">Readiness Check</p>
+                    </div>
+                    {performance.length === 0 ? (
+                        <p className="text-sm text-zinc-500">No subjects configured yet.</p>
+                    ) : (
+                        <div className="space-y-2 text-sm">
+                            <div className="flex justify-between items-center py-1.5 border-b border-white/[0.05]">
+                                <span className="text-zinc-500 text-xs">Subjects</span>
+                                <span className="font-semibold text-white">{performance.length}</span>
+                            </div>
+                            <div className="flex justify-between items-center py-1.5 border-b border-white/[0.05]">
+                                <span className="text-zinc-500 text-xs">Total Students</span>
+                                <span className="font-semibold text-white">{totalStudents}</span>
+                            </div>
+                            <div className="flex justify-between items-center py-1.5">
+                                <span className="text-zinc-500 text-xs">Marks Entered</span>
+                                <span className={`font-semibold text-sm ${isReady ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                    {marksEntered} / {totalStudents}
                                 </span>
                             </div>
-
-                            <div className="flex flex-col gap-1 mt-4">
-                                <span className="text-sm text-muted-foreground">Result Visibility</span>
-                                <span className="font-medium text-foreground">
-                                    {exam.result_visible ? (
-                                        <span className="text-green-600 dark:text-green-400 font-semibold flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> Visible to Parents</span>
-                                    ) : (
-                                        <span className="text-muted-foreground font-medium flex items-center gap-1.5"><ShieldCheck className="w-4 h-4" /> Hidden from Parents</span>
-                                    )}
-                                </span>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                <div className="md:col-span-1 space-y-4">
-                    <Card className="shadow-soft h-full">
-                        <CardHeader className="bg-muted/30 pb-4 border-b">
-                            <CardTitle className="flex items-center gap-2">
-                                <AlertTriangle className="w-5 h-5 text-amber-500" /> Readiness Check
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="pt-6 space-y-4">
-                            {performance.length === 0 ? (
-                                <p className="text-muted-foreground text-sm">No specific subjects or marks to validate.</p>
-                            ) : (
-                                <div className="space-y-3 text-sm">
-                                    <div className="flex justify-between items-center py-2 border-b">
-                                        <span className="text-muted-foreground">Subjects Configured</span>
-                                        <span className="font-semibold">{performance.length}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center py-2 border-b">
-                                        <span className="text-muted-foreground">Total Students</span>
-                                        <span className="font-semibold">{totalStudents}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center py-2">
-                                        <span className="text-muted-foreground">Estimated Completion</span>
-                                        <span className={`font-semibold ${isReady ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                                            {marksEntered} / {totalStudents} Entered
-                                        </span>
-                                    </div>
-                                    {!isReady && exam.status !== 'locked' && (
-                                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
-                                            Warning: Not all marks appear to have been entered yet.
-                                        </p>
-                                    )}
-                                </div>
+                            {!isReady && !isLocked && (
+                                <p className="text-[11px] text-amber-400 mt-1">
+                                    ⚠ Not all marks have been entered yet.
+                                </p>
                             )}
-                        </CardContent>
-                    </Card>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Action center */}
+            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-5 space-y-4">
+                <div>
+                    <p className="text-sm font-semibold text-white">Action Center</p>
+                    <p className="text-xs text-zinc-500 mt-0.5">
+                        Publishing locks all marks and optionally notifies parents.
+                    </p>
                 </div>
 
-                <div className="md:col-span-2">
-                    <Card className="shadow-soft border-primary/20">
-                        <CardHeader>
-                            <CardTitle>Action Center</CardTitle>
-                            <CardDescription>Publishing results will lock marks from further changes and optionally notify parents.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            {exam.status === 'locked' ? (
-                                <div className="bg-red-50 dark:bg-red-950/30 p-4 rounded-lg border border-red-100 dark:border-red-900 space-y-3">
-                                    <div className="flex items-center gap-2 text-red-800 dark:text-red-300 font-medium">
-                                        <Lock className="w-5 h-5" />
-                                        This exam is currently locked.
-                                    </div>
-                                    <p className="text-sm text-red-700/80 dark:text-red-300/80">
-                                        Marks cannot be modified while locked. Unlocking the exam will temporarily hide results from parents.
-                                    </p>
-                                    <Button
-                                        onClick={handleUnlock}
-                                        disabled={actionLoading}
-                                        variant="outline"
-                                        className="border-red-200 text-red-700 hover:bg-red-100 hover:text-red-800 mt-2"
-                                    >
-                                        {actionLoading ? "Processing..." : <><Unlock className="w-4 h-4 mr-2" /> Unlock Exam</>}
-                                    </Button>
-                                </div>
-                            ) : (
-                                <div className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-lg border border-blue-100 dark:border-blue-900 space-y-4">
-                                    <div className="flex items-center gap-2 text-blue-800 dark:text-blue-300 font-medium">
-                                        <Unlock className="w-5 h-5" />
-                                        This exam is currently open.
-                                    </div>
-                                    <p className="text-sm text-blue-700/80 dark:text-blue-300/80">
-                                        You can freely edit marks. Publishing will lock all entries and generate final report cards.
-                                    </p>
-
-                                    <div className="flex items-center gap-2 mt-4 pt-4 border-t border-blue-200 dark:border-blue-900/50">
-                                        <input
-                                            type="checkbox"
-                                            id="notifyParents"
-                                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                                            checked={notifyParents}
-                                            onChange={(e) => setNotifyParents(e.target.checked)}
-                                        />
-                                        <label htmlFor="notifyParents" className="text-sm font-medium cursor-pointer text-foreground">
-                                            Send SMS / Email notification to parents
-                                        </label>
-                                    </div>
-
-                                    <Button
-                                        onClick={handlePublish}
-                                        disabled={actionLoading}
-                                        className="bg-primary hover:bg-primary/90 text-primary-foreground mt-4 w-full sm:w-auto"
-                                    >
-                                        {actionLoading ? "Processing..." : <><Send className="w-4 h-4 mr-2" /> Publish Results & Lock</>}
-                                    </Button>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                </div>
+                {isLocked ? (
+                    <div className="rounded-xl border border-red-500/20 bg-red-500/8 p-4 space-y-3">
+                        <div className="flex items-center gap-2 text-red-400 font-medium text-sm">
+                            <Lock className="h-4 w-4" /> This exam is currently locked
+                        </div>
+                        <p className="text-xs text-red-300/70">
+                            Marks cannot be modified while locked. Unlocking will temporarily hide results from parents.
+                        </p>
+                        <Button
+                            onClick={handleUnlock}
+                            disabled={actionLoading}
+                            variant="outline"
+                            className="border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                        >
+                            {actionLoading ? 'Processing...' : <><Unlock className="h-4 w-4 mr-2" /> Unlock Exam</>}
+                        </Button>
+                    </div>
+                ) : (
+                    <div className="rounded-xl border border-blue-500/20 bg-blue-500/8 p-4 space-y-4">
+                        <div className="flex items-center gap-2 text-blue-400 font-medium text-sm">
+                            <Unlock className="h-4 w-4" /> This exam is currently open
+                        </div>
+                        <p className="text-xs text-blue-300/70">
+                            You can freely edit marks. Publishing will lock all entries.
+                        </p>
+                        <label className="flex items-center gap-2.5 cursor-pointer group">
+                            <input
+                                type="checkbox"
+                                id="notifyParents"
+                                className="h-4 w-4 rounded border-white/20 bg-white/5 text-blue-500 focus:ring-blue-500"
+                                checked={notifyParents}
+                                onChange={e => setNotifyParents(e.target.checked)}
+                            />
+                            <span className="text-sm text-zinc-400 group-hover:text-zinc-300 transition-colors">
+                                Send email notification to parents
+                            </span>
+                        </label>
+                        <Button
+                            onClick={handlePublish}
+                            disabled={actionLoading}
+                            className="bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20 w-full sm:w-auto"
+                        >
+                            {actionLoading ? 'Processing...' : <><Send className="h-4 w-4 mr-2" /> Publish Results & Lock</>}
+                        </Button>
+                    </div>
+                )}
             </div>
         </div>
     )

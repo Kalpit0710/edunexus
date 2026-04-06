@@ -53,3 +53,7 @@ Thumbs.db
 
 # misc
 *.log
+lint_output*.txt
+pl_results*.txt
+tmp_tsc*.txt
+tsc_*.txt

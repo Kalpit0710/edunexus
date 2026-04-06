@@ -58,7 +58,8 @@ export default function ExamReportsPage() {
             setPerformance(perf || [])
             setToppers(topList || [])
 
-            const classStuds = ((studs as any[]) || []).filter((s: any) => s.class_id === (ex as any).class_id)
+            const examClassId = (ex as any)?.class_id
+            const classStuds = Array.isArray(studs) ? (studs as any[]).filter((s: any) => s.class_id === examClassId) : []
             setStudents(classStuds)
 
         } catch (e: any) {

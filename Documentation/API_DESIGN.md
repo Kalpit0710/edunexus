@@ -23,7 +23,7 @@ All APIs are authenticated via JWT. All data is filtered by RLS automatically.
 ```typescript
 // src/lib/supabase/client.ts
 import { createBrowserClient } from '@supabase/ssr'
-import type { Database } from '@/types/supabase'
+import type { Database } from '@/types/database.types'
 
 export function createClient() {
   return createBrowserClient<Database>(
@@ -38,7 +38,7 @@ export function createClient() {
 // src/lib/supabase/server.ts
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import type { Database } from '@/types/supabase'
+import type { Database } from '@/types/database.types'
 
 export function createClient() {
   const cookieStore = cookies()
@@ -311,22 +311,8 @@ Request body:
 }
 ```
 
-### `process-late-fees`
-```
-POST /functions/v1/process-late-fees
-Authorization: Bearer <service-role> (called by cron)
-
-Request body:
-{
-  "school_id": "uuid"  // optional; if omitted, processes all active schools
-}
-
-Response:
-{
-  "processed_schools": 12,
-  "updated_installments": 47
-}
-```
+### Planned Cron Functions
+Late-fee processing and scheduled reminders are planned for future phases and are not currently deployed in this repository.
 
 ---
 

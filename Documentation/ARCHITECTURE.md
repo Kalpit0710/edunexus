@@ -209,7 +209,7 @@ edunexus/
 │   ├── functions/                    # Edge Functions
 │   │   ├── generate-pdf/
 │   │   ├── send-email/
-│   │   └── process-late-fees/
+│   │   └── ... (additional functions as implemented)
 │   └── seed/                         # Seed data for development
 ├── tests/
 │   ├── unit/
@@ -453,9 +453,7 @@ Edge Functions run on Deno and are deployed via `supabase functions deploy`.
 |----------|---------|---------|
 | `generate-pdf` | HTTP POST | Generate fee receipts, report cards |
 | `send-email` | HTTP POST | Dispatch emails via Resend |
-| `process-late-fees` | Cron (daily 1 AM) | Apply late fee charges automatically |
-| `validate-excel` | HTTP POST | Validate bulk upload files |
-| `fee-reminder` | Cron (configurable) | Send fee due reminder emails |
+| Planned cron/validation functions | Future phases | Late fees, reminders, advanced validation |
 
 ### Edge Function Structure
 
@@ -469,8 +467,7 @@ supabase/functions/
 │   └── deno.json
 ├── send-email/
 │   └── index.ts
-└── process-late-fees/
-    └── index.ts
+└── ... (additional functions by phase)
 ```
 
 ---

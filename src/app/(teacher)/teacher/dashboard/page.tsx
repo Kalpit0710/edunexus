@@ -6,11 +6,15 @@ import { getTeacherDashboardData, type TeacherDashboardData } from './actions'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import Link from 'next/link'
-import { CalendarCheck, BookOpen, Clock, Users, GraduationCap } from 'lucide-react'
+import {
+  CalendarCheck, BookOpen, Clock, Users, GraduationCap, BarChart2, ArrowRight
+} from 'lucide-react'
 
 export default function TeacherDashboardPage() {
   const { user, school } = useAuthStore()
-  const [stats, setStats] = useState<TeacherDashboardData>({ teacherId: null, assignments: [], pendingAttendance: [] })
+  const [stats, setStats] = useState<TeacherDashboardData>({
+    teacherId: null, assignments: [], pendingAttendance: [], totalStudents: 0, todayAttendancePct: 0,
+  })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -27,11 +31,36 @@ export default function TeacherDashboardPage() {
   const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })
   const fullName = (user?.user_metadata?.full_name as string) || 'Teacher'
 
+  const statCards = [
+    { label: 'Total Assignments', value: stats.assignments.length, icon: BookOpen, accent: '#3b82f6' },
+    { label: 'Class Teacher Of', value: stats.assignments.filter(a => a.isClassTeacher).length, icon: Users, accent: '#8b5cf6' },
+    { label: 'Students Taught', value: stats.totalStudents, icon: GraduationCap, accent: '#06b6d4' },
+    {
+      label: "Today's Attendance",
+      value: stats.assignments.filter(a => a.isClassTeacher).length > 0
+        ? `${stats.todayAttendancePct}%`
+        : '—',
+      icon: BarChart2,
+      accent: stats.todayAttendancePct >= 80 ? '#10b981' : stats.todayAttendancePct > 0 ? '#f59e0b' : '#6b7280',
+    },
+    {
+      label: 'Pending Attendance',
+      value: stats.pendingAttendance.length,
+      icon: CalendarCheck,
+      accent: stats.pendingAttendance.length > 0 ? '#f59e0b' : '#10b981',
+    },
+  ]
+
+  const quickActions = [
+    { href: '/teacher/attendance', label: 'Mark Attendance', icon: CalendarCheck },
+    { href: '/teacher/exams', label: 'View Exams', icon: BookOpen },
+  ]
+
   if (loading) return (
     <div className="p-6 space-y-5">
       <Skeleton className="h-10 w-64 bg-white/5 rounded-xl" />
-      <div className="grid gap-4 sm:grid-cols-3">
-        {[1,2,3].map(i => <Skeleton key={i} className="h-28 rounded-2xl bg-white/5" />)}
+      <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-28 rounded-2xl bg-white/5" />)}
       </div>
     </div>
   )
@@ -69,7 +98,7 @@ export default function TeacherDashboardPage() {
                 <p key={sec} className="text-sm text-zinc-400 mt-0.5">{sec} — not yet marked for today</p>
               ))}
             </div>
-            <Link href={'/school-admin/attendance' as any} className="shrink-0">
+            <Link href={'/teacher/attendance' as any} className="shrink-0">
               <Button className="rounded-full bg-amber-500 text-[#0a0a0a] hover:bg-amber-400 text-sm font-semibold">
                 <CalendarCheck className="mr-1.5 h-4 w-4" /> Mark Now
               </Button>
@@ -78,19 +107,24 @@ export default function TeacherDashboardPage() {
         </div>
       )}
 
-      {/* Stats */}
-      <div className="grid gap-3 sm:grid-cols-3">
-        {[
-          { label: 'Total Assignments', value: stats.assignments.length, icon: BookOpen, accent: '#3b82f6' },
-          { label: 'Class Teacher Of', value: stats.assignments.filter(a => a.isClassTeacher).length, icon: Users, accent: '#8b5cf6' },
-          { label: 'Pending Attendance', value: stats.pendingAttendance.length, icon: CalendarCheck, accent: stats.pendingAttendance.length > 0 ? '#f59e0b' : '#10b981' },
-        ].map(card => (
-          <div key={card.label} className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.03] p-5">
-            <div className="pointer-events-none absolute -right-4 -top-4 h-24 w-24 rounded-full blur-2xl opacity-20" style={{ backgroundColor: card.accent }} />
+      {/* Stats — 5 cards */}
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
+        {statCards.map(card => (
+          <div
+            key={card.label}
+            className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.03] p-5"
+          >
+            <div
+              className="pointer-events-none absolute -right-4 -top-4 h-24 w-24 rounded-full blur-2xl opacity-20"
+              style={{ backgroundColor: card.accent }}
+            />
             <div className="relative">
               <div className="mb-3 flex items-center justify-between">
                 <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">{card.label}</p>
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl border" style={{ backgroundColor: `${card.accent}14`, borderColor: `${card.accent}30`, color: card.accent }}>
+                <div
+                  className="flex h-8 w-8 items-center justify-center rounded-xl border"
+                  style={{ backgroundColor: `${card.accent}14`, borderColor: `${card.accent}30`, color: card.accent }}
+                >
                   <card.icon className="h-4 w-4" />
                 </div>
               </div>
@@ -123,6 +157,25 @@ export default function TeacherDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Quick actions */}
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-3">Quick Actions</p>
+        <div className="flex flex-wrap gap-2">
+          {quickActions.map(action => (
+            <Link key={action.href} href={action.href as any}>
+              <Button
+                variant="outline"
+                className="gap-2 rounded-full border-white/[0.08] bg-white/[0.04] text-zinc-300 hover:text-white hover:bg-white/[0.08] hover:border-white/[0.14] transition-all text-sm"
+              >
+                <action.icon className="h-3.5 w-3.5 text-violet-400" />
+                {action.label}
+                <ArrowRight className="h-3 w-3 opacity-50" />
+              </Button>
+            </Link>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }

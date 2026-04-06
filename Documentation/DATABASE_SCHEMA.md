@@ -241,12 +241,12 @@ CREATE TABLE subjects (
 
 ## Academic Tables
 
-### `attendance`
+### `attendance_records`
 
 ```sql
 CREATE TYPE attendance_status AS ENUM ('present', 'absent', 'late', 'half_day', 'holiday', 'excused');
 
-CREATE TABLE attendance (
+CREATE TABLE attendance_records (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   school_id    UUID NOT NULL REFERENCES schools(id),
   student_id   UUID NOT NULL REFERENCES students(id),

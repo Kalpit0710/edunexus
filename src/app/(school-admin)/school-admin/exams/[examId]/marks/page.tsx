@@ -53,7 +53,8 @@ export default function ExamMarksPage() {
             setGradingRules(rules || [])
 
             // Filter students to only those in the exam's class
-            const classStuds = ((studs as any[]) || []).filter((s: any) => s.class_id === (ex as any).class_id)
+            const examClassId = (ex as any)?.class_id
+            const classStuds = Array.isArray(studs) ? (studs as any[]).filter((s: any) => s.class_id === examClassId) : []
             setStudents(classStuds)
 
             if (subs && subs.length > 0) {
@@ -71,7 +72,7 @@ export default function ExamMarksPage() {
         if (!school?.id) return
         try {
             const supabase = createClient()
-            const { data, error } = await supabase
+            const { data: fetchedMarks, error } = await supabase
                 .from('marks')
                 .select('*')
                 .eq('school_id', school.id)
@@ -79,11 +80,11 @@ export default function ExamMarksPage() {
                 .eq('exam_subject_id', subjectId)
 
             if (error) throw error
-            const marksData = (data || []) as any[];
+            const marksList = (fetchedMarks || []) as any[];
 
             const initialMarks: Record<string, MarkEntryInput> = {}
             classStudents.forEach(stud => {
-                const existingMark = marksData.find(m => m.student_id === stud.id)
+                const existingMark = marksList.find((m: any) => m.student_id === stud.id)
                 initialMarks[stud.id] = {
                     studentId: stud.id,
                     marksObtained: existingMark?.marks_obtained ?? null,
@@ -95,11 +96,11 @@ export default function ExamMarksPage() {
             toast.error("Failed to load existing marks: " + e.message)
 
             // Initialize blank on error
-            const newMarksData: Record<string, MarkEntryInput> = {}
+            const blankMarks: Record<string, MarkEntryInput> = {}
             classStudents.forEach(stud => {
-                newMarksData[stud.id] = { studentId: stud.id, marksObtained: null, isAbsent: false }
+                blankMarks[stud.id] = { studentId: stud.id, marksObtained: null, isAbsent: false }
             })
-            setMarksData(newMarksData)
+            setMarksData(blankMarks)
         }
     }
 

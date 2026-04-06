@@ -112,24 +112,24 @@ export default function NewExamPage() {
                 return false
             }
             const subjectIds = new Set()
-            for (let i = 0; i < formData.subjects.length; i++) {
-                const sub = formData.subjects[i]
-                if (!sub) continue;
+            let rowIndex = 0
+            for (const sub of formData.subjects) {
+                rowIndex++
                 if (!sub.subjectId) {
-                    toast.error(`Please select a subject for row ${i + 1}.`)
+                    toast.error(`Please select a subject for row ${rowIndex}.`)
                     return false
                 }
                 if (subjectIds.has(sub.subjectId)) {
-                    toast.error(`Duplicate subject found: row ${i + 1}.`)
+                    toast.error(`Duplicate subject found: row ${rowIndex}.`)
                     return false
                 }
                 subjectIds.add(sub.subjectId)
                 if (sub.maxMarks !== undefined && sub.maxMarks <= 0) {
-                    toast.error(`Maximum marks must be greater than 0 for row ${i + 1}.`)
+                    toast.error(`Maximum marks must be greater than 0 for row ${rowIndex}.`)
                     return false
                 }
                 if (sub.passMarks !== undefined && sub.maxMarks !== undefined && sub.passMarks > sub.maxMarks) {
-                    toast.error(`Pass marks cannot be greater than max marks for row ${i + 1}.`)
+                    toast.error(`Pass marks cannot be greater than max marks for row ${rowIndex}.`)
                     return false
                 }
             }
@@ -163,14 +163,14 @@ export default function NewExamPage() {
                 academicYearId: formData.academicYearId || null,
                 startDate: formData.startDate || undefined,
                 endDate: formData.endDate || undefined,
-                subjects: formData.subjects.map((sub: ExamSubjectInput) => ({
-                    subjectId: sub?.subjectId || '',
-                    examDate: sub?.examDate || undefined,
-                    startTime: sub?.startTime || undefined,
-                    durationMins: sub?.durationMins ? Number(sub.durationMins) : undefined,
-                    maxMarks: Number(sub?.maxMarks),
-                    passMarks: sub?.passMarks ? Number(sub.passMarks) : undefined,
-                }))
+                subjects: formData.subjects.map((sub) => ({
+                    subjectId: sub.subjectId,
+                    examDate: sub.examDate || undefined,
+                    startTime: sub.startTime || undefined,
+                    durationMins: sub.durationMins ? Number(sub.durationMins) : undefined,
+                    maxMarks: Number(sub.maxMarks),
+                    passMarks: sub.passMarks ? Number(sub.passMarks) : undefined,
+                } satisfies ExamSubjectInput))
             }
 
             await createExam(school.id, payload)
