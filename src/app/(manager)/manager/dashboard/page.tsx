@@ -19,7 +19,7 @@ const PAYMENT_MODE_LABELS: Record<string, string> = {
 
 const EMPTY_STATS: ManagerDashboardStats = {
   todayCollection: 0, paymentCount: 0, pendingFeeCount: 0,
-  inventoryItemCount: 0, lowStockCount: 0, weeklyTrend: [],
+  inventoryItemCount: 0, lowStockCount: 0, weeklyTrend: [], paymentModeBreakdown: [], classPendingRisk: [],
 }
 
 export default function ManagerDashboardPage() {
@@ -221,6 +221,50 @@ export default function ManagerDashboardPage() {
           </p>
         </div>
       )}
+
+      {/* Financial drilldowns */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-5">
+          <p className="text-sm font-semibold text-white mb-4">Payment Mode Mix (Last 7 Days)</p>
+          {loading ? (
+            <Skeleton className="h-36 w-full rounded-xl bg-white/5" />
+          ) : stats.paymentModeBreakdown.length === 0 ? (
+            <p className="text-xs text-zinc-500">No payment mix data yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {stats.paymentModeBreakdown.map((item) => (
+                <div key={item.mode} className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+                  <span className="text-xs uppercase tracking-wider text-zinc-400">{PAYMENT_MODE_LABELS[item.mode] ?? item.mode}</span>
+                  <div className="text-right">
+                    <p className="text-xs font-semibold text-white">₹{item.amount.toLocaleString('en-IN')}</p>
+                    <p className="text-[10px] text-zinc-500">{item.count} txns</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-5">
+          <p className="text-sm font-semibold text-white mb-4">Pending Fee Risk by Class</p>
+          {loading ? (
+            <Skeleton className="h-36 w-full rounded-xl bg-white/5" />
+          ) : stats.classPendingRisk.length === 0 ? (
+            <p className="text-xs text-zinc-500">No class-level pending fee risk right now.</p>
+          ) : (
+            <div className="space-y-2">
+              {stats.classPendingRisk.map((item) => (
+                <div key={item.className} className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+                  <span className="text-xs text-zinc-300">{item.className}</span>
+                  <span className={`text-xs font-semibold ${item.pendingStudents >= 10 ? 'text-red-400' : 'text-amber-400'}`}>
+                    {item.pendingStudents} students
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Quick actions */}
       <div>

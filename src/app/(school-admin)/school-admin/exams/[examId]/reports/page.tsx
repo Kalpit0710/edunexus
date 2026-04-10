@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth.store'
+import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
@@ -22,6 +23,7 @@ export default function ExamReportsPage() {
     const params = useParams()
     const examId = params.examId as string
     const { school } = useAuthStore()
+    const supabase = createClient()
 
     const [loading, setLoading] = useState(true)
     const [exam, setExam] = useState<any>(null)
@@ -33,6 +35,9 @@ export default function ExamReportsPage() {
     const [selectedStudentId, setSelectedStudentId] = useState<string>('')
     const [reportCardData, setReportCardData] = useState<any>(null)
     const [reportLoading, setReportLoading] = useState(false)
+    const [pdfLoading, setPdfLoading] = useState(false)
+    const [batchPdfLoading, setBatchPdfLoading] = useState(false)
+    const [studentSearch, setStudentSearch] = useState('')
 
     useEffect(() => {
         if (school?.id && examId) {
@@ -106,6 +111,110 @@ export default function ExamReportsPage() {
         xlsx.writeFile(wb, `${exam?.name || 'exam'}_performance.xlsx`)
     }
 
+    async function handleDownloadReportCardPdf() {
+        if (!selectedStudentId || !reportCardData) {
+            toast.error('Select a student first to download the report card PDF.')
+            return
+        }
+
+        setPdfLoading(true)
+        try {
+            const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+            if (sessionError || !sessionData?.session?.access_token) {
+                throw new Error('Unable to authenticate PDF request. Please sign in again.')
+            }
+
+            const response = await fetch(
+                `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/generate-pdf`,
+                {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${sessionData.session.access_token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        type: 'report_card',
+                        exam_id: examId,
+                        student_id: selectedStudentId,
+                    }),
+                }
+            )
+
+            const payload = await response.json()
+            if (!response.ok || !payload?.url) {
+                throw new Error(payload?.error || 'Failed to generate report card PDF.')
+            }
+
+            window.open(payload.url as string, '_blank', 'noopener,noreferrer')
+            toast.success('Report card PDF is ready.')
+        } catch (e: any) {
+            toast.error(e?.message || 'Failed to download report card PDF.')
+        } finally {
+            setPdfLoading(false)
+        }
+    }
+
+    async function handleDownloadClassBatchPdf() {
+        if (!exam?.class_id) {
+            toast.error('Class information is missing for this exam.')
+            return
+        }
+
+        setBatchPdfLoading(true)
+        try {
+            const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+            if (sessionError || !sessionData?.session?.access_token) {
+                throw new Error('Unable to authenticate PDF request. Please sign in again.')
+            }
+
+            const response = await fetch(
+                `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/generate-pdf`,
+                {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${sessionData.session.access_token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        type: 'report_card_batch',
+                        exam_id: examId,
+                        class_id: exam.class_id,
+                    }),
+                }
+            )
+
+            const payload = await response.json()
+            if (!response.ok || !payload?.url) {
+                throw new Error(payload?.error || 'Failed to generate class report-card batch PDF.')
+            }
+
+            window.open(payload.url as string, '_blank', 'noopener,noreferrer')
+            toast.success('Class report-card PDF is ready.')
+        } catch (e: any) {
+            toast.error(e?.message || 'Failed to download class report-card PDF.')
+        } finally {
+            setBatchPdfLoading(false)
+        }
+    }
+
+    function handlePrintReportCard() {
+        if (!reportCardData) {
+            toast.error('Select a student first to print report card.')
+            return
+        }
+
+        window.print()
+    }
+
+    const filteredStudents = students.filter((student) => {
+        const query = studentSearch.trim().toLowerCase()
+        if (!query) return true
+
+        const name = String(student.full_name || '').toLowerCase()
+        const admissionNumber = String(student.admission_number || '').toLowerCase()
+        return name.includes(query) || admissionNumber.includes(query)
+    })
+
     if (loading) {
         return <div className="p-8 text-center text-muted-foreground">Loading reports...</div>
     }
@@ -113,7 +222,34 @@ export default function ExamReportsPage() {
     if (!exam) return null
 
     return (
-        <div className="max-w-6xl mx-auto space-y-6">
+        <div className="max-w-6xl mx-auto space-y-6 report-page-root">
+            <style jsx global>{`
+                @media print {
+                    body * {
+                        visibility: hidden;
+                    }
+
+                    .printable-report-card,
+                    .printable-report-card * {
+                        visibility: visible;
+                    }
+
+                    .printable-report-card {
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        width: 100%;
+                        border: 0 !important;
+                        box-shadow: none !important;
+                        background: #ffffff !important;
+                        color: #111111 !important;
+                    }
+
+                    .hide-on-print {
+                        display: none !important;
+                    }
+                }
+            `}</style>
             <div className="flex items-center gap-4">
                 <Link href={"/school-admin/exams" as any}>
                     <Button variant="outline" size="icon">
@@ -239,16 +375,28 @@ export default function ExamReportsPage() {
                 {/* Report Cards Tab */}
                 <TabsContent value="report-cards">
                     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                        <div className="lg:col-span-1 border rounded-lg bg-card overflow-hidden flex flex-col h-[600px]">
-                            <div className="p-3 border-b bg-muted/30">
+                        <div className="lg:col-span-1 border rounded-lg bg-card overflow-hidden flex flex-col h-[600px] hide-on-print">
+                            <div className="p-3 border-b bg-muted/30 space-y-2">
                                 <input
                                     type="text"
                                     placeholder="Search student..."
+                                    value={studentSearch}
+                                    onChange={(e) => setStudentSearch(e.target.value)}
                                     className="w-full px-3 py-2 text-sm border rounded-md"
                                 />
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    className="w-full"
+                                    onClick={handleDownloadClassBatchPdf}
+                                    disabled={batchPdfLoading}
+                                >
+                                    <Download className="w-4 h-4 mr-2" />
+                                    {batchPdfLoading ? 'Generating Class PDF...' : 'Export Class PDF'}
+                                </Button>
                             </div>
                             <div className="overflow-y-auto flex-1 p-2 space-y-1">
-                                {students.map(stud => (
+                                {filteredStudents.map(stud => (
                                     <button
                                         key={stud.id}
                                         onClick={() => handleStudentSelect(stud.id)}
@@ -273,7 +421,7 @@ export default function ExamReportsPage() {
                                     Loading report card...
                                 </div>
                             ) : reportCardData ? (
-                                <Card className="shadow-sm border-2">
+                                <Card className="shadow-sm border-2 printable-report-card">
                                     <div className="p-8 space-y-8">
                                         <div className="text-center space-y-2 border-b pb-6">
                                             <h1 className="text-2xl font-bold uppercase tracking-widest">{exam.name}</h1>
@@ -322,8 +470,23 @@ export default function ExamReportsPage() {
                                             </tbody>
                                         </table>
                                     </div>
-                                    <CardFooter className="bg-muted/30 border-t justify-end p-4">
-                                        <Button variant="outline"><Download className="w-4 h-4 mr-2" /> Download PDF</Button>
+                                    <CardFooter className="bg-muted/30 border-t justify-end p-4 gap-2 hide-on-print">
+                                        <Button
+                                            variant="secondary"
+                                            onClick={handlePrintReportCard}
+                                            disabled={!selectedStudentId}
+                                        >
+                                            <FileText className="w-4 h-4 mr-2" />
+                                            Print
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            onClick={handleDownloadReportCardPdf}
+                                            disabled={pdfLoading || !selectedStudentId}
+                                        >
+                                            <Download className="w-4 h-4 mr-2" />
+                                            {pdfLoading ? 'Generating PDF...' : 'Download PDF'}
+                                        </Button>
                                     </CardFooter>
                                 </Card>
                             ) : (

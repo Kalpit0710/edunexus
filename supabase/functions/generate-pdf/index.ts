@@ -1,13 +1,14 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-type PdfType = 'fee_receipt' | 'report_card' | 'inventory_bill'
+type PdfType = 'fee_receipt' | 'report_card' | 'report_card_batch' | 'inventory_bill'
 
 interface GeneratePdfRequest {
   type: PdfType
   payment_id?: string
   student_id?: string
   exam_id?: string
+  class_id?: string
   sale_id?: string
 }
 
@@ -52,44 +53,74 @@ function escapePdfText(input: string): string {
 }
 
 function createSimplePdf(lines: string[]): Uint8Array {
-  const safeLines = lines
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .slice(0, 46)
+  const safeLines = lines.map((line) => line.trim()).filter(Boolean)
+  const maxLinesPerPage = 46
+  const pageChunks: string[][] = []
 
-  const commands: string[] = ['BT', '/F1 11 Tf']
-  let y = 806
-  for (const line of safeLines) {
-    commands.push(`1 0 0 1 44 ${y} Tm (${escapePdfText(line)}) Tj`)
-    y -= 16
-    if (y < 56) break
+  for (let index = 0; index < safeLines.length; index += maxLinesPerPage) {
+    pageChunks.push(safeLines.slice(index, index + maxLinesPerPage))
   }
-  commands.push('ET')
 
-  const content = commands.join('\n')
-  const objects = [
-    '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
-    '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
-    '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n',
-    '4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n',
-    `5 0 obj\n<< /Length ${content.length} >>\nstream\n${content}\nendstream\nendobj\n`,
-  ]
+  if (pageChunks.length === 0) {
+    pageChunks.push(['EduNexus', 'No content available'])
+  }
+
+  const pageCount = pageChunks.length
+  const fontObjectNumber = 3 + pageCount * 2
+  const objectMap = new Map<number, string>()
+
+  objectMap.set(1, '<< /Type /Catalog /Pages 2 0 R >>')
+
+  const pageObjectNumbers = pageChunks.map((_, i) => 3 + i * 2)
+  objectMap.set(
+    2,
+    `<< /Type /Pages /Kids [${pageObjectNumbers.map((num) => `${num} 0 R`).join(' ')}] /Count ${pageCount} >>`
+  )
+
+  pageChunks.forEach((chunk, i) => {
+    const pageObjectNumber = 3 + i * 2
+    const contentObjectNumber = 4 + i * 2
+
+    const commands: string[] = ['BT', '/F1 11 Tf']
+    let y = 806
+    for (const line of chunk) {
+      commands.push(`1 0 0 1 44 ${y} Tm (${escapePdfText(line)}) Tj`)
+      y -= 16
+      if (y < 56) break
+    }
+    commands.push('ET')
+
+    const content = commands.join('\n')
+
+    objectMap.set(
+      pageObjectNumber,
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 ${fontObjectNumber} 0 R >> >> /Contents ${contentObjectNumber} 0 R >>`
+    )
+    objectMap.set(contentObjectNumber, `<< /Length ${content.length} >>\nstream\n${content}\nendstream`)
+  })
+
+  objectMap.set(fontObjectNumber, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>')
 
   let pdf = '%PDF-1.4\n'
-  const offsets: number[] = [0]
+  const offsets = new Map<number, number>()
+  const objectNumbers = Array.from(objectMap.keys()).sort((a, b) => a - b)
+  const maxObjectNumber = Math.max(...objectNumbers)
 
-  for (const obj of objects) {
-    offsets.push(pdf.length)
-    pdf += obj
+  for (const objectNumber of objectNumbers) {
+    offsets.set(objectNumber, pdf.length)
+    pdf += `${objectNumber} 0 obj\n${objectMap.get(objectNumber)}\nendobj\n`
   }
 
   const xrefOffset = pdf.length
-  pdf += `xref\n0 ${objects.length + 1}\n`
+  pdf += `xref\n0 ${maxObjectNumber + 1}\n`
   pdf += '0000000000 65535 f \n'
-  for (let i = 1; i < offsets.length; i += 1) {
-    pdf += `${String(offsets[i]).padStart(10, '0')} 00000 n \n`
+
+  for (let objectNumber = 1; objectNumber <= maxObjectNumber; objectNumber += 1) {
+    const offset = offsets.get(objectNumber) ?? 0
+    pdf += `${String(offset).padStart(10, '0')} 00000 n \n`
   }
-  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`
+
+  pdf += `trailer\n<< /Size ${maxObjectNumber + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`
 
   return new TextEncoder().encode(pdf)
 }
@@ -356,6 +387,125 @@ async function buildReportCard(
   }
 }
 
+async function buildReportCardBatch(
+  userClient: ReturnType<typeof createClient>,
+  examId: string,
+  classId: string
+): Promise<{ schoolId: string; referenceId: string; lines: string[] }> {
+  const { data: exam, error: examError } = await userClient
+    .from('exams')
+    .select('id, school_id, class_id, name')
+    .eq('id', examId)
+    .single()
+
+  if (examError || !exam) throw new Error(examError?.message ?? 'Exam not found')
+  if (exam.class_id !== classId) {
+    throw new Error('Exam is not associated with the requested class')
+  }
+
+  const { data: sections, error: sectionsError } = await userClient
+    .from('sections')
+    .select('id')
+    .eq('school_id', exam.school_id)
+    .eq('class_id', classId)
+    .limit(200)
+
+  if (sectionsError) throw new Error(sectionsError.message)
+
+  const sectionIds = (sections ?? []).map((section) => section.id)
+  if (!sectionIds.length) {
+    throw new Error('No sections found for the selected class')
+  }
+
+  const { data: students, error: studentsError } = await userClient
+    .from('students')
+    .select('id, full_name, admission_number, roll_number')
+    .eq('school_id', exam.school_id)
+    .in('section_id', sectionIds)
+    .is('deleted_at', null)
+    .order('full_name', { ascending: true })
+    .limit(2000)
+
+  if (studentsError) throw new Error(studentsError.message)
+  if (!(students ?? []).length) {
+    throw new Error('No active students found in this class')
+  }
+
+  const [{ data: examSubjects, error: examSubjectsError }, { data: marks, error: marksError }] = await Promise.all([
+    userClient
+      .from('exam_subjects')
+      .select('id, max_marks, pass_marks, subjects(name)')
+      .eq('school_id', exam.school_id)
+      .eq('exam_id', examId)
+      .order('exam_date', { ascending: true })
+      .limit(200),
+    userClient
+      .from('marks')
+      .select('student_id, exam_subject_id, marks_obtained, grade, is_absent')
+      .eq('school_id', exam.school_id)
+      .eq('exam_id', examId)
+      .in(
+        'student_id',
+        (students ?? []).map((student) => student.id)
+      )
+      .limit(20000),
+  ])
+
+  if (examSubjectsError) throw new Error(examSubjectsError.message)
+  if (marksError) throw new Error(marksError.message)
+
+  const subjectsById = new Map<string, any>((examSubjects ?? []).map((subject) => [subject.id, subject]))
+  const marksByStudent = new Map<string, any[]>()
+
+  for (const mark of marks ?? []) {
+    const studentMarks = marksByStudent.get(mark.student_id) ?? []
+    studentMarks.push(mark)
+    marksByStudent.set(mark.student_id, studentMarks)
+  }
+
+  const { data: schoolData } = await userClient
+    .from('schools')
+    .select('name')
+    .eq('id', exam.school_id)
+    .single()
+
+  const lines: string[] = [`${schoolData?.name ?? 'School'} - Class Report Card Batch`, `Exam: ${exam.name}`, '']
+
+  for (const student of students ?? []) {
+    lines.push('------------------------------------------------------------')
+    lines.push(`Student: ${student.full_name}`)
+    lines.push(`Admission No: ${student.admission_number ?? 'N/A'} | Roll No: ${student.roll_number ?? 'N/A'}`)
+
+    let totalMax = 0
+    let totalObtained = 0
+
+    const studentMarks = marksByStudent.get(student.id) ?? []
+    for (const mark of studentMarks) {
+      const subject = subjectsById.get(mark.exam_subject_id)
+      const subjectName = subject?.subjects?.name ?? 'Subject'
+      const maxMarks = Number(subject?.max_marks ?? 0)
+      const secured = mark.is_absent ? 'AB' : Number(mark.marks_obtained ?? 0).toFixed(2)
+      lines.push(`- ${subjectName}: ${secured}/${maxMarks} | Grade ${mark.grade ?? '-'}`)
+
+      totalMax += maxMarks
+      if (!mark.is_absent && mark.marks_obtained !== null) {
+        totalObtained += Number(mark.marks_obtained)
+      }
+    }
+
+    const percentage = totalMax > 0 ? ((totalObtained / totalMax) * 100).toFixed(2) : '0.00'
+    lines.push(`Total: ${totalObtained.toFixed(2)} / ${totalMax}`)
+    lines.push(`Percentage: ${percentage}%`)
+    lines.push('')
+  }
+
+  return {
+    schoolId: exam.school_id,
+    referenceId: `${exam.id}-${classId}-batch`,
+    lines,
+  }
+}
+
 async function generateDocument(
   userClient: ReturnType<typeof createClient>,
   body: GeneratePdfRequest
@@ -374,6 +524,12 @@ async function generateDocument(
         throw new Error('exam_id and student_id are required for report_card')
       }
       return buildReportCard(userClient, body.exam_id, body.student_id)
+    }
+    case 'report_card_batch': {
+      if (!body.exam_id || !body.class_id) {
+        throw new Error('exam_id and class_id are required for report_card_batch')
+      }
+      return buildReportCardBatch(userClient, body.exam_id, body.class_id)
     }
     default:
       throw new Error('Unsupported PDF type')

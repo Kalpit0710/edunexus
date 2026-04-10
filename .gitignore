@@ -40,6 +40,7 @@ Thumbs.db
 /playwright-report
 /blob-report
 /playwright/.cache
+/tests/e2e/.auth
 
 # supabase
 /supabase/.branches
