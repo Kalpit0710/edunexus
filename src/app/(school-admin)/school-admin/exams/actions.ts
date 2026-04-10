@@ -48,6 +48,8 @@ export interface ClassPerformanceRow {
   passCount: number
   failCount: number
   absentCount: number
+  presentCount: number
+  recordedCount: number
   studentCount: number
 }
 
@@ -346,7 +348,16 @@ export async function getClassPerformanceReport(
   const supabase = await createServerSupabaseClient()
   const db = supabase as any
 
-  const [{ data: subjectsData, error: subjectsError }, { data: marksData, error: marksError }] =
+  const { data: examRow, error: examError } = await db
+    .from('exams')
+    .select('class_id')
+    .eq('school_id', schoolId)
+    .eq('id', examId)
+    .single()
+
+  if (examError) throw new Error(examError.message)
+
+  const [{ data: subjectsData, error: subjectsError }, { data: marksData, error: marksError }, { count: studentCount, error: studentsError }] =
     await Promise.all([
       db
         .from('exam_subjects')
@@ -360,10 +371,16 @@ export async function getClassPerformanceReport(
         .eq('school_id', schoolId)
         .eq('exam_id', examId)
         .limit(10000),
+      db
+        .from('students')
+        .select('*', { count: 'exact', head: true })
+        .eq('school_id', schoolId)
+        .eq('class_id', (examRow as any)?.class_id ?? '')
+        .eq('is_active', true),
     ])
-
   if (subjectsError) throw new Error(subjectsError.message)
   if (marksError) throw new Error(marksError.message)
+  if (studentsError) throw new Error(studentsError.message)
 
   const marksBySubject = new Map<string, { marksObtained: number | null; isAbsent: boolean }[]>()
   for (const markRow of marksData ?? []) {
@@ -375,10 +392,14 @@ export async function getClassPerformanceReport(
     marksBySubject.set(markRow.exam_subject_id, bucket)
   }
 
+  const totalStudents = studentCount ?? 0
+
   return (subjectsData ?? []).map((subjectRow: any) => {
     const rows = marksBySubject.get(subjectRow.id) ?? []
     const presentRows = rows.filter(row => !row.isAbsent && row.marksObtained !== null)
     const absentCount = rows.length - presentRows.length
+    const recordedCount = rows.length
+    const presentCount = presentRows.length
 
     const totalMarks = presentRows.reduce((sum, row) => sum + Number(row.marksObtained), 0)
     const averageMarks = presentRows.length ? Number((totalMarks / presentRows.length).toFixed(2)) : 0
@@ -397,7 +418,9 @@ export async function getClassPerformanceReport(
       passCount,
       failCount: Math.max(0, presentRows.length - passCount),
       absentCount,
-      studentCount: rows.length,
+      presentCount,
+      recordedCount,
+      studentCount: totalStudents,
     }
   })
 }

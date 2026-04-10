@@ -31,11 +31,13 @@ export default function ParentDashboardPage() {
   const [performanceTrend, setPerformanceTrend] = useState<ChildPerformanceTrendPoint[]>([])
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user?.email || !school?.id) return
     setLoading(true)
     setNotFound(false)
+    setError(null)
     getParentChildData(user.email, school.id, activeChildId)
       .then(childData => {
         if (!childData) { setNotFound(true); setLoading(false); return }
@@ -55,7 +57,10 @@ export default function ParentDashboardPage() {
           setPerformanceTrend(res[3])
         }
       })
-      .catch(console.error)
+      .catch((err) => {
+        console.error(err)
+        setError('Unable to load parent analytics right now. Please try again shortly.')
+      })
       .finally(() => setLoading(false))
   }, [user?.email, school?.id, activeChildId])
 
@@ -89,6 +94,11 @@ export default function ParentDashboardPage() {
 
   return (
     <div className="p-5 space-y-5 animate-fade-in">
+      {error && (
+        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/8 p-4 text-sm text-amber-200">
+          {error}
+        </div>
+      )}
       {/* Welcome */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-white">Parent Portal</h1>

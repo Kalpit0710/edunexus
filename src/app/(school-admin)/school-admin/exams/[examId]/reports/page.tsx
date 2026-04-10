@@ -313,7 +313,7 @@ export default function ExamReportsPage() {
                                                         {p.subjectName} {p.subjectCode ? <span className="text-muted-foreground ml-1">({p.subjectCode})</span> : ''}
                                                     </td>
                                                     <td className="px-4 py-3 text-center">{p.studentCount}</td>
-                                                    <td className="px-4 py-3 text-center">{p.studentCount - p.absentCount}</td>
+                                                    <td className="px-4 py-3 text-center">{p.presentCount}</td>
                                                     <td className="px-4 py-3 text-center font-semibold">{p.averageMarks}</td>
                                                     <td className="px-4 py-3 text-center text-green-700 dark:text-green-500">{p.passCount}</td>
                                                     <td className="px-4 py-3 text-center text-red-700 dark:text-red-500">{p.failCount}</td>

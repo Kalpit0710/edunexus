@@ -39,10 +39,22 @@ test.describe('Examination Module (Phase 2.1)', () => {
         await expect(page.getByRole('button', { name: /back/i })).toBeVisible()
     })
 
+    test('publish page shows readiness panel', async ({ page }) => {
+        await page.goto('/school-admin/exams/dummy-id/publish')
+        await expect(page.getByText(/publish & lock/i)).toBeVisible()
+        await expect(page.getByText(/readiness check/i)).toBeVisible()
+        await expect(page.getByText(/marks recorded/i)).toBeVisible()
+    })
+
     test('reports page contains tabs', async ({ page }) => {
         await page.goto('/school-admin/exams/dummy-id/reports')
         await expect(page.getByRole('tab', { name: /class performance/i })).toBeVisible()
         await expect(page.getByRole('tab', { name: /rank holders/i })).toBeVisible()
         await expect(page.getByRole('tab', { name: /report cards/i })).toBeVisible()
+    })
+
+    test('reports page exposes export action', async ({ page }) => {
+        await page.goto('/school-admin/exams/dummy-id/reports')
+        await expect(page.getByRole('button', { name: /export/i })).toBeVisible()
     })
 })

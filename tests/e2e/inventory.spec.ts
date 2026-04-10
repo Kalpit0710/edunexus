@@ -55,4 +55,10 @@ test.describe('Inventory & POS Module (Phase 2.2)', () => {
         await expect(page.getByText(/low stock alerts/i)).toBeVisible()
         await expect(page.getByText(/sales ledger/i)).toBeVisible()
     })
+
+    test('inventory POS checkout panel renders', async ({ page }) => {
+        await page.goto('/manager/inventory/pos')
+        await expect(page.getByText(/checkout summary/i)).toBeVisible()
+        await expect(page.getByText(/amount due|total/i)).toBeVisible()
+    })
 })

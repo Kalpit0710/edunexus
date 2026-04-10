@@ -1,7 +1,7 @@
 # EduNexus — Development Plan
 
-> **Version:** 1.1.0  
-> **Last Updated:** 2026-03-31  
+> **Version:** 1.2.0  
+> **Last Updated:** 2026-04-10  
 > **Methodology:** Phased iterative development with mandatory testing gates  
 > **Audience:** Developers, Project Managers, AI Assistants
 
@@ -227,7 +227,7 @@ Onboard first 5 real schools with core operations fully functional.
 
 ### Milestone 1.10 — Phase 1 Testing & Stabilization 🔄 In Progress
 
-> TypeScript: 0 errors ✅. Unit tests: passing ✅. E2E (Playwright): **blocked** — auth-flow login redirect timeout needs dedicated seed user setup.
+> TypeScript: 0 errors ✅. Unit tests: passing ✅. E2E (Playwright): auth storage-state seeding implemented; remaining suites still need full regression coverage.
 
 ---
 
@@ -236,9 +236,9 @@ Onboard first 5 real schools with core operations fully functional.
 ### Goal
 Fully operational ERP with exam management, POS, analytics, and parent portal.
 
-### Milestone 2.1 — Examination Module 🔄 In Progress
+### Milestone 2.1 — Examination Module ✅ Completed
 
-> Backend (schema, RLS, RPCs, server actions) ✅. UI complete (exam list, create, marks entry, reports, publish/lock) ✅. TypeScript errors fixed 2026-03-31 ✅. Remaining: PDF report card template.
+> Backend (schema, RLS, RPCs, server actions) ✅. UI complete (exam list, create, marks entry, reports, publish/lock) ✅. Report-card PDF generation wired (single + batch) ✅.
 
 ---
 
@@ -260,14 +260,17 @@ Fully operational ERP with exam management, POS, analytics, and parent portal.
 
 ---
 
-### Milestone 2.5 — Advanced Analytics 🔲 Not Started
+### Milestone 2.5 — Advanced Analytics ✅ Completed
+
+> School-admin analytics (fee momentum, exam trends, attendance risk) ✅. Parent trend analytics ✅. Manager drilldowns (payment mode mix, class risk) ✅.
 
 ---
 
-### Milestone 2.6 — Phase 2 Testing & Stabilization (Week 19–20)
+### Milestone 2.6 — Phase 2 Testing & Stabilization (Week 19–20) 🔄 In Progress
 
 - Full regression test of Phase 1 features
-- E2E tests for all Phase 2 flows
+- E2E tests for all Phase 2 flows (auth suite stable; analytics coverage added; exams/inventory coverage pending)
+- Unit test coverage for analytics helpers
 - PDF generation quality check
 - Email delivery testing
 - Parent portal UAT

@@ -27,12 +27,12 @@
 | 1.8 Fee Module Basic | ✅ Completed | Fee structure, POS collection, receipt email, payment history, pending fees, daily report |
 | 1.9 Role Dashboards | ✅ Completed | All 4 role dashboards with stat cards, charts, attendance %, quick actions |
 | 1.10 Testing Sprint | 🔄 In Progress | TypeScript clean (0 errors); deterministic Playwright setup auth seeding + storage-state flow implemented on 2026-04-07 |
-| 2.1 Examination Module | 🔄 In Progress | Backend + UI complete; exam list, marks entry, reports, publish/lock; report-card PDF download wired to Edge Function on 2026-04-07 |
+| 2.1 Examination Module | ✅ Completed | Backend + UI complete; exam list, marks entry, reports, publish/lock; report-card PDF (single/batch) wired to Edge Function on 2026-04-07 |
 | 2.2 Inventory & POS | ✅ Completed (Backend + UI) | Inventory CRUD, stock adjust, POS billing, low-stock alerts, receipt emails |
 | 2.3 Email Notifications | ✅ Completed | Resend integration, fee receipt email, inventory receipt email, exam publish notification |
 | 2.4 Parent Portal | ✅ Completed | Dashboard, attendance calendar, exam results (fee-locked), fee status, announcements |
-| 2.5 Advanced Analytics | 🔄 In Progress | School-admin, parent, and manager analytics expanded: fee momentum, exam trends, parent attendance/performance trends, and manager drilldowns (2026-04-07) |
-| 2.6 Phase 2 Testing | 🔄 In Progress | Auth E2E suite hardened; `tests/e2e/auth.spec.ts` now passing across configured browsers (2026-04-07) |
+| 2.5 Advanced Analytics | ✅ Completed | School-admin, parent, and manager analytics expanded: fee momentum, exam trends, parent attendance/performance trends, and manager drilldowns (2026-04-10) |
+| 2.6 Phase 2 Testing | 🔄 In Progress | Auth E2E suite hardened; analytics + exams/inventory E2E coverage added (not run yet) |
 
 ---
 
@@ -118,6 +118,31 @@
 - Status: 🔄 In Progress
 - What was done: Hardened `tests/e2e/auth.spec.ts` by replacing flaky selectors and brittle text assertions with stable route/content checks that match current UI patterns across Chromium and Mobile Safari.
 - Tests: `pnpm test:e2e tests/e2e/auth.spec.ts --reporter=line` → passed (`41 passed`).
+
+### 2026-04-10 — Milestone 2.1/2.5 — Exam Publish + Reports Stability
+- Status: ✅ Completed
+- What was done: Fixed exam publish readiness checks to validate marks recorded across all subjects, and aligned class performance reporting with true class enrollment counts.
+- Tests: Not rerun (per user, tests already completed).
+
+### 2026-04-10 — Milestone 2.5 — Analytics UI Stability Pass
+- Status: ✅ Completed
+- What was done: Added error-state banners for school-admin reports, manager dashboard drilldowns, and parent analytics to prevent silent failures.
+- Tests: Not rerun (per user, tests already completed).
+
+### 2026-04-10 — Milestone 2.6 — Analytics E2E Coverage
+- Status: ✅ Completed
+- What was done: Added E2E analytics coverage for school-admin reports and manager dashboard drilldowns.
+- Tests: Not run (per user instruction).
+
+### 2026-04-10 — Milestone 2.6 — Exams/Inventory E2E Coverage
+- Status: ✅ Completed
+- What was done: Added E2E assertions for exam publish/report flows and inventory POS checkout panel.
+- Tests: Not run (per user instruction).
+
+### 2026-04-10 — Milestone 2.5 — Analytics Helper Tests
+- Status: ✅ Completed
+- What was done: Added unit tests for analytics calculation helpers used in reports.
+- Tests: Not run (per user instruction).
 
 ---
 

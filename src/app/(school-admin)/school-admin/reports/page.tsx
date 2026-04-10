@@ -35,9 +35,11 @@ export default function ReportsPage() {
   const [examAnalytics, setExamAnalytics] = useState<ExamAnalyticsSummary | null>(null)
   const [enrollment, setEnrollment] = useState<EnrollmentStat[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!school?.id) return
+    setError(null)
     Promise.all([
       getAttendanceSummaryByClass(school.id, month, year),
       getFeeCollectionSummary(school.id),
@@ -54,7 +56,10 @@ export default function ReportsPage() {
         setExamAnalytics(analytics)
         setEnrollment(enr)
       })
-      .catch(console.error)
+      .catch((err) => {
+        console.error(err)
+        setError('Unable to load analytics data. Please try again in a moment.')
+      })
       .finally(() => setLoading(false))
   }, [school?.id])
 
@@ -79,6 +84,14 @@ export default function ReportsPage() {
           Overview for {now.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
         </p>
       </div>
+
+      {error && (
+        <Card className="border-amber-400/40 bg-amber-50/70 dark:border-amber-500/30 dark:bg-amber-500/10">
+          <CardContent className="py-4 text-sm text-amber-700 dark:text-amber-200">
+            {error}
+          </CardContent>
+        </Card>
+      )}
 
       {/* ── Fee Summary ────────────────────────────────────────────── */}
       <section>

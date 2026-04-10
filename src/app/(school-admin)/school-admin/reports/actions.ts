@@ -1,6 +1,12 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import {
+    calculateAverage,
+    calculateGrowthPercentage,
+    calculateMarksPercentage,
+    calculatePassRate,
+} from '@/lib/analytics-utils'
 
 export interface ClassAttendanceSummary {
     className: string
@@ -239,15 +245,13 @@ export async function getFeeMomentumSummary(
         }
     }
 
-    const growthPercentage = previousWeekTotal > 0
-        ? Math.round(((currentWeekTotal - previousWeekTotal) / previousWeekTotal) * 100)
-        : (currentWeekTotal > 0 ? 100 : 0)
+    const growthPercentage = calculateGrowthPercentage(currentWeekTotal, previousWeekTotal)
 
     return {
         currentWeekTotal,
         previousWeekTotal,
         growthPercentage,
-        averageDailyCurrentWeek: Math.round(currentWeekTotal / 7),
+        averageDailyCurrentWeek: calculateAverage(currentWeekTotal, 7, 0),
     }
 }
 
@@ -325,7 +329,7 @@ export async function getExamAnalyticsSummary(
             }
         }
 
-        const passRate = totalEntries ? Math.round((passCount / totalEntries) * 100) : 0
+        const passRate = calculatePassRate(passCount, totalEntries)
         return {
             examName: exam.name,
             passRate,
@@ -359,7 +363,7 @@ export async function getExamAnalyticsSummary(
         const passMarks = Number(examSubject.pass_marks ?? 0)
 
         current.totalCount += 1
-        current.percentageSum += maxMarks > 0 ? (marks / maxMarks) * 100 : 0
+        current.percentageSum += calculateMarksPercentage(marks, maxMarks)
         if (marks >= passMarks) {
             current.passCount += 1
         }
@@ -370,8 +374,8 @@ export async function getExamAnalyticsSummary(
     const subjectDifficulty = Array.from(subjectAccumulator.values())
         .map((entry) => ({
             subjectName: entry.subjectName,
-            passRate: entry.totalCount ? Math.round((entry.passCount / entry.totalCount) * 100) : 0,
-            averagePercentage: entry.totalCount ? Math.round(entry.percentageSum / entry.totalCount) : 0,
+            passRate: calculatePassRate(entry.passCount, entry.totalCount),
+            averagePercentage: calculateAverage(entry.percentageSum, entry.totalCount, 0),
         }))
         .sort((a, b) => a.passRate - b.passRate)
         .slice(0, 8)
@@ -389,7 +393,7 @@ export async function getExamAnalyticsSummary(
         const className = classNameById.get(classId) ?? 'Unknown Class'
         const maxMarks = Number(examSubject.max_marks ?? 0)
         const marks = Number(mark.marks_obtained ?? 0)
-        const percentage = maxMarks > 0 ? (marks / maxMarks) * 100 : 0
+        const percentage = calculateMarksPercentage(marks, maxMarks)
 
         const current = classAccumulator.get(classId) ?? { className, percentageSum: 0, totalCount: 0 }
         current.percentageSum += percentage
@@ -400,7 +404,7 @@ export async function getExamAnalyticsSummary(
     const classComparison = Array.from(classAccumulator.values())
         .map((entry) => ({
             className: entry.className,
-            averagePercentage: entry.totalCount ? Math.round(entry.percentageSum / entry.totalCount) : 0,
+            averagePercentage: calculateAverage(entry.percentageSum, entry.totalCount, 0),
             totalEntries: entry.totalCount,
         }))
         .sort((a, b) => b.averagePercentage - a.averagePercentage)

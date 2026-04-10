@@ -86,9 +86,11 @@ export default function PublishExamPage() {
     if (!exam) return null
 
     const totalStudents = performance.length > 0 ? performance[0].studentCount : 0
-    const firstSub = performance[0]
-    const marksEntered = firstSub ? (firstSub.passCount + firstSub.failCount + firstSub.absentCount) : 0
-    const isReady = marksEntered > 0 && marksEntered >= totalStudents
+    const recordedCounts = performance.map((row: any) => (
+        row.recordedCount ?? (row.passCount + row.failCount + row.absentCount)
+    ))
+    const minRecorded = recordedCounts.length ? Math.min(...recordedCounts) : 0
+    const isReady = totalStudents > 0 && recordedCounts.length > 0 && recordedCounts.every((count) => count >= totalStudents)
 
     const isLocked = exam.status === 'locked'
 
@@ -168,14 +170,19 @@ export default function PublishExamPage() {
                                 <span className="font-semibold text-white">{totalStudents}</span>
                             </div>
                             <div className="flex justify-between items-center py-1.5">
-                                <span className="text-zinc-500 text-xs">Marks Entered</span>
+                                <span className="text-zinc-500 text-xs">Marks Recorded (Lowest Subject)</span>
                                 <span className={`font-semibold text-sm ${isReady ? 'text-emerald-400' : 'text-amber-400'}`}>
-                                    {marksEntered} / {totalStudents}
+                                    {minRecorded} / {totalStudents}
                                 </span>
                             </div>
-                            {!isReady && !isLocked && (
+                            {!isReady && !isLocked && totalStudents > 0 && (
                                 <p className="text-[11px] text-amber-400 mt-1">
                                     ⚠ Not all marks have been entered yet.
+                                </p>
+                            )}
+                            {!isReady && !isLocked && totalStudents === 0 && (
+                                <p className="text-[11px] text-amber-400 mt-1">
+                                    ⚠ No enrolled students found for this class.
                                 </p>
                             )}
                         </div>

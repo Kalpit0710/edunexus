@@ -26,13 +26,18 @@ export default function ManagerDashboardPage() {
   const { user, school } = useAuthStore()
   const [stats, setStats] = useState<ManagerDashboardStats>(EMPTY_STATS)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const today = new Date().toISOString().split('T')[0]!
 
   useEffect(() => {
     if (!school?.id) return
+    setError(null)
     getManagerDashboardStats(school.id, today)
       .then(setStats)
-      .catch(console.error)
+      .catch((err) => {
+        console.error(err)
+        setError('Unable to load manager analytics right now. Please retry shortly.')
+      })
       .finally(() => setLoading(false))
   }, [school?.id])
 
@@ -104,6 +109,12 @@ export default function ManagerDashboardPage() {
           </div>
         </div>
       </div>
+
+      {error && (
+        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/8 p-4 text-sm text-amber-200">
+          {error}
+        </div>
+      )}
 
       {/* Low stock warning banner */}
       {!loading && stats.lowStockCount > 0 && (
