@@ -26,13 +26,13 @@
 | 1.7 Attendance Module | ✅ Completed | Daily mark, bulk mark, edit prior records, monthly report, Excel import/export |
 | 1.8 Fee Module Basic | ✅ Completed | Fee structure, POS collection, receipt email, payment history, pending fees, daily report |
 | 1.9 Role Dashboards | ✅ Completed | All 4 role dashboards with stat cards, charts, attendance %, quick actions |
-| 1.10 Testing Sprint | 🔄 In Progress | TypeScript clean (0 errors); E2E Playwright auth-flow timeouts pending |
-| 2.1 Examination Module | 🔄 In Progress | Backend + UI complete; exam list, marks entry, reports, publish/lock — type errors fixed 2026-03-31 |
+| 1.10 Testing Sprint | 🔄 In Progress | TypeScript clean (0 errors); deterministic Playwright setup auth seeding + storage-state flow implemented on 2026-04-07 |
+| 2.1 Examination Module | 🔄 In Progress | Backend + UI complete; exam list, marks entry, reports, publish/lock; report-card PDF download wired to Edge Function on 2026-04-07 |
 | 2.2 Inventory & POS | ✅ Completed (Backend + UI) | Inventory CRUD, stock adjust, POS billing, low-stock alerts, receipt emails |
 | 2.3 Email Notifications | ✅ Completed | Resend integration, fee receipt email, inventory receipt email, exam publish notification |
 | 2.4 Parent Portal | ✅ Completed | Dashboard, attendance calendar, exam results (fee-locked), fee status, announcements |
-| 2.5 Advanced Analytics | 🔲 Not Started | |
-| 2.6 Phase 2 Testing | 🔲 Not Started | |
+| 2.5 Advanced Analytics | 🔄 In Progress | School-admin, parent, and manager analytics expanded: fee momentum, exam trends, parent attendance/performance trends, and manager drilldowns (2026-04-07) |
+| 2.6 Phase 2 Testing | 🔄 In Progress | Auth E2E suite hardened; `tests/e2e/auth.spec.ts` now passing across configured browsers (2026-04-07) |
 
 ---
 
@@ -84,12 +84,46 @@
 - What was done: Restyled `parent/results/page.tsx` (SVG progress rings, dark accordion), `parent/announcements/page.tsx` (left accent bars, audience badges), `exams/publish/page.tsx` (status pills, readiness panel, skeleton loading). All pages now match dark glassmorphism design system.
 - Tests: `pnpm type-check` → 0 errors.
 
+### 2026-04-07 — Milestone 2.1 — Report Card PDF Download Wiring
+- Status: ✅ Completed
+- What was done: Connected exam report-card UI download action to `generate-pdf` Edge Function using authenticated access token flow, and added loading/error UX for PDF generation in reports page.
+- Tests: Local file diagnostics passed for updated page (`No errors found`).
+
+### 2026-04-07 — Milestone 1.10 — Stable Playwright Auth Setup Flow
+- Status: ✅ Completed
+- What was done: Added deterministic E2E auth preparation with runtime seed script (`scripts/seed-e2e-auth.mjs`) and setup project state generation (`tests/e2e/auth.setup.ts`) that produces role storage states for school-admin, teacher, and manager users. Updated E2E specs to consume storage states instead of repeated UI login.
+- Tests: `pnpm test:e2e --project=setup` → passed (`1 passed`).
+
+### 2026-04-07 — Milestone 2.1 — Printable Report Cards + Class Batch PDF Export
+- Status: ✅ Completed
+- What was done: Enhanced exam report-cards page with printable template mode (`window.print` + print media styles), student search filter, and class-level batch report-card PDF export action. Extended `generate-pdf` Edge Function with `report_card_batch` and multi-page PDF rendering support.
+- Tests: `pnpm type-check` → passed.
+
+### 2026-04-07 — Milestone 2.5 — Advanced Analytics (Slice 1)
+- Status: 🔄 In Progress
+- What was done: Enhanced school-admin reports with advanced analytics cards and trend visualization: week-over-week fee momentum, average daily collection (7D), attendance risk monitor, and daily fee collection area chart. Added `getFeeMomentumSummary` server action for analytics computation.
+- Tests: `pnpm type-check` → passed.
+
+### 2026-04-07 — Milestone 2.5 — Advanced Analytics (Slice 2)
+- Status: 🔄 In Progress
+- What was done: Added exam analytics into school-admin reports with three visual insights: recent exam pass-rate trend, lowest-pass-rate subject difficulty ranking, and class-wise average score comparison. Implemented server-side `getExamAnalyticsSummary` aggregator in reports actions.
+- Tests: `pnpm type-check` → passed.
+
+### 2026-04-07 — Milestone 2.5 — Advanced Analytics (Slice 3)
+- Status: 🔄 In Progress
+- What was done: Added parent-facing trend analytics (6-month attendance trend and exam performance trend) in parent dashboard, plus manager financial drilldowns (payment-mode mix and class-level pending fee risk) in manager dashboard.
+- Tests: `pnpm type-check` → passed.
+
+### 2026-04-07 — Milestone 2.6 — Phase 2 Testing (Auth E2E Hardening)
+- Status: 🔄 In Progress
+- What was done: Hardened `tests/e2e/auth.spec.ts` by replacing flaky selectors and brittle text assertions with stable route/content checks that match current UI patterns across Chromium and Mobile Safari.
+- Tests: `pnpm test:e2e tests/e2e/auth.spec.ts --reporter=line` → passed (`41 passed`).
+
 ---
 
 ## Known Issues / Blockers
 
-- **E2E suite**: Playwright auth-flow redirect timeout failures — needs dedicated test user seed + auth helper before reliable browser validation. Milestone 1.10 gated on this.
-- **PDF report cards**: Edge Function `generate-pdf` exists but report card template not yet designed. Phase 2.1 P0 item pending.
+- **E2E suite**: Auth suite (`tests/e2e/auth.spec.ts`) is now stable and passing; remaining Phase 2 testing work should focus on exams/inventory flow coverage and analytics behavior checks.
 - **Timetable view (Parent Portal)**: Deferred — no timetable schema exists yet.
 
 ---

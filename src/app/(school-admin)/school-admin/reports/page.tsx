@@ -4,18 +4,23 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useEffect, useState } from 'react'
 import {
   getAttendanceSummaryByClass,
+  getExamAnalyticsSummary,
   getFeeCollectionSummary,
+  getFeeMomentumSummary,
   getStudentEnrollmentStats,
+  getWeeklyCollectionTrend,
   type ClassAttendanceSummary,
+  type ExamAnalyticsSummary,
   type FeeCollectionSummary,
+  type FeeMomentumSummary,
   type EnrollmentStat,
 } from './actions'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
-import { Users, CalendarCheck, IndianRupee } from 'lucide-react'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, CartesianGrid, LineChart, Line } from 'recharts'
+import { Users, CalendarCheck, IndianRupee, TrendingUp, TrendingDown, Activity } from 'lucide-react'
 
 export default function ReportsPage() {
   const { school } = useAuthStore()
@@ -25,6 +30,9 @@ export default function ReportsPage() {
 
   const [attendance, setAttendance] = useState<ClassAttendanceSummary[]>([])
   const [feeSummary, setFeeSummary] = useState<FeeCollectionSummary | null>(null)
+  const [feeMomentum, setFeeMomentum] = useState<FeeMomentumSummary | null>(null)
+  const [collectionTrend, setCollectionTrend] = useState<{ date: string; amount: number }[]>([])
+  const [examAnalytics, setExamAnalytics] = useState<ExamAnalyticsSummary | null>(null)
   const [enrollment, setEnrollment] = useState<EnrollmentStat[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -33,11 +41,17 @@ export default function ReportsPage() {
     Promise.all([
       getAttendanceSummaryByClass(school.id, month, year),
       getFeeCollectionSummary(school.id),
+      getFeeMomentumSummary(school.id),
+      getWeeklyCollectionTrend(school.id),
+      getExamAnalyticsSummary(school.id),
       getStudentEnrollmentStats(school.id),
     ])
-      .then(([att, fee, enr]) => {
+      .then(([att, fee, momentum, trend, analytics, enr]) => {
         setAttendance(att)
         setFeeSummary(fee)
+        setFeeMomentum(momentum)
+        setCollectionTrend(trend)
+        setExamAnalytics(analytics)
         setEnrollment(enr)
       })
       .catch(console.error)
@@ -47,6 +61,14 @@ export default function ReportsPage() {
   const totalStudents = enrollment.reduce((s, e) => s + e.total, 0)
   const totalMale = enrollment.reduce((s, e) => s + e.maleCount, 0)
   const totalFemale = enrollment.reduce((s, e) => s + e.femaleCount, 0)
+  const averageAttendance = attendance.length
+    ? Math.round(attendance.reduce((sum, row) => sum + row.percentage, 0) / attendance.length)
+    : 0
+  const lowAttendanceClasses = attendance.filter((row) => row.percentage < 75).length
+  const bestAttendanceClass = attendance.length
+    ? attendance.reduce((best, row) => (row.percentage > best.percentage ? row : best), attendance[0]!)
+    : null
+  const trendDirectionUp = (feeMomentum?.growthPercentage ?? 0) >= 0
 
   return (
     <div className="space-y-8">
@@ -104,6 +126,178 @@ export default function ReportsPage() {
               </CardContent>
             </Card>
           </div>
+        )}
+      </section>
+
+      {/* ── Exam Analytics (Milestone 2.5 Slice 2) ───────────────── */}
+      <section>
+        <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+          <TrendingUp className="h-5 w-5 text-cyan-500" />
+          Exam Performance Analytics
+        </h2>
+        {loading ? (
+          <div className="grid gap-4 xl:grid-cols-3">
+            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-72 rounded-xl" />)}
+          </div>
+        ) : !examAnalytics || (
+          examAnalytics.passRateTrend.length === 0 &&
+          examAnalytics.subjectDifficulty.length === 0 &&
+          examAnalytics.classComparison.length === 0
+        ) ? (
+          <Card>
+            <CardContent className="py-10 text-center text-muted-foreground text-sm">
+              No exam analytics available yet. Publish exams and enter marks to unlock insights.
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4 xl:grid-cols-3">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">Pass-Rate Trend (Recent Exams)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={220}>
+                  <LineChart data={examAnalytics?.passRateTrend ?? []}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                    <XAxis dataKey="examName" tick={{ fontSize: 10 }} interval={0} angle={-15} height={50} textAnchor="end" />
+                    <YAxis tick={{ fontSize: 11 }} domain={[0, 100]} />
+                    <Tooltip formatter={(v: number) => [`${v}%`, 'Pass Rate']} />
+                    <Line type="monotone" dataKey="passRate" stroke="#06b6d4" strokeWidth={2.5} dot={{ r: 3 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">Subject Difficulty (Lowest Pass Rate)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={examAnalytics?.subjectDifficulty ?? []} layout="vertical" margin={{ left: 18 }}>
+                    <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11 }} />
+                    <YAxis dataKey="subjectName" type="category" width={95} tick={{ fontSize: 10 }} />
+                    <Tooltip formatter={(v: number) => [`${v}%`, 'Pass Rate']} />
+                    <Bar dataKey="passRate" fill="#f97316" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">Class Comparison (Avg Score %)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={examAnalytics?.classComparison ?? []}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                    <XAxis dataKey="className" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} domain={[0, 100]} />
+                    <Tooltip formatter={(v: number) => [`${v}%`, 'Average Score']} />
+                    <Bar dataKey="averagePercentage" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </section>
+
+      {/* ── Advanced Analytics Insights (Milestone 2.5) ───────────── */}
+      <section>
+        <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+          <Activity className="h-5 w-5 text-amber-500" />
+          Advanced Insights
+        </h2>
+        {loading ? (
+          <div className="grid gap-4 md:grid-cols-3">
+            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-32 rounded-xl" />)}
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">7-Day Collection Momentum</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2">
+                  {trendDirectionUp ? (
+                    <TrendingUp className="h-4 w-4 text-emerald-500" />
+                  ) : (
+                    <TrendingDown className="h-4 w-4 text-red-500" />
+                  )}
+                  <p className={`text-xl font-bold ${trendDirectionUp ? 'text-emerald-500' : 'text-red-500'}`}>
+                    {feeMomentum?.growthPercentage ?? 0}%
+                  </p>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Compared to previous 7 days</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Avg Daily Collection (7D)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold">₹{(feeMomentum?.averageDailyCurrentWeek ?? 0).toLocaleString('en-IN')}</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Attendance Risk Monitor</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold">{lowAttendanceClasses}</p>
+                <p className="text-xs text-muted-foreground mt-1">Classes below 75% attendance this month</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </section>
+
+      {/* ── Collection Trend ─────────────────────────────────────── */}
+      <section>
+        <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+          <IndianRupee className="h-5 w-5 text-emerald-500" />
+          Daily Fee Collection Trend (Last 7 Days)
+        </h2>
+        {loading ? (
+          <Skeleton className="h-72 w-full rounded-xl" />
+        ) : (
+          <Card>
+            <CardContent className="pt-6">
+              <ResponsiveContainer width="100%" height={260}>
+                <AreaChart data={collectionTrend} margin={{ left: 8, right: 8, top: 4 }}>
+                  <defs>
+                    <linearGradient id="collectionFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.45} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0.05} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={(v) => new Date(v as string).toLocaleDateString('en-IN', { weekday: 'short' })}
+                  />
+                  <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `₹${Number(v) / 1000}k`} />
+                  <Tooltip
+                    formatter={(v: number) => [`₹${v.toLocaleString('en-IN')}`, 'Collected']}
+                    labelFormatter={(label) => new Date(label).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                  />
+                  <Area type="monotone" dataKey="amount" stroke="#10b981" fill="url(#collectionFill)" strokeWidth={2.5} />
+                </AreaChart>
+              </ResponsiveContainer>
+              {bestAttendanceClass && (
+                <p className="text-xs text-muted-foreground mt-3">
+                  Best monthly attendance: <span className="font-medium text-foreground">{bestAttendanceClass.className} - {bestAttendanceClass.sectionName}</span> ({bestAttendanceClass.percentage}%).
+                  School-wide monthly average: <span className="font-medium text-foreground">{averageAttendance}%</span>.
+                </p>
+              )}
+            </CardContent>
+          </Card>
         )}
       </section>
 

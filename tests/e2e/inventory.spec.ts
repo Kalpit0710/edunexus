@@ -1,18 +1,11 @@
 import { test, expect } from '@playwright/test'
 
-const MANAGER = { email: 'manager@demo.school', password: 'Manager@1234' }
-
-async function login(page: any, email: string, password: string) {
-    await page.goto('/login')
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Password').fill(password)
-    await page.getByRole('button', { name: /sign in/i }).click()
-    await page.waitForURL(/\/manager\/dashboard/, { timeout: 45_000 })
-}
-
 test.describe('Inventory & POS Module (Phase 2.2)', () => {
+    test.use({ storageState: 'tests/e2e/.auth/manager.json' })
+
     test.beforeEach(async ({ page }) => {
-        await login(page, MANAGER.email, MANAGER.password)
+        await page.goto('/manager/dashboard')
+        await page.waitForURL(/\/manager\/dashboard/, { timeout: 45_000 })
     })
 
     test('can navigate to inventory list', async ({ page }) => {

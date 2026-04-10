@@ -51,6 +51,18 @@ export interface ExamResultRow {
     percentage: number
 }
 
+export interface ChildAttendanceTrendPoint {
+    monthLabel: string
+    presentPercentage: number
+    absentPercentage: number
+}
+
+export interface ChildPerformanceTrendPoint {
+    examName: string
+    percentage: number
+    examDate: string | null
+}
+
 export interface AnnouncementRow {
     id: string
     title: string
@@ -265,6 +277,59 @@ export async function getChildAttendanceCalendar(
     }
 }
 
+export async function getChildAttendanceTrend(
+    studentId: string,
+    schoolId: string,
+): Promise<ChildAttendanceTrendPoint[]> {
+    try {
+        const context = await getParentAccessContext(schoolId)
+        if (!context || !(await isStudentLinkedToParent(context, studentId))) {
+            return []
+        }
+
+        const start = new Date()
+        start.setMonth(start.getMonth() - 5)
+        const startDate = start.toISOString().split('T')[0]!
+
+        const { data } = await context.db
+            .from('attendance_records')
+            .select('date, status')
+            .eq('student_id', studentId)
+            .eq('school_id', schoolId)
+            .gte('date', startDate)
+            .order('date', { ascending: true })
+
+        const monthMap = new Map<string, { present: number; total: number }>()
+        for (const row of (data ?? []) as any[]) {
+            const monthKey = String(row.date).slice(0, 7)
+            const bucket = monthMap.get(monthKey) ?? { present: 0, total: 0 }
+            bucket.total += 1
+            if (row.status === 'present') {
+                bucket.present += 1
+            }
+            monthMap.set(monthKey, bucket)
+        }
+
+        const result: ChildAttendanceTrendPoint[] = []
+        for (let i = 5; i >= 0; i--) {
+            const d = new Date()
+            d.setMonth(d.getMonth() - i)
+            const monthKey = d.toISOString().slice(0, 7)
+            const bucket = monthMap.get(monthKey) ?? { present: 0, total: 0 }
+            const presentPercentage = bucket.total > 0 ? Math.round((bucket.present / bucket.total) * 100) : 0
+            result.push({
+                monthLabel: d.toLocaleDateString('en-IN', { month: 'short' }),
+                presentPercentage,
+                absentPercentage: Math.max(0, 100 - presentPercentage),
+            })
+        }
+
+        return result
+    } catch {
+        return []
+    }
+}
+
 // ─── Fees ────────────────────────────────────────────────────────────────────
 
 export async function getChildFeeStatus(
@@ -423,6 +488,21 @@ export async function getChildExamsAndResults(
     } catch {
         return { results: [], hasPendingFees: false }
     }
+}
+
+export async function getChildPerformanceTrend(
+    studentId: string,
+    schoolId: string,
+): Promise<ChildPerformanceTrendPoint[]> {
+    const { results } = await getChildExamsAndResults(studentId, schoolId)
+    return results
+        .slice(0, 6)
+        .reverse()
+        .map((row) => ({
+            examName: row.examName,
+            percentage: row.percentage,
+            examDate: row.startDate,
+        }))
 }
 
 // ─── Announcements ───────────────────────────────────────────────────────────

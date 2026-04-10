@@ -11,6 +11,8 @@ export interface ManagerDashboardStats {
   inventoryItemCount: number
   lowStockCount: number
   weeklyTrend: { date: string; label: string; amount: number }[]
+  paymentModeBreakdown: { mode: string; amount: number; count: number }[]
+  classPendingRisk: { className: string; pendingStudents: number }[]
 }
 
 export async function getManagerDashboardStats(
@@ -29,11 +31,11 @@ export async function getManagerDashboardStats(
   }
   const fromDate = dates[0]!
 
-  const [paymentsRes, studentsRes, structuresRes, inventoryRes, pendingPayRes] = await Promise.all([
+  const [paymentsRes, studentsRes, structuresRes, inventoryRes, pendingPayRes, classesRes] = await Promise.all([
     // Today + last 7 days payments (for trend + today stats)
     db
       .from('fee_payments')
-      .select('student_id, paid_amount, payment_date')
+      .select('student_id, paid_amount, payment_date, payment_mode')
       .eq('school_id', schoolId)
       .gte('payment_date', fromDate)
       .lte('payment_date', today)
@@ -69,6 +71,12 @@ export async function getManagerDashboardStats(
       .select('student_id, paid_amount')
       .eq('school_id', schoolId)
       .limit(10000),
+
+    db
+      .from('classes')
+      .select('id, name')
+      .eq('school_id', schoolId)
+      .limit(500),
   ])
 
   const payments: any[] = paymentsRes.data ?? []
@@ -76,6 +84,7 @@ export async function getManagerDashboardStats(
   const structures: any[] = structuresRes.data ?? []
   const inventoryItems: any[] = inventoryRes.data ?? []
   const allPayments: any[] = pendingPayRes.data ?? []
+  const classes: any[] = classesRes.data ?? []
 
   // Today's collection
   const todayPayments = payments.filter((p: any) => p.payment_date === today)
@@ -96,6 +105,18 @@ export async function getManagerDashboardStats(
     return { date: d, label, amount: Math.round(trendMap[d]!) }
   })
 
+  // Payment mode split (last 7 days)
+  const modeMap: Record<string, { amount: number; count: number }> = {}
+  for (const p of payments) {
+    const mode = String(p.payment_mode ?? 'unknown').toLowerCase()
+    modeMap[mode] = modeMap[mode] ?? { amount: 0, count: 0 }
+    modeMap[mode]!.amount += Number(p.paid_amount ?? 0)
+    modeMap[mode]!.count += 1
+  }
+  const paymentModeBreakdown = Object.entries(modeMap)
+    .map(([mode, v]) => ({ mode, amount: Math.round(v.amount), count: v.count }))
+    .sort((a, b) => b.amount - a.amount)
+
   // Pending fee count — students with balance > 0
   // Get current academic year first
   const { data: yearData } = await db
@@ -106,14 +127,16 @@ export async function getManagerDashboardStats(
     .single()
 
   let pendingFeeCount = 0
+  let classFeeMap: Record<string, number> = {}
+  let paidMap: Record<string, number> = {}
   if (yearData) {
     const yearId = yearData.id as string
     const yearStructures = structures.filter((s: any) => s.academic_year_id === yearId)
-    const classFeeMap: Record<string, number> = {}
+    classFeeMap = {}
     yearStructures.forEach((s: any) => {
       classFeeMap[s.class_id] = (classFeeMap[s.class_id] ?? 0) + Number(s.amount)
     })
-    const paidMap: Record<string, number> = {}
+    paidMap = {}
     allPayments.forEach((p: any) => {
       paidMap[p.student_id] = (paidMap[p.student_id] ?? 0) + Number(p.paid_amount)
     })
@@ -123,6 +146,29 @@ export async function getManagerDashboardStats(
       return totalFee > 0 && (totalFee - totalPaid) > 0
     }).length
   }
+
+  const classNameMap: Record<string, string> = {}
+  classes.forEach((c: any) => {
+    classNameMap[c.id] = c.name
+  })
+
+  const classPendingMap: Record<string, number> = {}
+  students.forEach((s: any) => {
+    const totalFee = classFeeMap[s.class_id] ?? 0
+    const totalPaid = paidMap[s.id] ?? 0
+
+    if (totalFee > 0 && totalFee - totalPaid > 0) {
+      classPendingMap[s.class_id] = (classPendingMap[s.class_id] ?? 0) + 1
+    }
+  })
+
+  const classPendingRisk = Object.entries(classPendingMap)
+    .map(([classId, pendingStudents]) => ({
+      className: classNameMap[classId] ?? 'Unknown Class',
+      pendingStudents,
+    }))
+    .sort((a, b) => b.pendingStudents - a.pendingStudents)
+    .slice(0, 6)
 
   // Inventory stats
   const inventoryItemCount = inventoryItems.length
@@ -137,5 +183,7 @@ export async function getManagerDashboardStats(
     inventoryItemCount,
     lowStockCount,
     weeklyTrend,
+    paymentModeBreakdown,
+    classPendingRisk,
   }
 }

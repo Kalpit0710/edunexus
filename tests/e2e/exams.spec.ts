@@ -1,18 +1,11 @@
 import { test, expect } from '@playwright/test'
 
-const SCHOOL_ADMIN = { email: 'admin@demo.school', password: 'Admin@1234' }
-
-async function login(page: any, email: string, password: string) {
-    await page.goto('/login')
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Password').fill(password)
-    await page.getByRole('button', { name: /sign in/i }).click()
-    await page.waitForURL(/\/school-admin\/dashboard/, { timeout: 45_000 })
-}
-
 test.describe('Examination Module (Phase 2.1)', () => {
+    test.use({ storageState: 'tests/e2e/.auth/school-admin.json' })
+
     test.beforeEach(async ({ page }) => {
-        await login(page, SCHOOL_ADMIN.email, SCHOOL_ADMIN.password)
+        await page.goto('/school-admin/dashboard')
+        await page.waitForURL(/\/school-admin\/dashboard/, { timeout: 45_000 })
     })
 
     test('can navigate to exams list', async ({ page }) => {

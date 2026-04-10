@@ -5,15 +5,20 @@ import { useEffect, useState } from 'react'
 import {
   getParentChildData,
   getChildAttendanceSummary,
+  getChildAttendanceTrend,
   getChildFeeStatus,
+  getChildPerformanceTrend,
   type ParentChildData,
   type ChildAttendanceSummary,
+  type ChildAttendanceTrendPoint,
   type ChildFeeStatus,
+  type ChildPerformanceTrendPoint,
 } from '../actions'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { GraduationCap, CalendarCheck, IndianRupee, Receipt, AlertCircle, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, LineChart, Line, CartesianGrid } from 'recharts'
 
 export default function ParentDashboardPage() {
   const { user, school, activeChildId } = useAuthStore()
@@ -22,6 +27,8 @@ export default function ParentDashboardPage() {
   const [child, setChild] = useState<ParentChildData | null>(null)
   const [attendance, setAttendance] = useState<ChildAttendanceSummary | null>(null)
   const [feeStatus, setFeeStatus] = useState<ChildFeeStatus | null>(null)
+  const [attendanceTrend, setAttendanceTrend] = useState<ChildAttendanceTrendPoint[]>([])
+  const [performanceTrend, setPerformanceTrend] = useState<ChildPerformanceTrendPoint[]>([])
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
@@ -36,12 +43,16 @@ export default function ParentDashboardPage() {
         return Promise.all([
           getChildAttendanceSummary(childData.id, school.id, now.getMonth() + 1, now.getFullYear()),
           getChildFeeStatus(childData.id, school.id),
+          getChildAttendanceTrend(childData.id, school.id),
+          getChildPerformanceTrend(childData.id, school.id),
         ])
       })
       .then(res => {
         if (res) {
           setAttendance(res[0])
           setFeeStatus(res[1])
+          setAttendanceTrend(res[2])
+          setPerformanceTrend(res[3])
         }
       })
       .catch(console.error)
@@ -169,6 +180,49 @@ export default function ParentDashboardPage() {
             Below 75% threshold. Please ensure regular attendance.
           </p>
         )}
+      </div>
+
+      {/* Trend analytics */}
+      <div className="grid gap-3 lg:grid-cols-2">
+        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4">
+          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-3">Attendance Trend (6 Months)</p>
+          {attendanceTrend.length === 0 ? (
+            <p className="text-xs text-zinc-500">No attendance trend data available.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={180}>
+              <AreaChart data={attendanceTrend} margin={{ left: -10, right: 8, top: 5 }}>
+                <defs>
+                  <linearGradient id="parentAttFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
+                <XAxis dataKey="monthLabel" tick={{ fontSize: 10, fill: '#a1a1aa' }} axisLine={false} tickLine={false} />
+                <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: '#a1a1aa' }} axisLine={false} tickLine={false} />
+                <Tooltip formatter={(v: number) => [`${v}%`, 'Present']} />
+                <Area type="monotone" dataKey="presentPercentage" stroke="#3b82f6" fill="url(#parentAttFill)" strokeWidth={2} />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4">
+          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-3">Exam Performance Trend</p>
+          {performanceTrend.length === 0 ? (
+            <p className="text-xs text-zinc-500">No exam trend data available yet.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={180}>
+              <LineChart data={performanceTrend} margin={{ left: -10, right: 8, top: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
+                <XAxis dataKey="examName" tick={{ fontSize: 10, fill: '#a1a1aa' }} axisLine={false} tickLine={false} />
+                <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: '#a1a1aa' }} axisLine={false} tickLine={false} />
+                <Tooltip formatter={(v: number) => [`${v}%`, 'Score']} />
+                <Line type="monotone" dataKey="percentage" stroke="#a855f7" strokeWidth={2.5} dot={{ r: 3 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </div>
       </div>
 
       {/* Quick links */}
