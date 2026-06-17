@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { ArrowLeft, ArrowDownToLine, ArrowUpFromLine, FileEdit, Save, Package } from 'lucide-react'
 import Link from 'next/link'
 import { getInventoryItems, adjustInventoryStock, type InventoryStockAdjustmentInput } from '../actions'
+import { ContentAreaLoader } from '@/components/loaders/page-loaders'
 import type { StockAdjustmentType } from '@/lib/inventory-utils'
 
 const adjustmentTypes: { id: StockAdjustmentType; label: string; icon: any; description: string }[] = [
@@ -110,7 +111,7 @@ export default function StockAdjustmentPage() {
     const selectedItem = items.find(i => i.id === formData.itemId)
 
     if (loading) {
-        return <div className="p-8 text-center text-muted-foreground">Loading inventory...</div>
+        return <ContentAreaLoader label="Loading inventory..." />
     }
 
     return (

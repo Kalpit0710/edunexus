@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import { ArrowLeft, Save } from 'lucide-react'
 import Link from 'next/link'
+import { ContentAreaLoader } from '@/components/loaders/page-loaders'
 
 export default function EditTeacherPage() {
   const params = useParams<{ id: string }>()
@@ -68,7 +69,7 @@ export default function EditTeacherPage() {
   }
 
   if (loading) {
-    return <div className="p-8 text-muted-foreground">Loading…</div>
+    return <ContentAreaLoader label="Loading teacher..." />
   }
 
   return (

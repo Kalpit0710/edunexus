@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Trash2, Edit, UserPlus, Search, Download, Upload } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { TableSkeleton } from '@/components/loaders/page-loaders'
+import { Spinner } from '@/components/ui/spinner'
 import Link from 'next/link'
 import * as xlsx from 'xlsx'
 
@@ -17,6 +19,7 @@ export default function StudentsPage() {
   const [students, setStudents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
     if (school?.id) {
@@ -39,12 +42,15 @@ export default function StudentsPage() {
 
   async function handleDelete(id: string) {
     if (!confirm('Are you sure you want to delete this student?')) return
+    setDeletingId(id)
     try {
       await deleteStudent(id)
       toast.success('Student deleted')
       fetchStudents()
     } catch (e) {
       toast.error(getErrorMessage(e))
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -200,7 +206,7 @@ export default function StudentsPage() {
         </CardHeader>
         <CardContent className="p-0">
           {loading ? (
-            <div className="p-8 text-center text-muted-foreground">Loading directory...</div>
+            <TableSkeleton rows={6} columns={5} aria-label="Loading student directory" />
           ) : filteredStudents.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">No students found.</div>
           ) : (
@@ -240,9 +246,14 @@ export default function StudentsPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleDelete(student.id)}
-                          className="h-8 w-8 text-muted-foreground hover:text-red-600"
+                          disabled={deletingId === student.id}
+                          className="h-8 w-8 text-muted-foreground hover:text-red-600 disabled:opacity-50"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          {deletingId === student.id ? (
+                            <Spinner size="sm" className="border-red-500" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
                         </Button>
                       </td>
                     </tr>

@@ -11,6 +11,7 @@ import Link from 'next/link'
 import { getInventorySummary, getInventorySales, getLowStockItems } from '../actions'
 import { formatCurrency } from '@/lib/utils'
 import * as xlsx from 'xlsx'
+import { ContentAreaLoader } from '@/components/loaders/page-loaders'
 
 export default function InventoryReportsPage() {
     const { school } = useAuthStore()
@@ -85,7 +86,7 @@ export default function InventoryReportsPage() {
     }
 
     if (loading) {
-        return <div className="p-8 text-center text-muted-foreground">Loading dashboard...</div>
+        return <ContentAreaLoader label="Loading inventory dashboard..." />
     }
 
     return (

@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { ArrowLeft, Save, ShieldBan, ShieldCheck } from 'lucide-react'
 import Link from 'next/link'
 import { updateInventoryItem, setInventoryItemActive, type InventoryItemInput } from '../../actions'
+import { ContentAreaLoader } from '@/components/loaders/page-loaders'
 import { createClient } from '@/lib/supabase/client'
 import type { InventoryCategory } from '@/lib/inventory-utils'
 
@@ -147,7 +148,7 @@ export default function EditInventoryItemPage() {
     }
 
     if (loading) {
-        return <div className="p-8 text-center text-muted-foreground">Loading item details...</div>
+        return <ContentAreaLoader label="Loading item details..." />
     }
 
     return (

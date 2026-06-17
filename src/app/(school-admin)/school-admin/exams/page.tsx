@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import Link from 'next/link'
 import type { ExamStatus } from '@/lib/exam-utils'
+import { TableSkeleton } from '@/components/loaders/page-loaders'
 
 // Mapping for status badge colors
 const statusColors: Record<ExamStatus, string> = {
@@ -136,7 +137,7 @@ export default function ExamsPage() {
                 </CardHeader>
                 <CardContent className="p-0">
                     {loading ? (
-                        <div className="p-8 text-center text-muted-foreground">Loading exams...</div>
+                        <TableSkeleton rows={6} columns={5} aria-label="Loading exams" />
                     ) : filteredExams.length === 0 ? (
                         <div className="p-8 text-center sm:py-16">
                             <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">

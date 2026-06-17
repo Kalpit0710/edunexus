@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { ContentAreaLoader } from '@/components/loaders/page-loaders'
 import { ClassesTab } from './components/classes-tab'
 import { SubjectsTab } from './components/subjects-tab'
 import { AcademicTab } from './components/academic-tab'
@@ -51,7 +52,7 @@ export default function SettingsPage() {
     }
   }
 
-  if (!school) return <div className="p-8">Loading school context...</div>
+  if (!school) return <ContentAreaLoader label="Loading school settings..." />
 
   return (
     <div className="space-y-6">

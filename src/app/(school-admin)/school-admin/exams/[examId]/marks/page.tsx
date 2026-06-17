@@ -12,6 +12,7 @@ import { ArrowLeft, Save, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import { getExamById, getExamSubjects, saveExamMarks, type MarkEntryInput } from '../../actions'
 import { getStudents } from '../../../students/actions'
+import { ContentAreaLoader } from '@/components/loaders/page-loaders'
 import { createClient } from '@/lib/supabase/client'
 import { canEnterMarks, calculatePercentage, resolveGradeFromRules, type ExamStatus, type GradingRule } from '@/lib/exam-utils'
 import { getGradingRules } from '../../../settings/actions'
@@ -152,7 +153,7 @@ export default function ExamMarksPage() {
     }
 
     if (loading) {
-        return <div className="p-8 text-center text-muted-foreground">Loading marks entry...</div>
+        return <ContentAreaLoader label="Loading marks entry..." />
     }
 
     if (!exam) return null

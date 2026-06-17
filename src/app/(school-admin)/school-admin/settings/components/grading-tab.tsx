@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Trash2, Plus } from 'lucide-react'
 import { getErrorMessage } from '@/lib/utils'
+import { InlineLoader } from '@/components/loaders/page-loaders'
 
 export function GradingRulesTab() {
     const { school } = useAuthStore()
@@ -64,7 +65,7 @@ export function GradingRulesTab() {
         }
     }
 
-    if (loading) return <div className="py-8">Loading grading rules...</div>
+    if (loading) return <InlineLoader label="Loading grading rules..." />
 
     return (
         <div className="space-y-6">

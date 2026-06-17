@@ -61,3 +61,108 @@ export function ContentAreaLoader({ label = 'Loading content...', className }: L
     </div>
   )
 }
+
+interface TableSkeletonProps {
+  rows?: number
+  columns?: number
+  className?: string
+  'aria-label'?: string
+}
+
+/**
+ * Skeleton placeholder for tabular list views. Renders shimmering rows that
+ * mirror the real table layout so loading is visually distinct from an empty
+ * state. Drop into a table/card body while data is being fetched.
+ */
+export function TableSkeleton({
+  rows = 6,
+  columns = 5,
+  className,
+  'aria-label': ariaLabel = 'Loading data',
+}: TableSkeletonProps) {
+  return (
+    <div
+      className={cn('w-full p-4', className)}
+      role="status"
+      aria-busy="true"
+      aria-label={ariaLabel}
+    >
+      <div className="space-y-3">
+        {Array.from({ length: rows }).map((_, rowIndex) => (
+          <div key={rowIndex} className="flex items-center gap-4">
+            {Array.from({ length: columns }).map((_, colIndex) => (
+              <div
+                key={colIndex}
+                className={cn(
+                  'shimmer h-9 rounded-lg',
+                  colIndex === 0 ? 'w-10 shrink-0 rounded-full' : 'flex-1',
+                  colIndex === columns - 1 && 'max-w-[88px]'
+                )}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
+      <span className="sr-only">{ariaLabel}…</span>
+    </div>
+  )
+}
+
+interface CardGridSkeletonProps {
+  count?: number
+  className?: string
+  cardClassName?: string
+  'aria-label'?: string
+}
+
+/**
+ * Skeleton placeholder for card/stat grids. Renders shimmering cards so loading
+ * is visually distinct from an empty state.
+ */
+export function CardGridSkeleton({
+  count = 6,
+  className,
+  cardClassName,
+  'aria-label': ariaLabel = 'Loading data',
+}: CardGridSkeletonProps) {
+  return (
+    <div
+      className={cn('grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3', className)}
+      role="status"
+      aria-busy="true"
+      aria-label={ariaLabel}
+    >
+      {Array.from({ length: count }).map((_, index) => (
+        <div
+          key={index}
+          className={cn(
+            'shimmer h-28 rounded-2xl border border-white/[0.06]',
+            cardClassName
+          )}
+        />
+      ))}
+      <span className="sr-only">{ariaLabel}…</span>
+    </div>
+  )
+}
+
+interface InlineLoaderProps {
+  label?: string
+  className?: string
+}
+
+/**
+ * Small inline spinner + label for buttons, sections, or inline async states.
+ */
+export function InlineLoader({ label = 'Loading…', className }: InlineLoaderProps) {
+  return (
+    <div
+      className={cn('flex items-center justify-center gap-2 p-6 text-sm text-muted-foreground', className)}
+      role="status"
+      aria-busy="true"
+    >
+      <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
+      <span>{label}</span>
+    </div>
+  )
+}

@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ArrowLeft, BarChart3, Trophy, FileText, Download, User } from 'lucide-react'
 import Link from 'next/link'
+import { ContentAreaLoader } from '@/components/loaders/page-loaders'
 import {
     getExamById,
     getClassPerformanceReport,
@@ -217,7 +218,7 @@ export default function ExamReportsPage() {
     })
 
     if (loading) {
-        return <div className="p-8 text-center text-muted-foreground">Loading reports...</div>
+        return <ContentAreaLoader label="Loading exam reports..." />
     }
 
     if (!exam) return null

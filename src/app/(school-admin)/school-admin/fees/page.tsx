@@ -25,6 +25,8 @@ import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/utils'
 import { Plus, Trash2, Power, CircleDollarSign } from 'lucide-react'
 import Link from 'next/link'
+import { Spinner } from '@/components/ui/spinner'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function FeesPage() {
   const { school } = useAuthStore()
@@ -168,7 +170,12 @@ export default function FeesPage() {
                 onClick={handleAddCategory}
                 disabled={addingCat || !newCatName.trim()}
               >
-                <Plus className="mr-1 h-4 w-4" /> Add
+                {addingCat ? (
+                  <Spinner size="sm" className="mr-1 border-primary-foreground" />
+                ) : (
+                  <Plus className="mr-1 h-4 w-4" />
+                )}{' '}
+                Add
               </Button>
             </div>
 
@@ -176,7 +183,11 @@ export default function FeesPage() {
 
             {/* List */}
             {loading ? (
-              <p className="text-sm text-muted-foreground">Loading...</p>
+              <div className="space-y-2">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-10 w-full rounded-lg" />
+                ))}
+              </div>
             ) : categories.length === 0 ? (
               <p className="text-sm text-muted-foreground">No categories yet.</p>
             ) : (
@@ -262,7 +273,12 @@ export default function FeesPage() {
                   onClick={handleAddStructure}
                   disabled={addingStruct || !newClassId || !newCatId || !newAmount}
                 >
-                  <Plus className="mr-1 h-4 w-4" /> Add Structure
+                  {addingStruct ? (
+                    <Spinner size="sm" className="mr-1 border-primary-foreground" />
+                  ) : (
+                    <Plus className="mr-1 h-4 w-4" />
+                  )}{' '}
+                  Add Structure
                 </Button>
               </div>
             </div>
@@ -281,7 +297,13 @@ export default function FeesPage() {
                 </thead>
                 <tbody>
                   {loading ? (
-                    <tr><td colSpan={5} className="py-8 text-center text-muted-foreground">Loading...</td></tr>
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <tr key={i} className="border-b last:border-0">
+                        <td colSpan={5} className="py-2">
+                          <Skeleton className="h-8 w-full rounded-lg" />
+                        </td>
+                      </tr>
+                    ))
                   ) : structures.length === 0 ? (
                     <tr><td colSpan={5} className="py-8 text-center text-muted-foreground">No structures found for this year.</td></tr>
                   ) : (

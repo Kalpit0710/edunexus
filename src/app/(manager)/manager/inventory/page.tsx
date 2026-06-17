@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import Link from 'next/link'
 import { isLowStock, type InventoryCategory } from '@/lib/inventory-utils'
 import { formatCurrency } from '@/lib/utils'
+import { TableSkeleton } from '@/components/loaders/page-loaders'
 
 const categories: { label: string, value: InventoryCategory }[] = [
     { label: 'Books', value: 'book' },
@@ -131,7 +132,7 @@ export default function InventoryPage() {
                 </CardHeader>
                 <CardContent className="p-0">
                     {loading ? (
-                        <div className="p-8 text-center text-muted-foreground">Loading inventory...</div>
+                        <TableSkeleton rows={6} columns={5} aria-label="Loading inventory" />
                     ) : filteredItems.length === 0 ? (
                         <div className="p-8 text-center sm:py-16">
                             <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">

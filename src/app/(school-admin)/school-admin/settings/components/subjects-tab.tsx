@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Trash2, BookOpen } from 'lucide-react'
+import { InlineLoader } from '@/components/loaders/page-loaders'
 import { getErrorMessage } from '@/lib/utils'
 
 export function SubjectsTab() {
@@ -71,7 +72,7 @@ export function SubjectsTab() {
         }
     }
 
-    if (loading) return <div className="py-8">Loading subjects...</div>
+    if (loading) return <InlineLoader label="Loading subjects..." />
 
     return (
         <div className="space-y-6">

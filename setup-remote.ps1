@@ -40,7 +40,7 @@ if (-not $token -or $token -eq "your-personal-access-token-here") {
     exit 1
 }
 
-$supabase = "C:\Users\ASUS\supabase_bin\supabase.exe"
+$supabase = "supabase"
 $projectRef = "dgmqcrhogtbkzkprzjor"
 
 Write-Host ""
@@ -49,7 +49,7 @@ Write-Host ""
 
 # Step 1: Link project
 Write-Host "[1/3] Linking to Supabase project $projectRef..." -ForegroundColor Yellow
-& $supabase link --project-ref $projectRef --password "" 2>&1
+& $supabase link --project-ref $projectRef
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Link failed or already linked — continuing..." -ForegroundColor DarkYellow
 }
@@ -57,7 +57,7 @@ if ($LASTEXITCODE -ne 0) {
 # Step 2: Push migrations
 Write-Host ""
 Write-Host "[2/3] Pushing database migrations..." -ForegroundColor Yellow
-& $supabase db push --yes 2>&1
+& $supabase db push
 if ($LASTEXITCODE -ne 0) {
     Write-Host ""
     Write-Host "Migration push failed. Check the error above." -ForegroundColor Red
@@ -69,8 +69,7 @@ if ($LASTEXITCODE -ne 0) {
 # Step 3: Generate TypeScript types
 Write-Host ""
 Write-Host "[3/3] Generating TypeScript types from live schema..." -ForegroundColor Yellow
-& $supabase gen types typescript --project-id $projectRef --schema public `
-    | Out-File -FilePath "src\types\database.types.ts" -Encoding utf8
+& $supabase gen types typescript --project-id $projectRef --schema public | Out-File -FilePath "src\types\database.types.ts" -Encoding utf8
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Type generation failed. You can run it manually: pnpm db:types" -ForegroundColor DarkYellow

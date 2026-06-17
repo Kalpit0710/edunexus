@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Trash2, Plus } from 'lucide-react'
+import { InlineLoader } from '@/components/loaders/page-loaders'
 import { getErrorMessage } from '@/lib/utils'
 
 export function ClassesTab() {
@@ -99,7 +100,7 @@ export function ClassesTab() {
         }
     }
 
-    if (loading) return <div className="py-8">Loading classes structure...</div>
+    if (loading) return <InlineLoader label="Loading classes structure..." />
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

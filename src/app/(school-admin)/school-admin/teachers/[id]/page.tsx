@@ -17,6 +17,7 @@ import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ContentAreaLoader } from '@/components/loaders/page-loaders'
 import {
   Select,
   SelectContent,
@@ -126,7 +127,7 @@ export default function TeacherProfilePage() {
   const filteredSubjects = subjects.filter((s) => s.class_id === selClass)
 
   if (loading) {
-    return <div className="p-8 text-muted-foreground">Loading teacher profile…</div>
+    return <ContentAreaLoader label="Loading teacher profile..." />
   }
 
   if (!teacher) {

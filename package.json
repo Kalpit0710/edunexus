@@ -17,7 +17,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "ai:sync-context": "node scripts/sync-ai-context.js",
-    "db:types": "powershell -Command \"$l=C:\\Users\\ASUS\\supabase_bin\\supabase.exe gen types typescript --project-id dgmqcrhogtbkzkprzjor --schema public;[IO.File]::WriteAllLines('src/types/database.types.ts',$l,[Text.UTF8Encoding]::new($false));Write-Host 'types generated'\"",
+    "db:types": "supabase gen types typescript --project-id dgmqcrhogtbkzkprzjor --schema public > src/types/database.types.ts",
     "db:push": "supabase db push --yes",
     "db:reset": "supabase db reset --linked",
     "db:link": "supabase link --project-ref dgmqcrhogtbkzkprzjor",

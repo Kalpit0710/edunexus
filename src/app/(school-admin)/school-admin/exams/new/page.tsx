@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { ArrowLeft, ChevronRight, ChevronLeft, Save, Plus, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { createExam, type CreateExamInput, type ExamSubjectInput } from '../actions'
+import { ContentAreaLoader } from '@/components/loaders/page-loaders'
 import { getClasses, getAcademicYears, getSubjects } from '../../settings/actions'
 
 export default function NewExamPage() {
@@ -188,7 +189,7 @@ export default function NewExamPage() {
     const availableSubjects = allSubjects.filter(s => s.class_id === formData.classId)
 
     if (pageLoad) {
-        return <div className="p-8 text-center text-muted-foreground">Loading form...</div>
+        return <ContentAreaLoader label="Loading exam form..." />
     }
 
     return (

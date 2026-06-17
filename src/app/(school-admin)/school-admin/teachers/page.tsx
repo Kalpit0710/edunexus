@@ -12,6 +12,8 @@ import { Input } from '@/components/ui/input'
 import { UserPlus, Search, Edit, Eye, Power } from 'lucide-react'
 import Link from 'next/link'
 import { getInitials } from '@/lib/utils'
+import { TableSkeleton } from '@/components/loaders/page-loaders'
+import { Spinner } from '@/components/ui/spinner'
 
 type StatusFilter = 'all' | 'active' | 'inactive'
 
@@ -21,6 +23,7 @@ export default function TeachersPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [togglingId, setTogglingId] = useState<string | null>(null)
 
   useEffect(() => {
     if (school?.id) fetchTeachers()
@@ -42,6 +45,7 @@ export default function TeachersPage() {
   async function handleToggleStatus(teacher: TeacherRow) {
     const nextState = !teacher.is_active
     const label = nextState ? 'activated' : 'deactivated'
+    setTogglingId(teacher.id)
     try {
       await toggleTeacherStatus(
         teacher.id,
@@ -52,6 +56,8 @@ export default function TeachersPage() {
       fetchTeachers()
     } catch (e) {
       toast.error(getErrorMessage(e))
+    } finally {
+      setTogglingId(null)
     }
   }
 
@@ -130,7 +136,7 @@ export default function TeachersPage() {
 
         <CardContent className="p-0">
           {loading ? (
-            <div className="p-8 text-center text-muted-foreground">Loading teachers...</div>
+            <TableSkeleton rows={6} columns={6} aria-label="Loading teachers" />
           ) : filtered.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
               {search || statusFilter !== 'all'
@@ -219,14 +225,19 @@ export default function TeachersPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleToggleStatus(teacher)}
-                          className={`h-8 w-8 ${
+                          disabled={togglingId === teacher.id}
+                          className={`h-8 w-8 disabled:opacity-50 ${
                             teacher.is_active
                               ? 'text-muted-foreground hover:text-red-500'
                               : 'text-muted-foreground hover:text-green-600'
                           }`}
                           title={teacher.is_active ? 'Deactivate' : 'Activate'}
                         >
-                          <Power className="h-4 w-4" />
+                          {togglingId === teacher.id ? (
+                            <Spinner size="sm" />
+                          ) : (
+                            <Power className="h-4 w-4" />
+                          )}
                         </Button>
                       </td>
                     </tr>
