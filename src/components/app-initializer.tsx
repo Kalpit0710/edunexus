@@ -13,13 +13,15 @@ export function AppInitializer() {
     const { user, setUser, setSchool, setLoading } = useAuthStore()
 
     useEffect(() => {
-        // Already hydrated — nothing to do
-        if (user) return
-
         const supabase = createClient()
+        // Whether the store was already hydrated (e.g. right after login or from a
+        // persisted session). We still re-fetch below so the subscription plan and
+        // other school fields stay in sync with the DB on every mount — but we skip
+        // the loading flag to avoid a loader flash when we already have data.
+        const alreadyHydrated = !!user
 
         async function init() {
-            setLoading(true)
+            if (!alreadyHydrated) setLoading(true)
             try {
                 const { data: { user: authUser } } = await supabase.auth.getUser()
                 if (!authUser) return
@@ -60,13 +62,16 @@ export function AppInitializer() {
                             theme_color: (school as any).theme_color,
                             academic_year_start_month: (school as any).academic_year_start_month,
                             is_active: (school as any).is_active,
+                            subscription_plan: (school as any).subscription_plan ?? 'basic',
+                            subscription_status: (school as any).subscription_status ?? 'active',
+                            trial_ends_at: (school as any).trial_ends_at ?? null,
                             created_at: (school as any).created_at,
                             updated_at: (school as any).updated_at,
                         })
                     }
                 }
             } finally {
-                setLoading(false)
+                if (!alreadyHydrated) setLoading(false)
             }
         }
 

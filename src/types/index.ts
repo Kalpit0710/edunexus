@@ -1,5 +1,6 @@
 import type { User } from '@supabase/supabase-js'
 import type { Role } from '@/lib/constants'
+import type { SubscriptionPlan, SubscriptionStatus } from '@/lib/subscription'
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
@@ -26,6 +27,9 @@ export interface School {
   theme_color?: string | null
   academic_year_start_month: number
   is_active: boolean
+  subscription_plan?: SubscriptionPlan
+  subscription_status?: SubscriptionStatus
+  trial_ends_at?: string | null
   created_at: string
   updated_at: string
 }

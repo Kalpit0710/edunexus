@@ -93,6 +93,9 @@ export default function LoginPage() {
           theme_color: schoolData.theme_color,
           academic_year_start_month: schoolData.academic_year_start_month,
           is_active: schoolData.is_active,
+          subscription_plan: schoolData.subscription_plan ?? 'basic',
+          subscription_status: schoolData.subscription_status ?? 'active',
+          trial_ends_at: schoolData.trial_ends_at ?? null,
           created_at: schoolData.created_at,
           updated_at: schoolData.updated_at,
         })

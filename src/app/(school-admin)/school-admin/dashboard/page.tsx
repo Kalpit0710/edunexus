@@ -11,9 +11,12 @@ import {
   IndianRupee, CalendarCheck, Users, GraduationCap,
   BookOpen, Rocket, AlertCircle, TrendingUp, ArrowRight
 } from 'lucide-react'
+import { usePlan } from '@/hooks/use-plan'
+import { type Feature } from '@/lib/plan-features'
 
 export default function SchoolAdminDashboardPage() {
   const { school } = useAuthStore()
+  const { hasFeature } = usePlan()
   const [loading, setLoading] = useState(true)
   const [trendLoading, setTrendLoading] = useState(true)
   const [stats, setStats] = useState<DashboardStats>({
@@ -44,13 +47,13 @@ export default function SchoolAdminDashboardPage() {
     { label: 'Pending Fees', value: `₹${stats.totalPendingFees.toLocaleString('en-IN')}`, icon: AlertCircle, href: '/school-admin/fees/pending', accent: stats.totalPendingFees > 0 ? '#ef4444' : '#6b7280' },
   ]
 
-  const quickActions = [
-    { href: '/school-admin/attendance', label: 'Mark Attendance', icon: CalendarCheck },
-    { href: '/school-admin/fees/collect', label: 'Collect Fee', icon: IndianRupee },
-    { href: '/school-admin/fees/pending', label: 'Pending Fees', icon: AlertCircle },
-    { href: '/school-admin/students', label: 'Manage Students', icon: Users },
-    { href: '/school-admin/teachers', label: 'Manage Teachers', icon: GraduationCap },
-  ]
+  const quickActions = ([
+    { href: '/school-admin/attendance', label: 'Mark Attendance', icon: CalendarCheck, feature: 'attendance' as Feature },
+    { href: '/school-admin/fees/collect', label: 'Collect Fee', icon: IndianRupee, feature: 'fees' as Feature },
+    { href: '/school-admin/fees/pending', label: 'Pending Fees', icon: AlertCircle, feature: 'fees' as Feature },
+    { href: '/school-admin/students', label: 'Manage Students', icon: Users, feature: 'students' as Feature },
+    { href: '/school-admin/teachers', label: 'Manage Teachers', icon: GraduationCap, feature: 'teachers' as Feature },
+  ]).filter((a) => hasFeature(a.feature))
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -70,7 +73,7 @@ export default function SchoolAdminDashboardPage() {
             </h1>
             <p className="text-sm text-zinc-400 mt-1">{school?.name ?? 'Your school'}</p>
           </div>
-          <Link href={'/school-admin/reports' as any}>
+          <Link href={'/school-admin/reports' as any} className={hasFeature('reports') ? '' : 'hidden'}>
             <Button
               variant="outline"
               className="gap-2 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10 hover:border-white/20 transition-all"

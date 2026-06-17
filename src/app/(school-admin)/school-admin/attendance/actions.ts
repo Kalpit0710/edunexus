@@ -156,8 +156,8 @@ export async function saveAttendance(
 
   const { error } = await supabase
     .from('attendance_records')
-    // @ts-expect-error
-    .insert(payload)
+    // @ts-expect-error untyped admin payload
+    .upsert(payload, { onConflict: 'school_id,student_id,date' })
 
   if (error) throw new Error(error.message)
 
