@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth.store'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -67,8 +68,8 @@ export default function ExamReportsPage() {
             const classStuds = Array.isArray(studs) ? (studs as any[]).filter((s: any) => s.class_id === examClassId) : []
             setStudents(classStuds)
 
-        } catch (e: any) {
-            toast.error("Failed to load reports: " + e.message)
+        } catch (e) {
+            toast.error("Failed to load reports: " + getErrorMessage(e))
         } finally {
             setLoading(false)
         }
@@ -85,8 +86,8 @@ export default function ExamReportsPage() {
         try {
             const data = await getStudentReportCardData(school.id, examId, studentId)
             setReportCardData(data)
-        } catch (e: any) {
-            toast.error("Failed to load report card: " + e.message)
+        } catch (e) {
+            toast.error("Failed to load report card: " + getErrorMessage(e))
             setReportCardData(null)
         } finally {
             setReportLoading(false)
@@ -147,8 +148,8 @@ export default function ExamReportsPage() {
 
             window.open(payload.url as string, '_blank', 'noopener,noreferrer')
             toast.success('Report card PDF is ready.')
-        } catch (e: any) {
-            toast.error(e?.message || 'Failed to download report card PDF.')
+        } catch (e) {
+            toast.error(getErrorMessage(e))
         } finally {
             setPdfLoading(false)
         }
@@ -190,8 +191,8 @@ export default function ExamReportsPage() {
 
             window.open(payload.url as string, '_blank', 'noopener,noreferrer')
             toast.success('Class report-card PDF is ready.')
-        } catch (e: any) {
-            toast.error(e?.message || 'Failed to download class report-card PDF.')
+        } catch (e) {
+            toast.error(getErrorMessage(e))
         } finally {
             setBatchPdfLoading(false)
         }

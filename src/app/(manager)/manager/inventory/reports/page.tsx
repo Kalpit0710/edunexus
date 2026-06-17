@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft, TrendingUp, Package, AlertCircle, IndianRupee, Download } from 'lucide-react'
@@ -49,8 +50,8 @@ export default function InventoryReportsPage() {
             setSummary(sumData)
             setSales(salesData || [])
             setLowStock(minStockData || [])
-        } catch (e: any) {
-            toast.error("Failed to load reports: " + e.message)
+        } catch (e) {
+            toast.error("Failed to load reports: " + getErrorMessage(e))
         } finally {
             setLoading(false)
         }
@@ -61,8 +62,8 @@ export default function InventoryReportsPage() {
         try {
             const salesData = await getInventorySales(school.id, { fromDate: dateRange.from, toDate: dateRange.to })
             setSales(salesData || [])
-        } catch (e: any) {
-            toast.error("Failed to fetch sales: " + e.message)
+        } catch (e) {
+            toast.error("Failed to fetch sales: " + getErrorMessage(e))
         }
     }
 

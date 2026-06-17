@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
 import { updateSchoolSettings } from './actions'
 import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -43,8 +44,8 @@ export default function SettingsPage() {
       } as any)
       setSchool({ ...school, ...formData } as any)
       toast.success('School settings updated')
-    } catch (e: any) {
-      toast.error(e.message)
+    } catch (e) {
+      toast.error(getErrorMessage(e))
     } finally {
       setLoading(false)
     }

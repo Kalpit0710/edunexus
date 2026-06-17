@@ -12,6 +12,15 @@ const ROLE_ROUTES: Record<string, string> = {
   parent: '/parent/dashboard',
 }
 
+/** Route prefix → roles permitted to access it */
+const ROLE_PREFIXES: { prefix: string; roles: string[] }[] = [
+  { prefix: '/super-admin', roles: ['super_admin'] },
+  { prefix: '/school-admin', roles: ['school_admin'] },
+  { prefix: '/teacher', roles: ['teacher'] },
+  { prefix: '/manager', roles: ['manager', 'cashier'] },
+  { prefix: '/parent', roles: ['parent'] },
+]
+
 /** Routes that don't require authentication */
 const PUBLIC_ROUTES = [
   '/login',
@@ -64,6 +73,22 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = dashboardPath
     return NextResponse.redirect(url)
+  }
+
+  // Authenticated but accessing another role's area → redirect to own dashboard.
+  // app_metadata.role is server-controlled (not user-editable) so it is the
+  // trusted source; fall back to user_metadata for older sessions.
+  if (user && !isPublicRoute) {
+    const role =
+      (user.app_metadata?.role as string | undefined) ??
+      (user.user_metadata?.role as string | undefined) ??
+      'school_admin'
+    const match = ROLE_PREFIXES.find((r) => pathname.startsWith(r.prefix))
+    if (match && !match.roles.includes(role)) {
+      const url = request.nextUrl.clone()
+      url.pathname = ROLE_ROUTES[role] ?? '/login'
+      return NextResponse.redirect(url)
+    }
   }
 
   return supabaseResponse

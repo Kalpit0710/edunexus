@@ -6,6 +6,7 @@ const authFileByRole = {
   schoolAdmin: 'tests/e2e/.auth/school-admin.json',
   teacher: 'tests/e2e/.auth/teacher.json',
   manager: 'tests/e2e/.auth/manager.json',
+  parent: 'tests/e2e/.auth/parent.json',
 }
 
 const runtimeCredentialsPath = 'tests/e2e/.auth/runtime-credentials.json'
@@ -45,6 +46,18 @@ const credentialCandidates = {
       email: 'manager@demo.school',
       password: 'Manager@1234',
       dashboardPath: /\/manager(\/|$)/,
+    },
+  ],
+  parent: [
+    {
+      email: process.env.E2E_PARENT_EMAIL ?? 'parent.login@demo.school',
+      password: process.env.E2E_PARENT_PASSWORD ?? 'Parent@1234',
+      dashboardPath: /\/parent(\/|$)/,
+    },
+    {
+      email: 'parent@demo.school',
+      password: 'Parent@1234',
+      dashboardPath: /\/parent(\/|$)/,
     },
   ],
 }
@@ -91,6 +104,7 @@ function loadRuntimeCredentials(): {
   schoolAdmin?: { email: string; password: string }
   teacher?: { email: string; password: string }
   manager?: { email: string; password: string }
+  parent?: { email: string; password: string }
 } {
   if (!existsSync(runtimeCredentialsPath)) return {}
   return JSON.parse(readFileSync(runtimeCredentialsPath, 'utf8'))
@@ -151,7 +165,19 @@ setup('prepare auth storage states', async ({ browser }) => {
       ]
     : credentialCandidates.manager
 
+  const parentCandidates = runtimeCredentials.parent
+    ? [
+        {
+          email: runtimeCredentials.parent.email,
+          password: runtimeCredentials.parent.password,
+          dashboardPath: /\/parent(\/|$)/,
+        },
+        ...credentialCandidates.parent,
+      ]
+    : credentialCandidates.parent
+
   await loginAndSaveState(browser, schoolAdminCandidates, authFileByRole.schoolAdmin)
   await loginAndSaveState(browser, teacherCandidates, authFileByRole.teacher)
   await loginAndSaveState(browser, managerCandidates, authFileByRole.manager)
+  await loginAndSaveState(browser, parentCandidates, authFileByRole.parent)
 })

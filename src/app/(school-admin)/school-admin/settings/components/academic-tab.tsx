@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { Trash2, Calendar, CheckSquare } from 'lucide-react'
+import { getErrorMessage } from '@/lib/utils'
 
 export function AcademicTab() {
     const { school, setSchool } = useAuthStore()
@@ -39,8 +40,8 @@ export function AcademicTab() {
             if (settings?.academic_year_start_month) {
                 setStartMonth(settings.academic_year_start_month)
             }
-        } catch (e: any) {
-            toast.error('Failed to load academic years: ' + e.message)
+        } catch (e) {
+            toast.error('Failed to load academic years: ' + getErrorMessage(e))
         } finally {
             setLoading(false)
         }
@@ -57,8 +58,8 @@ export function AcademicTab() {
             setNewEndDate('')
             setNewIsCurrent(true)
             fetchData()
-        } catch (e: any) {
-            toast.error(e.message)
+        } catch (e) {
+            toast.error(getErrorMessage(e))
         }
     }
 
@@ -68,8 +69,8 @@ export function AcademicTab() {
             await deleteAcademicYear(id)
             toast.success('Academic year deleted')
             fetchData()
-        } catch (e: any) {
-            toast.error(e.message)
+        } catch (e) {
+            toast.error(getErrorMessage(e))
         }
     }
 
@@ -79,8 +80,8 @@ export function AcademicTab() {
             await updateSchoolSettings(school.id, { academic_year_start_month: startMonth } as any)
             setSchool({ ...school, academic_year_start_month: startMonth })
             toast.success('Start month updated')
-        } catch (e: any) {
-            toast.error(e.message)
+        } catch (e) {
+            toast.error(getErrorMessage(e))
         }
     }
 

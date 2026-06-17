@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -50,8 +51,8 @@ export default function StockAdjustmentPage() {
         try {
             const data = await getInventoryItems(school!.id, { activeOnly: true, limit: 1000 })
             setItems(data || [])
-        } catch (e: any) {
-            toast.error("Failed to load items: " + e.message)
+        } catch (e) {
+            toast.error("Failed to load items: " + getErrorMessage(e))
         } finally {
             setLoading(false)
         }
@@ -99,8 +100,8 @@ export default function StockAdjustmentPage() {
             await adjustInventoryStock(school.id, payload)
             toast.success("Stock adjusted successfully!")
             router.push('/manager/inventory' as any)
-        } catch (e: any) {
-            toast.error("Adjustment failed: " + e.message)
+        } catch (e) {
+            toast.error("Adjustment failed: " + getErrorMessage(e))
         } finally {
             setSaving(false)
         }

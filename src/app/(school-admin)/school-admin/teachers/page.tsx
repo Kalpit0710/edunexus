@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
 import { getTeachers, toggleTeacherStatus, type TeacherRow } from './actions'
 import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -31,8 +32,8 @@ export default function TeachersPage() {
     try {
       const data = await getTeachers(school.id)
       setTeachers(data)
-    } catch (e: any) {
-      toast.error('Failed to load teachers: ' + e.message)
+    } catch (e) {
+      toast.error('Failed to load teachers: ' + getErrorMessage(e))
     } finally {
       setLoading(false)
     }
@@ -49,8 +50,8 @@ export default function TeachersPage() {
       )
       toast.success(`Teacher ${label}`)
       fetchTeachers()
-    } catch (e: any) {
-      toast.error(e.message)
+    } catch (e) {
+      toast.error(getErrorMessage(e))
     }
   }
 

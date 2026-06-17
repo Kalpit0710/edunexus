@@ -36,7 +36,7 @@ test.describe('Inventory & POS Module (Phase 2.2)', () => {
 
     test('pos interface structure', async ({ page }) => {
         await page.goto('/manager/inventory/pos')
-        await expect(page.getByText(/point of sale/i)).toBeVisible()
+        await expect(page.getByRole('heading', { name: 'Point of Sale' })).toBeVisible({ timeout: 20_000 })
 
         // Check empty cart state
         await expect(page.getByText(/cart is empty|scan or select items/i)).toBeVisible()
@@ -51,8 +51,8 @@ test.describe('Inventory & POS Module (Phase 2.2)', () => {
         await expect(page.getByText(/inventory reports/i)).toBeVisible()
 
         // Check for key cards
-        await expect(page.getByText(/total assets value/i)).toBeVisible()
-        await expect(page.getByText(/low stock alerts/i)).toBeVisible()
+        await expect(page.getByText('Total Assets Value', { exact: true })).toBeVisible()
+        await expect(page.getByText('Low Stock Alerts', { exact: true })).toBeVisible()
         await expect(page.getByText(/sales ledger/i)).toBeVisible()
     })
 })

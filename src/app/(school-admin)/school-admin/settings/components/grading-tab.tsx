@@ -6,8 +6,8 @@ import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { CardContent } from '@/components/ui/card'
 import { Trash2, Plus } from 'lucide-react'
+import { getErrorMessage } from '@/lib/utils'
 
 export function GradingRulesTab() {
     const { school } = useAuthStore()
@@ -30,8 +30,8 @@ export function GradingRulesTab() {
         try {
             const data = await getGradingRules(sid)
             setRules(data || [])
-        } catch (e: any) {
-            toast.error('Failed to load rules: ' + e.message)
+        } catch (e) {
+            toast.error('Failed to load rules: ' + getErrorMessage(e))
         } finally {
             setLoading(false)
         }
@@ -48,8 +48,8 @@ export function GradingRulesTab() {
             setGradeName('')
             setGradePoint('')
             fetchData()
-        } catch (e: any) {
-            toast.error(e.message)
+        } catch (e) {
+            toast.error(getErrorMessage(e))
         }
     }
 
@@ -59,8 +59,8 @@ export function GradingRulesTab() {
             await deleteGradingRule(id)
             toast.success('Rule deleted')
             fetchData()
-        } catch (e: any) {
-            toast.error(e.message)
+        } catch (e) {
+            toast.error(getErrorMessage(e))
         }
     }
 

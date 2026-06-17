@@ -2,17 +2,16 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/email'
 import { FeeReminderEmail } from '@/emails/FeeReminderEmail'
+import { getErrorMessage } from '@/lib/utils'
 import type { Database } from '@/types/database.types'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
-  // Enforce cron secret if configured
-  if (process.env.CRON_SECRET) {
-    const authHeader = request.headers.get('authorization')
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      return new Response('Unauthorized', { status: 401 })
-    }
+  // Fail closed: require a configured cron secret AND a matching bearer token.
+  const cronSecret = process.env.CRON_SECRET
+  if (!cronSecret || request.headers.get('authorization') !== `Bearer ${cronSecret}`) {
+    return new Response('Unauthorized', { status: 401 })
   }
 
   const supabase = createClient<Database>(
@@ -75,7 +74,7 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({ success: true, processed: installments.length, emailsSent: emailsSent.length })
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+  } catch (error) {
+    return NextResponse.json({ success: false, error: getErrorMessage(error) }, { status: 500 })
   }
 }

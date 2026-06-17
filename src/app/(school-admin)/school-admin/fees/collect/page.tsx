@@ -20,6 +20,7 @@ import { Separator } from '@/components/ui/separator'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
 import { Search, PrinterIcon, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
 
@@ -90,8 +91,8 @@ function CollectFeePageContent() {
       structs.forEach(s => { sel[s.id] = true })
       setSelectedItems(sel)
       setPaidAmount(String(structs.reduce((sum, s) => sum + Number(s.amount), 0)))
-    } catch (e: any) {
-      toast.error(e.message || 'Student not found')
+    } catch (e) {
+      toast.error(getErrorMessage(e))
     } finally {
       setSearching(false)
     }
@@ -121,8 +122,8 @@ function CollectFeePageContent() {
       })
       setReceiptNumber(rxNumber)
       toast.success(`Payment recorded — Receipt: ${rxNumber}`)
-    } catch (e: any) {
-      toast.error(e.message)
+    } catch (e) {
+      toast.error(getErrorMessage(e))
     } finally {
       setSaving(false)
     }

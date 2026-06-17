@@ -10,6 +10,7 @@ import { } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
 import { Search, ArrowLeft, Download, FileText } from 'lucide-react'
 import Link from 'next/link'
 import * as xlsx from 'xlsx'
@@ -47,8 +48,8 @@ export default function PaymentHistoryPage() {
         try {
             const data = await getAllPayments(school.id, { fromDate, toDate })
             setPayments(data)
-        } catch (e: any) {
-            toast.error(e.message)
+        } catch (e) {
+            toast.error(getErrorMessage(e))
         } finally {
             setLoading(false)
         }

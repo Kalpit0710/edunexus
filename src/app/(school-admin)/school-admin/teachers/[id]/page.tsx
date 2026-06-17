@@ -13,6 +13,7 @@ import {
   type TeacherRow,
 } from '../actions'
 import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -66,8 +67,8 @@ export default function TeacherProfilePage() {
         setSections(hier.sections)
         setSubjects(hier.subjects)
       }
-    } catch (e: any) {
-      toast.error(e.message)
+    } catch (e) {
+      toast.error(getErrorMessage(e))
     } finally {
       setLoading(false)
     }
@@ -79,8 +80,8 @@ export default function TeacherProfilePage() {
       await toggleTeacherStatus(teacher.id, teacher.user_profile!.id, !teacher.is_active)
       toast.success(teacher.is_active ? 'Teacher deactivated' : 'Teacher activated')
       loadAll()
-    } catch (e: any) {
-      toast.error(e.message)
+    } catch (e) {
+      toast.error(getErrorMessage(e))
     }
   }
 
@@ -104,8 +105,8 @@ export default function TeacherProfilePage() {
       setSelSubject('')
       setIsClassTeacher(false)
       loadAll()
-    } catch (e: any) {
-      toast.error(e.message)
+    } catch (e) {
+      toast.error(getErrorMessage(e))
     } finally {
       setAssigning(false)
     }
@@ -116,8 +117,8 @@ export default function TeacherProfilePage() {
       await removeAssignment(id)
       toast.success('Assignment removed')
       loadAll()
-    } catch (e: any) {
-      toast.error(e.message)
+    } catch (e) {
+      toast.error(getErrorMessage(e))
     }
   }
 

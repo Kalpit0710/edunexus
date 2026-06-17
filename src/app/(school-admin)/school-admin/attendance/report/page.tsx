@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { getMonthlyAttendanceReport, type MonthlyAttendanceRow } from '../actions'
 import { getClasses, getSections } from '../../settings/actions'
 import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
@@ -68,8 +69,8 @@ export default function AttendanceReportPage() {
       )
       setReport(data)
       setLoaded(true)
-    } catch (e: any) {
-      toast.error(e.message)
+    } catch (e) {
+      toast.error(getErrorMessage(e))
     } finally {
       setLoading(false)
     }

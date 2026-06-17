@@ -7,6 +7,7 @@ import { getStudentById } from '../actions'
 import { getClassesAndSections } from '../new/actions'
 import { getStudentPaymentHistory, type FeePaymentRow } from '../../fees/actions'
 import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -52,8 +53,8 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
                     .catch(console.error)
                     .finally(() => setPaymentsLoading(false))
             }
-        } catch (e: any) {
-            toast.error('Failed to load profile: ' + e.message)
+        } catch (e) {
+            toast.error('Failed to load profile: ' + getErrorMessage(e))
         } finally {
             setLoading(false)
         }

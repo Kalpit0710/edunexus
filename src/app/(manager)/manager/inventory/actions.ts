@@ -10,6 +10,7 @@ import {
   type InventoryCategory,
   type StockAdjustmentType,
 } from '@/lib/inventory-utils'
+import { requireActor } from '@/lib/auth/require-actor'
 import { sendEmail } from '@/lib/email'
 import { InventoryReceiptEmail } from '@/emails/InventoryReceiptEmail'
 
@@ -106,6 +107,7 @@ export async function createInventoryItem(schoolId: string, input: InventoryItem
 
   const supabase = await createServerSupabaseClient()
   const db = supabase as any
+  await requireActor(supabase, ['school_admin', 'manager', 'cashier'])
 
   const actorProfileId = await getActorProfileId(db, schoolId, input.createdByProfileId)
 
@@ -155,6 +157,7 @@ export async function updateInventoryItem(
 
   const supabase = await createServerSupabaseClient()
   const db = supabase as any
+  await requireActor(supabase, ['school_admin', 'manager', 'cashier'])
 
   const { data, error } = await db
     .from('inventory_items')
@@ -175,6 +178,7 @@ export async function setInventoryItemActive(
 ): Promise<void> {
   const supabase = await createServerSupabaseClient()
   const db = supabase as any
+  await requireActor(supabase, ['school_admin', 'manager', 'cashier'])
 
   const { error } = await db
     .from('inventory_items')
@@ -191,6 +195,7 @@ export async function adjustInventoryStock(
 ) {
   const supabase = await createServerSupabaseClient()
   const db = supabase as any
+  await requireActor(supabase, ['school_admin', 'manager', 'cashier'])
 
   const { data: currentItem, error: currentError } = await db
     .from('inventory_items')
@@ -230,6 +235,7 @@ export async function createInventorySale(
 ): Promise<{ saleId: string; billNumber: string; totalAmount: number }> {
   const supabase = await createServerSupabaseClient()
   const db = supabase as any
+  await requireActor(supabase, ['school_admin', 'manager', 'cashier'])
 
   const cartForValidation: InventoryCartItem[] = input.items.map(item => ({
     itemId: item.itemId,

@@ -118,8 +118,9 @@ test.describe('Teacher role', () => {
   })
 
   test('teacher dashboard shows key stats', async ({ page }) => {
-    await expect(page.getByText(/total assignments/i)).toBeVisible()
-    await expect(page.getByText(/pending attendance/i)).toBeVisible()
+    // Dashboard stats load asynchronously; allow for cold-compile on first hit.
+    await expect(page.getByText(/total assignments/i)).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByText(/pending attendance/i)).toBeVisible({ timeout: 30_000 })
   })
 })
 

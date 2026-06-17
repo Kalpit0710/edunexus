@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Trash2, BookOpen } from 'lucide-react'
+import { getErrorMessage } from '@/lib/utils'
 
 export function SubjectsTab() {
     const { school } = useAuthStore()
@@ -39,8 +40,8 @@ export function SubjectsTab() {
             if (cData && cData.length > 0 && cData[0]) {
                 setSelectedClassId((cData[0] as any).id)
             }
-        } catch (e: any) {
-            toast.error('Failed to load subjects: ' + e.message)
+        } catch (e) {
+            toast.error('Failed to load subjects: ' + getErrorMessage(e))
         } finally {
             setLoading(false)
         }
@@ -55,8 +56,8 @@ export function SubjectsTab() {
             setNewSubjectName('')
             setNewSubjectCode('')
             fetchData()
-        } catch (e: any) {
-            toast.error(e.message)
+        } catch (e) {
+            toast.error(getErrorMessage(e))
         }
     }
 
@@ -65,8 +66,8 @@ export function SubjectsTab() {
             await deleteSubject(id)
             toast.success('Subject deleted')
             fetchData()
-        } catch (e: any) {
-            toast.error(e.message)
+        } catch (e) {
+            toast.error(getErrorMessage(e))
         }
     }
 

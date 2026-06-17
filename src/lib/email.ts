@@ -1,6 +1,8 @@
+/* eslint-disable no-console -- intentional server-side mailer diagnostics */
 import { Resend } from 'resend'
 import { createClient as createServerClient } from './supabase/server'
-import * as React from 'react'
+import type * as React from 'react'
+import { getErrorMessage } from './utils'
 
 const resendApiKey = process.env.RESEND_API_KEY
 
@@ -41,6 +43,8 @@ export async function sendEmail({
     const supabase = await createServerClient()
     const toArray = Array.isArray(to) ? to : [to]
     const recipientEmail = toArray.join(', ')
+    // Mask addresses in logs so recipient PII is not written to server output.
+    const maskedEmail = recipientEmail.replace(/([^@,\s])[^@]*(@[^,\s]+)/g, '$1***$2')
 
     // 1. Try sending via Resend
     let status = 'sent'
@@ -58,19 +62,21 @@ export async function sendEmail({
       if (error) {
         status = 'failed'
         errorMsg = error.message
-        console.error(`[Email Failed] ${subject} to ${recipientEmail}:`, error.message)
+        console.error(`[Email Failed] ${subject} to ${maskedEmail}:`, error.message)
       } else {
-        console.log(`[Email Sent] ${subject} to ${recipientEmail} via Resend`)
+        console.log(`[Email Sent] ${subject} to ${maskedEmail} via Resend`)
       }
     } else {
-      // Fallback if no API key
-      console.log('--------------------------------------------------')
-      console.log(`[MOCK EMAIL SENT] Event: ${event}`)
-      console.log(`To: ${recipientEmail}`)
-      console.log(`Subject: ${subject}`)
-      console.log(`Body: (React Email Template Rendered)`)
-      console.log('NOTE: Not actually delivered. Set RESEND_API_KEY in .env.local')
-      console.log('--------------------------------------------------')
+      // Fallback if no API key (development aid only).
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('--------------------------------------------------')
+        console.log(`[MOCK EMAIL SENT] Event: ${event}`)
+        console.log(`To: ${maskedEmail}`)
+        console.log(`Subject: ${subject}`)
+        console.log(`Body: (React Email Template Rendered)`)
+        console.log('NOTE: Not actually delivered. Set RESEND_API_KEY in .env.local')
+        console.log('--------------------------------------------------')
+      }
       status = 'sent' // Log as sent for testing purposes
     }
 
@@ -92,8 +98,8 @@ export async function sendEmail({
     }
 
     return { success: status === 'sent', error: errorMsg || undefined }
-  } catch (err: any) {
+  } catch (err) {
     console.error('sendEmail caught error:', err)
-    return { success: false, error: err.message || 'Unknown error' }
+    return { success: false, error: getErrorMessage(err) }
   }
 }

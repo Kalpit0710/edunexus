@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { getExams } from './actions'
 import { getClasses } from '../settings/actions'
 import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Plus, Search, Eye, FileText, Lock, Edit } from 'lucide-react'
@@ -49,8 +50,8 @@ export default function ExamsPage() {
             ])
             setExams(examsData || [])
             setClasses(classesData || [])
-        } catch (e: any) {
-            toast.error('Failed to load exams data: ' + e.message)
+        } catch (e) {
+            toast.error('Failed to load exams data: ' + getErrorMessage(e))
         } finally {
             setLoading(false)
         }

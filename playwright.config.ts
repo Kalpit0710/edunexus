@@ -26,12 +26,9 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['setup'],
     },
-    // Mobile Safari
-    {
-      name: 'Mobile Safari',
-      use: { ...devices['iPhone 13'] },
-      dependencies: ['setup'],
-    },
+    // NOTE: A Mobile Safari (webkit) project can be added back once the webkit
+    // browser is provisioned in local + CI environments (`playwright install
+    // webkit`). It was removed to avoid declaring a project that never runs.
   ],
   webServer: {
     command: 'pnpm dev',

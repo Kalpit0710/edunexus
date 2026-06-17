@@ -1,5 +1,4 @@
 'use server'
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { createClient as createServerSupabaseClient } from '@/lib/supabase/server'
 import { isLowStock } from '@/lib/inventory-utils'

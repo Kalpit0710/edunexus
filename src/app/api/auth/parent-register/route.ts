@@ -203,17 +203,13 @@ export async function POST(request: Request) {
   }
 
   const school = await getSchoolByCode(admin, parsed.data.schoolCode)
-  if (!school) {
+  const student = school
+    ? await getStudentByAdmission(admin, school.id, parsed.data.admissionNumber)
+    : null
+  // Generic failure message to avoid school-code / admission-number enumeration.
+  if (!school || !student) {
     return NextResponse.json(
-      { success: false, message: 'School code not found or inactive' },
-      { status: 404 }
-    )
-  }
-
-  const student = await getStudentByAdmission(admin, school.id, parsed.data.admissionNumber)
-  if (!student) {
-    return NextResponse.json(
-      { success: false, message: 'Student registration number not found' },
+      { success: false, message: 'We could not verify those details. Please check and try again.' },
       { status: 404 }
     )
   }

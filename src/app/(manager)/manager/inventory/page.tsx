@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
 import { getInventoryItems } from './actions'
 import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Plus, Search, ShoppingCart, Settings2, Package, Tag, Edit, AlertCircle } from 'lucide-react'
@@ -47,8 +48,8 @@ export default function InventoryPage() {
                 limit: 500
             })
             setItems(data || [])
-        } catch (e: any) {
-            toast.error('Failed to load inventory: ' + e.message)
+        } catch (e) {
+            toast.error('Failed to load inventory: ' + getErrorMessage(e))
         } finally {
             setLoading(false)
         }

@@ -6,6 +6,14 @@ import type { Database } from '@/types/database.types'
 import { createAdminClient } from '@/lib/supabase/server'
 import { syncPrimaryParentForStudent } from '@/lib/student-parent-sync'
 import { normalizeParentContact } from '@/lib/student-parent-link'
+import { z } from 'zod'
+
+const studentCreateSchema = z
+  .object({
+    first_name: z.string().trim().min(1, 'First name is required'),
+    admission_number: z.string().trim().min(1, 'Admission number is required'),
+  })
+  .passthrough()
 
 async function getSupabase() {
     const cookieStore = await cookies()
@@ -109,6 +117,9 @@ export async function createStudent(_schoolId: string, studentData: StudentCreat
     if (!actorProfile.school_id) {
         throw new Error('Your account is not linked to any school.')
     }
+
+    // Validate required fields at the trust boundary (runtime, not just TS types).
+    studentCreateSchema.parse(studentData)
 
     const effectiveSchoolId = actorProfile.school_id
 

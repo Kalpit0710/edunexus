@@ -110,6 +110,21 @@ const demoUsers = [
 ]
 
 async function createLoginUser(user) {
+  // Idempotent: if the login account already exists with the expected password,
+  // reuse it instead of creating a duplicate. signInWithPassword is a targeted
+  // lookup, so it works even when the admin listUsers bulk query is degraded by
+  // the legacy direct-SQL-seeded rows.
+  const { data: existing, error: existingError } = await anon.auth.signInWithPassword({
+    email: user.loginEmail,
+    password: user.password,
+  })
+
+  if (!existingError && existing?.user?.id) {
+    const id = existing.user.id
+    await anon.auth.signOut()
+    return { id, loginEmail: user.loginEmail }
+  }
+
   let attempts = 0
   let lastError = null
 
@@ -165,13 +180,13 @@ async function relinkParentRows(user, newAuthId, loginEmail) {
   }
 }
 
-async function verifyLogins() {
-  const checks = demoUsers.filter((u) => u.role !== 'super_admin')
+async function verifyLogins(results) {
+  const checks = results.filter((r) => r.user.role !== 'super_admin')
 
   for (const check of checks) {
     const { error } = await anon.auth.signInWithPassword({
       email: check.loginEmail,
-      password: check.password,
+      password: check.user.password,
     })
 
     if (error) {
@@ -183,18 +198,21 @@ async function verifyLogins() {
 }
 
 async function main() {
+  const results = []
+
   for (const user of demoUsers) {
     const created = await createLoginUser(user)
     await relinkProfile(user, created.id, created.loginEmail)
     await relinkParentRows(user, created.id, created.loginEmail)
+    results.push({ user, loginEmail: created.loginEmail })
     process.stdout.write(`Repaired auth mapping for ${user.email} -> ${created.loginEmail}\n`)
   }
 
-  await verifyLogins()
+  await verifyLogins(results)
   process.stdout.write('All demo logins verified successfully\n')
   process.stdout.write('Working credentials:\n')
-  for (const user of demoUsers) {
-    process.stdout.write(`  ${user.loginEmail} / ${user.password}\n`)
+  for (const { user, loginEmail } of results) {
+    process.stdout.write(`  ${loginEmail} / ${user.password}\n`)
   }
 }
 

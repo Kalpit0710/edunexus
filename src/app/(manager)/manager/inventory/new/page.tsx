@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -75,8 +76,8 @@ export default function NewInventoryItemPage() {
             await createInventoryItem(school.id, formData as InventoryItemInput)
             toast.success("Inventory item added successfully!")
             router.push('/manager/inventory' as any)
-        } catch (e: any) {
-            toast.error(e.message)
+        } catch (e) {
+            toast.error(getErrorMessage(e))
         } finally {
             setLoading(false)
         }

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -140,8 +141,8 @@ export default function OnboardingWizardPage() {
             await completeOnboarding(school.id, payload)
             toast.success("School setup completed successfully!")
             router.push('/school-admin/dashboard')
-        } catch (e: any) {
-            toast.error(e.message)
+        } catch (e) {
+            toast.error(getErrorMessage(e))
         } finally {
             setLoading(false)
         }

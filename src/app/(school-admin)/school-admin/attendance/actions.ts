@@ -122,7 +122,7 @@ export async function saveAttendance(
     .eq('auth_user_id', actorAuthUserId)
     .maybeSingle() as { data: ProfileIdLookup | null; error: { message: string } | null }
 
-  let resolvedMarkedBy = profileByAuth?.id ?? null
+  const resolvedMarkedBy = profileByAuth?.id ?? null
 
   if (!resolvedMarkedBy) {
     if (profileByAuthError) {

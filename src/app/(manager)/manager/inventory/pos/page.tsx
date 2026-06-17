@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -46,8 +47,8 @@ export default function POSPage() {
             ])
             setItems(fetchedItems || [])
             setStudents(fetchedStudents || [])
-        } catch (e: any) {
-            toast.error("Failed to load POS data: " + e.message)
+        } catch (e) {
+            toast.error("Failed to load POS data: " + getErrorMessage(e))
         } finally {
             setLoading(false)
         }
@@ -130,8 +131,8 @@ export default function POSPage() {
             setCart([])
             // Refresh inventory items to reflect new stock
             loadInitialData()
-        } catch (e: any) {
-            toast.error("Checkout failed: " + e.message)
+        } catch (e) {
+            toast.error("Checkout failed: " + getErrorMessage(e))
         } finally {
             setProcessing(false)
         }

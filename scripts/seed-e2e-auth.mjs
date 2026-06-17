@@ -55,6 +55,17 @@ const users = [
     role: 'manager',
     fullName: 'Demo Manager',
   },
+  {
+    key: 'parent',
+    baseEmail: 'parent',
+    password: 'Parent@1234',
+    role: 'parent',
+    fullName: 'Neha Sharma',
+    // The dev seed links this parent to student "Aarav Sharma" via the parents
+    // row below; the E2E run creates a fresh auth user each time, so we
+    // re-point that link by its stable seed UUID.
+    linkParentRowId: '51000000-0000-0000-0000-000000000001',
+  },
 ]
 
 const runtimeCredentialsPath = resolve(__dirname, '../tests/e2e/.auth/runtime-credentials.json')
@@ -138,6 +149,16 @@ async function updateProfileEmail(profileId, email) {
   if (error) throw new Error(`Failed updating profile email: ${error.message}`)
 }
 
+async function repointParentLink(linkParentRowId, authUserId, email) {
+  const { error } = await admin
+    .from('parents')
+    .update({ auth_user_id: authUserId, email })
+    .eq('school_id', SCHOOL_ID)
+    .eq('id', linkParentRowId)
+
+  if (error) throw new Error(`Failed re-pointing parent link: ${error.message}`)
+}
+
 async function main() {
   await ensureSchool()
   mkdirSync(resolve(__dirname, '../tests/e2e/.auth'), { recursive: true })
@@ -146,6 +167,7 @@ async function main() {
     schoolAdmin: null,
     teacher: null,
     manager: null,
+    parent: null,
   }
 
   for (const user of users) {
@@ -153,6 +175,10 @@ async function main() {
     const { authUserId, email } = await createFreshAuthUser(user)
     await updateProfile(user, profile.id, authUserId)
     await updateProfileEmail(profile.id, email)
+
+    if (user.linkParentRowId) {
+      await repointParentLink(user.linkParentRowId, authUserId, email)
+    }
 
     runtimeCredentials[user.key] = {
       email,

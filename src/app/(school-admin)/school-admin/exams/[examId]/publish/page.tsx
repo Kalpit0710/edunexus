@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ArrowLeft, Lock, Unlock, Send, AlertTriangle, CheckCircle2, ShieldCheck } from 'lucide-react'
@@ -35,8 +36,8 @@ export default function PublishExamPage() {
             ])
             setExam(ex)
             setPerformance(perf || [])
-        } catch (e: any) {
-            toast.error('Failed to load exam details: ' + e.message)
+        } catch (e) {
+            toast.error('Failed to load exam details: ' + getErrorMessage(e))
         } finally {
             setLoading(false)
         }
@@ -49,8 +50,8 @@ export default function PublishExamPage() {
             await publishExamResults(examId, notifyParents)
             toast.success('Exam results published and locked!')
             await loadInitialData()
-        } catch (e: any) {
-            toast.error('Failed to publish: ' + e.message)
+        } catch (e) {
+            toast.error('Failed to publish: ' + getErrorMessage(e))
         } finally {
             setActionLoading(false)
         }
@@ -63,8 +64,8 @@ export default function PublishExamPage() {
             await unlockExamResults(examId)
             toast.success('Exam unlocked — results hidden from parents.')
             await loadInitialData()
-        } catch (e: any) {
-            toast.error('Failed to unlock: ' + e.message)
+        } catch (e) {
+            toast.error('Failed to unlock: ' + getErrorMessage(e))
         } finally {
             setActionLoading(false)
         }

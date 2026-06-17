@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
 import { getStudents, deleteStudent, bulkCreateStudents } from './actions'
 import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Trash2, Edit, UserPlus, Search, Download, Upload } from 'lucide-react'
@@ -29,8 +30,8 @@ export default function StudentsPage() {
     try {
       const data = await getStudents(school.id)
       setStudents(data || [])
-    } catch (e: any) {
-      toast.error('Failed to load students: ' + e.message)
+    } catch (e) {
+      toast.error('Failed to load students: ' + getErrorMessage(e))
     } finally {
       setLoading(false)
     }
@@ -42,8 +43,8 @@ export default function StudentsPage() {
       await deleteStudent(id)
       toast.success('Student deleted')
       fetchStudents()
-    } catch (e: any) {
-      toast.error(e.message)
+    } catch (e) {
+      toast.error(getErrorMessage(e))
     }
   }
 
@@ -133,8 +134,8 @@ export default function StudentsPage() {
         await bulkCreateStudents(school.id, payloads)
         toast.success(`Successfully imported ${payloads.length} students.`)
         fetchStudents()
-      } catch (err: any) {
-        toast.error('Import failed: ' + err.message)
+      } catch (err) {
+        toast.error('Import failed: ' + getErrorMessage(err))
       } finally {
         if (fileInputRef.current) {
           fileInputRef.current.value = ''

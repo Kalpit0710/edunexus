@@ -14,7 +14,6 @@ import {
   type ChildFeeStatus,
   type ChildPerformanceTrendPoint,
 } from '../actions'
-import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { GraduationCap, CalendarCheck, IndianRupee, Receipt, AlertCircle, ArrowRight } from 'lucide-react'
 import Link from 'next/link'

@@ -6,9 +6,9 @@ import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { Trash2, Plus } from 'lucide-react'
+import { getErrorMessage } from '@/lib/utils'
 
 export function ClassesTab() {
     const { school } = useAuthStore()
@@ -44,8 +44,8 @@ export function ClassesTab() {
             if (cData && cData.length > 0 && cData[0]) {
                 setSelectedClassId((cData[0] as any).id)
             }
-        } catch (e: any) {
-            toast.error('Failed to load hierarchies: ' + e.message)
+        } catch (e) {
+            toast.error('Failed to load hierarchies: ' + getErrorMessage(e))
         } finally {
             setLoading(false)
         }
@@ -60,8 +60,8 @@ export function ClassesTab() {
             setNewClassName('')
             setNewClassOrder(newClassOrder + 1)
             fetchData()
-        } catch (e: any) {
-            toast.error(e.message)
+        } catch (e) {
+            toast.error(getErrorMessage(e))
         }
     }
 
@@ -71,8 +71,8 @@ export function ClassesTab() {
             await deleteClass(id)
             toast.success('Class deleted')
             fetchData()
-        } catch (e: any) {
-            toast.error(e.message)
+        } catch (e) {
+            toast.error(getErrorMessage(e))
         }
     }
 
@@ -84,8 +84,8 @@ export function ClassesTab() {
             toast.success('Section added')
             setNewSectionName('')
             fetchData()
-        } catch (e: any) {
-            toast.error(e.message)
+        } catch (e) {
+            toast.error(getErrorMessage(e))
         }
     }
 
@@ -94,8 +94,8 @@ export function ClassesTab() {
             await deleteSection(id)
             toast.success('Section deleted')
             fetchData()
-        } catch (e: any) {
-            toast.error(e.message)
+        } catch (e) {
+            toast.error(getErrorMessage(e))
         }
     }
 

@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
 import { Plus, Trash2, Power, CircleDollarSign } from 'lucide-react'
 import Link from 'next/link'
 
@@ -64,8 +65,8 @@ export default function FeesPage() {
         const current = years.find(y => y.is_current) ?? years[0]
         if (current) setSelectedYear(current.id)
       }
-    } catch (e: any) {
-      toast.error(e.message)
+    } catch (e) {
+      toast.error(getErrorMessage(e))
     } finally {
       setLoading(false)
     }
@@ -81,8 +82,8 @@ export default function FeesPage() {
       toast.success('Category added')
       setNewCatName(''); setNewCatDesc('')
       load()
-    } catch (e: any) {
-      toast.error(e.message)
+    } catch (e) {
+      toast.error(getErrorMessage(e))
     } finally {
       setAddingCat(false)
     }
@@ -92,8 +93,8 @@ export default function FeesPage() {
     try {
       await toggleCategoryStatus(cat.id, !cat.is_active)
       load()
-    } catch (e: any) {
-      toast.error(e.message)
+    } catch (e) {
+      toast.error(getErrorMessage(e))
     }
   }
 
@@ -108,8 +109,8 @@ export default function FeesPage() {
       toast.success('Fee structure added')
       setNewClassId(''); setNewCatId(''); setNewAmount(''); setNewDueDate('')
       load(selectedYear)
-    } catch (e: any) {
-      toast.error(e.message)
+    } catch (e) {
+      toast.error(getErrorMessage(e))
     } finally {
       setAddingStruct(false)
     }
@@ -120,8 +121,8 @@ export default function FeesPage() {
       await deleteFeeStructure(id)
       toast.success('Row deleted')
       load(selectedYear)
-    } catch (e: any) {
-      toast.error(e.message)
+    } catch (e) {
+      toast.error(getErrorMessage(e))
     }
   }
 

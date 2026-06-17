@@ -5,11 +5,11 @@
 
 ---
 
-## Current Phase: Phase 2 — Advanced Academic + POS (Active)
+## Current Phase: Phase 2 — Advanced Academic + POS (Complete)
 
-**Overall Phase 1 Progress:** 🔄 Feature-complete (1.1-1.9) with testing gate 1.10 still open  
-**Overall Phase 2 Progress:** 🔄 In progress — backend done; UI stabilization ongoing  
-**Active Sprint:** Phase 2 UI polish, exam module stabilization, parent portal wiring
+**Overall Phase 1 Progress:** ✅ Complete — features (1.1-1.9) plus testing gate 1.10 (exit gate signed off 2026-06-16)  
+**Overall Phase 2 Progress:** ✅ Complete — all modules feature-complete with end-to-end coverage (exit gate signed off 2026-06-16)  
+**Active Sprint:** Phase 2 closed; ready to scope Phase 3 (scalability)
 
 ---
 
@@ -26,17 +26,53 @@
 | 1.7 Attendance Module | ✅ Completed | Daily mark, bulk mark, edit prior records, monthly report, Excel import/export |
 | 1.8 Fee Module Basic | ✅ Completed | Fee structure, POS collection, receipt email, payment history, pending fees, daily report |
 | 1.9 Role Dashboards | ✅ Completed | All 4 role dashboards with stat cards, charts, attendance %, quick actions |
-| 1.10 Testing Sprint | 🔄 In Progress | TypeScript clean (0 errors); deterministic Playwright setup auth seeding + storage-state flow implemented on 2026-04-07 |
-| 2.1 Examination Module | 🔄 In Progress | Backend + UI complete; exam list, marks entry, reports, publish/lock; report-card PDF download wired to Edge Function on 2026-04-07 |
-| 2.2 Inventory & POS | ✅ Completed (Backend + UI) | Inventory CRUD, stock adjust, POS billing, low-stock alerts, receipt emails |
+| 1.10 Testing Sprint | ✅ Completed | TypeScript clean (0 errors); ESLint errors 0; full Vitest suite 183 passing (176 unit + 7 integration); RLS tenant-isolation integration suite (7 tests, live DB); E2E flow coverage broadened beyond auth to student/attendance/fee flows (10 specs passing on chromium) — Phase 1 exit gate signed off 2026-06-16 |
+| 2.1 Examination Module | ✅ Completed | Exam list, marks entry, reports (class performance / rank holders / report cards), publish/lock; report-card PDF + batch export via Edge Function; E2E coverage on real seeded exam |
+| 2.2 Inventory & POS | ✅ Completed (Backend + UI) | Inventory CRUD, stock adjust, POS billing, low-stock alerts, receipt emails; E2E coverage for list/add/stock/POS/reports |
 | 2.3 Email Notifications | ✅ Completed | Resend integration, fee receipt email, inventory receipt email, exam publish notification |
-| 2.4 Parent Portal | ✅ Completed | Dashboard, attendance calendar, exam results (fee-locked), fee status, announcements |
-| 2.5 Advanced Analytics | 🔄 In Progress | School-admin, parent, and manager analytics expanded: fee momentum, exam trends, parent attendance/performance trends, and manager drilldowns (2026-04-07) |
-| 2.6 Phase 2 Testing | 🔄 In Progress | Auth E2E suite hardened; `tests/e2e/auth.spec.ts` now passing across configured browsers (2026-04-07) |
+| 2.4 Parent Portal | ✅ Completed | Dashboard, attendance calendar, exam results (fee-locked), fee status, announcements; E2E coverage across all 5 views with RLS-scoped child data |
+| 2.5 Advanced Analytics | ✅ Completed | School-admin, parent, and manager analytics (fee momentum, exam trends, attendance/performance trends, manager drilldowns); reports E2E coverage |
+| 2.6 Phase 2 Testing | ✅ Completed | Full chromium E2E suite green (auth + students + attendance + fees + exams + inventory + parent + reports); parent role added to E2E seed/auth setup |
 
 ---
 
 ## Completed Tasks
+
+### 2026-06-16 — Tech Debt — Demo Auth Repair + Lint Warning Burndown
+- Status: ✅ Completed
+- What was done:
+  - **Demo login repair:** Made `scripts/repair-seeded-auth.mjs` idempotent — it now reuses an existing `*.login@` account (via a targeted `signInWithPassword`) instead of failing on email collisions, and verifies/prints the actually-created login emails. Ran it: all seven demo logins are recreated, relinked to their profiles, and verified end-to-end (e.g. `admin.login@demo.school / Admin@1234`, `parent.login@demo.school / Parent@1234`). The parent's `parents` link row is re-pointed too.
+  - **Lint burndown:** Reduced ESLint warnings from **427 → 338** (0 errors throughout). Eliminated every finite low-risk category — 7 `no-unused-vars`, 8 `no-console` (file-level disable on the intentional mailer logger), 1 `no-img-element`, 1 `consistent-type-imports` — and converted all **72 `catch (e: any)`** blocks to typed `catch (e)` using a new `getErrorMessage(error: unknown)` helper in `src/lib/utils.ts`.
+- Tests: `tsc --noEmit` → 0 errors; `next lint` → 0 errors / 338 warnings; full Vitest suite → 183 passed.
+- Notes: Remaining 338 warnings are **311 `@typescript-eslint/no-explicit-any`** (data-shape types / Supabase result casts — need per-case typing against the generated DB types) and **27 `react-hooks/exhaustive-deps`** (left intentionally — auto-adding deps risks refetch loops). Both are non-blocking and best done incrementally.
+
+### 2026-06-16 — Infrastructure — CI/CD Pipeline (GitHub Actions)
+- Status: ✅ Completed
+- What was done: Added the first CI/CD pipeline at `.github/workflows/ci.yml` (previously absent despite the 1.1 claim). A `quality` job runs on every push/PR to `main` and on manual dispatch: pnpm 9 + Node 20 with pnpm cache, `pnpm install --frozen-lockfile`, then `type-check` → `lint` → `test` → `build`. The build step uses Supabase secrets when configured and harmless placeholders otherwise (clients are created lazily, so the build never hits the network). A separate opt-in `e2e` job (manual `workflow_dispatch` only) writes `.env.local` from secrets, installs the Playwright chromium browser, runs the chromium E2E suite, and uploads the HTML report — kept opt-in because it seeds/mutates the shared Supabase project.
+- Tests: Validated each CI step locally — `tsc --noEmit` 0 errors; `next lint` 0 errors; Vitest green (integration suite self-skips without secrets); `next build` compiled all routes successfully with placeholder env.
+- Notes: Continuous **deployment** (deploy job) is intentionally deferred until a hosting target + credentials exist. Required repo secrets for the E2E job: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
+
+### 2026-06-16 — Milestones 2.1 / 2.5 / 2.6 — Phase 2 Exit Gate: Full E2E Coverage
+- Status: ✅ Completed
+- What was done: Closed out Phase 2 by bringing the whole module suite under end-to-end coverage and signing off the exit gate.
+  - **Parent portal (2.4/2.6):** Added `tests/e2e/parent.spec.ts` covering all five views (dashboard, attendance calendar, results, fee status, announcements) plus bottom-nav routing. Extended the E2E auth seed (`scripts/seed-e2e-auth.mjs`) and Playwright setup (`tests/e2e/auth.setup.ts`) to provision a **parent** role and storage state, re-pointing the seeded `parents` link row (`51000000-…-001` → student "Aarav Sharma") to each run's fresh auth user so RLS-scoped child data flows through.
+  - **Analytics (2.5):** Added `tests/e2e/reports.spec.ts` exercising the school-admin Reports & Analytics surface (fee collection summary, collected/outstanding cards, enrollment summary).
+  - **Exams (2.1):** Reworked `tests/e2e/exams.spec.ts` to drive the real seeded exam (`57000000-…-001` "Term 1 Examination") through the marks-entry page and the reports page (class performance / rank holders / report cards tabs incl. the report-card PDF tab), replacing the brittle dummy-id structural checks. Fixed list-page selectors (heading "Exams", button "Create Exam").
+  - **Inventory (2.2):** Fixed strict-mode selector collisions in `tests/e2e/inventory.spec.ts` (scoped "Point of Sale" to the page heading vs. the new sidebar link; exact-matched "Low Stock Alerts" vs. the page subtitle).
+- Tests: Full chromium Playwright suite green — setup + auth + students + attendance + fees + exams + inventory + parent + reports (single-worker run for deterministic cold-compile behavior). New specs validated in isolation: parent (6) + reports (3) = 9 passed; exams + inventory = 10 passed.
+- Notes: Full mutating flows (creating a brand-new exam/sale that writes to the shared remote DB) are intentionally avoided; coverage drives the real seeded fixtures instead. Non-blocking debt unchanged (lint `any` warnings; corrupted dev-seed `auth.users` rows).
+
+### 2026-06-16 — Milestone 1.10 — Phase 1 Exit Gate COMPLETE: E2E Flow Coverage
+- Status: ✅ Completed
+- What was done: Broadened E2E coverage beyond auth by adding three storage-state-driven Playwright specs exercising the core Phase 1 school-admin journeys — `tests/e2e/students.spec.ts` (student directory + add-student wizard + validation), `tests/e2e/attendance.spec.ts` (daily attendance, class/section selectors, monthly report), and `tests/e2e/fees.spec.ts` (fee structure, collect terminal, pending fees, search states). Fixed a strict-mode selector collision in the fees spec by switching `/fee categories/i` and `/fee structures/i` to exact-text matches. This closes the final 1.10 item and formally signs off the Phase 1 exit gate.
+- Tests: `playwright test students.spec.ts attendance.spec.ts fees.spec.ts --project=chromium --no-deps --workers=1` → 10 passed. (Parallel 4-worker runs occasionally hit transient `ERR_ABORTED` cold-compile flakiness against the dev server; single-worker run is green and deterministic.)
+- Notes: Optional remaining debt (non-blocking): 427 lint warnings (mostly `@typescript-eslint/no-explicit-any`) and corrupted dev-seed `auth.users` rows. Phase 1 is now feature- and test-complete.
+
+### 2026-06-16 — Milestone 1.10 — Phase 1 Exit Gate: Lint + RLS Tenant-Isolation Tests
+- Status: ✅ Completed
+- What was done: Fixed the lone ESLint error (`prefer-const` on `resolvedMarkedBy` in school-admin attendance actions) and auto-fixed trivially fixable warnings — ESLint errors now 0 (427 `any`/exhaustive-deps warnings remain as non-blocking debt). Added the first integration test suite: `tests/integration/rls-tenant-isolation.test.ts`, which provisions two isolated schools against the live Supabase project, signs in as a School A admin, and asserts RLS blocks all cross-tenant reads (schools/classes/students), blocks cross-tenant INSERT (WITH CHECK), and returns nothing to an unauthenticated client. The suite self-skips without Supabase creds and cleans up every row + auth user it creates.
+- Tests: `tsc --noEmit` → 0 errors; full Vitest suite → 183 passed (176 unit + 7 integration).
+- Notes: Superseded by the E2E flow coverage entry above, which closed the final 1.10 item.
 
 ### 2026-02-28 — Milestones 1.1–1.5 — Project Foundation & Core CRM
 - Status: ✅ Completed
@@ -123,7 +159,7 @@
 
 ## Known Issues / Blockers
 
-- **E2E suite**: Auth suite (`tests/e2e/auth.spec.ts`) is now stable and passing; remaining Phase 2 testing work should focus on exams/inventory flow coverage and analytics behavior checks.
+- **E2E suite**: Full chromium suite is green across all modules (auth, students, attendance, fees, exams, inventory, parent, reports). Run single-worker for deterministic results; parallel 4-worker runs can hit transient `ERR_ABORTED` cold-compile flakiness against the dev server.
 - **Timetable view (Parent Portal)**: Deferred — no timetable schema exists yet.
 
 ---

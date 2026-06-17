@@ -6,6 +6,7 @@ import { saveAttendance, type AttendanceStatus } from '../actions'
 import { getClasses, getSections } from '../../settings/actions'
 import { getStudentsForAttendance } from '../actions'
 import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
@@ -120,8 +121,8 @@ export default function AttendanceImportPage() {
 
             setParsed(rows)
             setIsParsed(true)
-        } catch (e: any) {
-            toast.error('Failed to parse file: ' + e.message)
+        } catch (e) {
+            toast.error('Failed to parse file: ' + getErrorMessage(e))
         }
     }
 
@@ -144,8 +145,8 @@ export default function AttendanceImportPage() {
             setParsed([])
             setIsParsed(false)
             if (fileRef.current) fileRef.current.value = ''
-        } catch (e: any) {
-            toast.error(e.message)
+        } catch (e) {
+            toast.error(getErrorMessage(e))
         } finally {
             setSaving(false)
         }

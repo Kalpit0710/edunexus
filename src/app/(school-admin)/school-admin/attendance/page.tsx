@@ -10,6 +10,7 @@ import {
 } from './actions'
 import { getClasses, getSections } from '../settings/actions'
 import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { } from '@/components/ui/badge'
@@ -83,8 +84,8 @@ export default function AttendancePage() {
       setStatusMap(sm)
       setRemarksMap(rm)
       setLoaded(true)
-    } catch (e: any) {
-      toast.error(e.message)
+    } catch (e) {
+      toast.error(getErrorMessage(e))
     } finally {
       setLoadingStudents(false)
     }
@@ -110,8 +111,8 @@ export default function AttendancePage() {
         user.id, records
       )
       toast.success(`Attendance saved for ${students.length} student${students.length !== 1 ? 's' : ''}.`)
-    } catch (e: any) {
-      toast.error(e.message)
+    } catch (e) {
+      toast.error(getErrorMessage(e))
     } finally {
       setSaving(false)
     }

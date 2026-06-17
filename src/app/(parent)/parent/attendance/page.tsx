@@ -21,7 +21,7 @@ const STATUS_CONFIG = {
 }
 
 export default function AttendancePage() {
-  const { user, school, activeChildId } = useAuthStore()
+  const { school, activeChildId } = useAuthStore()
   const now = new Date()
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [year, setYear] = useState(now.getFullYear())

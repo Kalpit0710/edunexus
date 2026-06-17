@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -61,8 +62,8 @@ export default function ExamMarksPage() {
                 setSelectedSubjectId(subs[0].id)
                 await loadMarksForSubject(subs[0].id, classStuds)
             }
-        } catch (e: any) {
-            toast.error("Failed to load exam data: " + e.message)
+        } catch (e) {
+            toast.error("Failed to load exam data: " + getErrorMessage(e))
         } finally {
             setLoading(false)
         }
@@ -92,8 +93,8 @@ export default function ExamMarksPage() {
                 }
             })
             setMarksData(initialMarks)
-        } catch (e: any) {
-            toast.error("Failed to load existing marks: " + e.message)
+        } catch (e) {
+            toast.error("Failed to load existing marks: " + getErrorMessage(e))
 
             // Initialize blank on error
             const blankMarks: Record<string, MarkEntryInput> = {}
@@ -143,8 +144,8 @@ export default function ExamMarksPage() {
             const payload = Object.values(marksData).filter(m => m.studentId) as MarkEntryInput[]
             await saveExamMarks(school.id, examId, selectedSubjectId, payload)
             toast.success("Marks saved successfully!")
-        } catch (e: any) {
-            toast.error(e.message)
+        } catch (e) {
+            toast.error(getErrorMessage(e))
         } finally {
             setSaving(false)
         }

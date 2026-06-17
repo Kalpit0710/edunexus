@@ -144,7 +144,7 @@ export async function getFeeCollectionSummary(
         .eq('school_id', schoolId)
 
     // Count active students for total potential
-    const { count: studentCount } = await supabase
+    await supabase
         .from('students')
         .select('*', { count: 'exact', head: true })
         .eq('school_id', schoolId)

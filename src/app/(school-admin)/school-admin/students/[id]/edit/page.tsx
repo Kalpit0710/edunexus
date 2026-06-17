@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { getStudentById, updateStudent } from '../../actions'
 import { getClassesAndSections, uploadStudentPhoto } from '../../new/actions'
 import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -44,8 +45,8 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
 
             const student = await getStudentById(id)
             setFormData(student)
-        } catch (e: any) {
-            toast.error("Failed to load data: " + e.message)
+        } catch (e) {
+            toast.error("Failed to load data: " + getErrorMessage(e))
         } finally {
             setLoading(false)
         }
@@ -95,8 +96,8 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
             await updateStudent(id, payload)
             toast.success("Student updated successfully!")
             router.push('/school-admin/students')
-        } catch (e: any) {
-            toast.error(e.message)
+        } catch (e) {
+            toast.error(getErrorMessage(e))
         } finally {
             setSaving(false)
         }
@@ -158,6 +159,7 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
                                 <Label>Update Photo</Label>
                                 <div className="flex items-center gap-4 mt-2">
                                     {formData.photo_url && !photoFile && (
+                                        // eslint-disable-next-line @next/next/no-img-element -- dynamic uploaded-photo preview
                                         <img src={formData.photo_url} alt="Current photo" className="w-12 h-12 rounded-full object-cover border shadow-sm" />
                                     )}
                                     <Input type="file" accept="image/*" onChange={e => setPhotoFile(e.target.files?.[0] || null)} className="max-w-xs" />

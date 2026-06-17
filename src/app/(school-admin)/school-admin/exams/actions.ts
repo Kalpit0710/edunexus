@@ -9,8 +9,7 @@ import {
   type ExamStatus,
   type GradingRule,
 } from '@/lib/exam-utils'
-import { sendEmail } from '@/lib/email'
-import { ExamPublishedEmail } from '@/emails/ExamPublishedEmail'
+import { requireActor } from '@/lib/auth/require-actor'
 
 export interface ExamSubjectInput {
   subjectId: string
@@ -159,6 +158,7 @@ export async function createExam(schoolId: string, input: CreateExamInput) {
 
   const supabase = await createServerSupabaseClient()
   const db = supabase as any
+  await requireActor(supabase, ['school_admin'])
 
   const actorProfileId = await getActorProfileId(db, schoolId, input.createdByProfileId)
 
@@ -228,6 +228,7 @@ export async function saveExamMarks(
 
   const supabase = await createServerSupabaseClient()
   const db = supabase as any
+  await requireActor(supabase, ['school_admin'])
 
   const [{ data: examRow, error: examError }, { data: subjectRow, error: subjectError }] =
     await Promise.all([
@@ -317,6 +318,7 @@ export async function saveExamMarks(
 export async function publishExamResults(examId: string, notifyParents = true) {
   const supabase = await createServerSupabaseClient()
   const db = supabase as any
+  await requireActor(supabase, ['school_admin'])
 
   const { data, error } = await db.rpc('publish_exam_results', {
     p_exam_id: examId,
@@ -330,6 +332,7 @@ export async function publishExamResults(examId: string, notifyParents = true) {
 export async function unlockExamResults(examId: string) {
   const supabase = await createServerSupabaseClient()
   const db = supabase as any
+  await requireActor(supabase, ['school_admin'])
 
   const { data, error } = await db.rpc('unlock_exam_results', {
     p_exam_id: examId,

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { getTeacherById, updateTeacher } from '../../actions'
 import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -59,8 +60,8 @@ export default function EditTeacherPage() {
       await updateTeacher(params.id, userProfileId, form)
       toast.success('Teacher updated successfully')
       router.push(`/school-admin/teachers/${params.id}` as any)
-    } catch (e: any) {
-      toast.error(e.message)
+    } catch (e) {
+      toast.error(getErrorMessage(e))
     } finally {
       setSaving(false)
     }

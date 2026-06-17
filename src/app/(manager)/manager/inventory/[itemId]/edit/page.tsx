@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -76,8 +77,8 @@ export default function EditInventoryItemPage() {
                 lowStockAlert: Number(item.low_stock_alert),
             })
             setIsActive(item.is_active)
-        } catch (e: any) {
-            toast.error("Failed to load item: " + e.message)
+        } catch (e) {
+            toast.error("Failed to load item: " + getErrorMessage(e))
             router.push('/manager/inventory' as any)
         } finally {
             setLoading(false)
@@ -121,8 +122,8 @@ export default function EditInventoryItemPage() {
             await updateInventoryItem(school.id, itemId, formData as InventoryItemInput)
             toast.success("Inventory item updated successfully!")
             router.push('/manager/inventory' as any)
-        } catch (e: any) {
-            toast.error("Update failed: " + e.message)
+        } catch (e) {
+            toast.error("Update failed: " + getErrorMessage(e))
         } finally {
             setSaving(false)
         }
@@ -138,8 +139,8 @@ export default function EditInventoryItemPage() {
             await setInventoryItemActive(school.id, itemId, newStatus)
             setIsActive(newStatus)
             toast.success(`Item has been ${newStatus ? 'activated' : 'deactivated'}.`)
-        } catch (e: any) {
-            toast.error("Status update failed: " + e.message)
+        } catch (e) {
+            toast.error("Status update failed: " + getErrorMessage(e))
         } finally {
             setSaving(false)
         }
