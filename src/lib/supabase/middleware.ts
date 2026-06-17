@@ -23,6 +23,7 @@ const ROLE_PREFIXES: { prefix: string; roles: string[] }[] = [
 
 /** Routes that don't require authentication */
 const PUBLIC_ROUTES = [
+  '/',
   '/login',
   '/create-account',
   '/reset-password',
