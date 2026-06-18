@@ -58,7 +58,9 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const pathname = request.nextUrl.pathname
-  const isPublicRoute = PUBLIC_ROUTES.some((route) => pathname.startsWith(route))
+  const isPublicRoute = PUBLIC_ROUTES.some(
+    (route) => pathname === route || (route !== '/' && pathname.startsWith(route))
+  )
 
   // Not authenticated → redirect to login
   if (!user && !isPublicRoute) {

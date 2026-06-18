@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
@@ -43,19 +43,14 @@ export default function NewExamPage() {
         subjects: []
     })
 
-    useEffect(() => {
-        if (school?.id) {
-            loadInitialData()
-        }
-    }, [school?.id])
-
-    async function loadInitialData() {
+    const loadInitialData = useCallback(async () => {
+        if (!school?.id) return
         try {
             setPageLoad(true)
             const [clsData, ayData, subData] = await Promise.all([
-                getClasses(school!.id),
-                getAcademicYears(school!.id),
-                getSubjects(school!.id)
+                getClasses(school.id),
+                getAcademicYears(school.id),
+                getSubjects(school.id)
             ])
             setClasses(clsData || [])
             setAcademicYears(ayData || [])
@@ -65,7 +60,13 @@ export default function NewExamPage() {
         } finally {
             setPageLoad(false)
         }
-    }
+    }, [school?.id])
+
+    useEffect(() => {
+        if (school?.id) {
+            loadInitialData()
+        }
+    }, [loadInitialData, school?.id])
 
     const updateForm = (field: string, value: any) => {
         setFormData(prev => ({ ...prev, [field]: value }))
@@ -196,7 +197,7 @@ export default function NewExamPage() {
         <div className="max-w-4xl mx-auto space-y-6">
             <div className="flex items-center gap-4">
                 <Link href={"/school-admin/exams" as any}>
-                    <Button variant="outline" size="icon">
+                    <Button variant="outline" size="icon" aria-label="Go back">
                         <ArrowLeft className="w-4 h-4" />
                     </Button>
                 </Link>
@@ -308,6 +309,7 @@ export default function NewExamPage() {
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
+                                                    aria-label="Remove subject"
                                                     className="h-8 w-8 text-muted-foreground hover:text-destructive"
                                                     onClick={() => removeSubjectRow(index)}
                                                 >

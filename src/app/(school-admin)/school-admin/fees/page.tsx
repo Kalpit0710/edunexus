@@ -1,7 +1,7 @@
 'use client'
 
 import { useAuthStore } from '@/stores/auth.store'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import {
   getFeeCategories,
   getFeeStructures,
@@ -37,6 +37,11 @@ export default function FeesPage() {
   const [selectedYear, setSelectedYear] = useState<string>('')
   const [loading, setLoading] = useState(true)
 
+  // Latest selected year for the mount loader, kept out of `load`'s deps so the
+  // effect runs once per school; year changes are applied explicitly via load(val).
+  const selectedYearRef = useRef(selectedYear)
+  selectedYearRef.current = selectedYear
+
   // New category form
   const [newCatName, setNewCatName] = useState('')
   const [newCatDesc, setNewCatDesc] = useState('')
@@ -49,13 +54,13 @@ export default function FeesPage() {
   const [newDueDate, setNewDueDate] = useState('')
   const [addingStruct, setAddingStruct] = useState(false)
 
-  const load = async (yearId?: string) => {
+  const load = useCallback(async (yearId?: string) => {
     if (!school?.id) return
     setLoading(true)
     try {
       const [cats, structs, years, cls] = await Promise.all([
         getFeeCategories(school.id),
-        getFeeStructures(school.id, yearId || selectedYear || undefined),
+        getFeeStructures(school.id, yearId || selectedYearRef.current || undefined),
         getAcademicYearsForFees(school.id),
         getClasses(school.id),
       ])
@@ -63,7 +68,7 @@ export default function FeesPage() {
       setStructures(structs)
       setAcademicYears(years)
       setClasses(cls as any)
-      if (!selectedYear && years.length) {
+      if (!selectedYearRef.current && years.length) {
         const current = years.find(y => y.is_current) ?? years[0]
         if (current) setSelectedYear(current.id)
       }
@@ -72,9 +77,9 @@ export default function FeesPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [school?.id])
 
-  useEffect(() => { load() }, [school?.id])
+  useEffect(() => { load() }, [load])
 
   const handleAddCategory = async () => {
     if (!school?.id || !newCatName.trim()) return
@@ -321,6 +326,7 @@ export default function FeesPage() {
                           <Button
                             variant="ghost"
                             size="icon"
+                            aria-label="Delete fee structure"
                             className="h-7 w-7 text-destructive hover:text-destructive"
                             onClick={() => handleDeleteStructure(s.id)}
                           >

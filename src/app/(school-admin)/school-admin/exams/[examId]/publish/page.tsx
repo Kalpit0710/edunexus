@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
@@ -22,11 +22,7 @@ export default function PublishExamPage() {
     const [actionLoading, setActionLoading] = useState(false)
     const [notifyParents, setNotifyParents] = useState(false)
 
-    useEffect(() => {
-        if (school?.id && examId) loadInitialData()
-    }, [school?.id, examId])
-
-    async function loadInitialData() {
+    const loadInitialData = useCallback(async () => {
         if (!school?.id) return
         setLoading(true)
         try {
@@ -41,7 +37,11 @@ export default function PublishExamPage() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [school?.id, examId])
+
+    useEffect(() => {
+        if (school?.id && examId) loadInitialData()
+    }, [loadInitialData, school?.id, examId])
 
     const handlePublish = async () => {
         if (!confirm('Publish results and lock the exam? Parents will be notified if selected.')) return
@@ -104,7 +104,7 @@ export default function PublishExamPage() {
             {/* Back + title */}
             <div className="flex items-center gap-4">
                 <Link href={'/school-admin/exams' as any}>
-                    <Button variant="outline" size="icon" className="rounded-xl border-white/10 bg-white/5 hover:bg-white/10">
+                    <Button variant="outline" size="icon" aria-label="Go back" className="rounded-xl border-white/10 bg-white/5 hover:bg-white/10">
                         <ArrowLeft className="h-4 w-4" />
                     </Button>
                 </Link>

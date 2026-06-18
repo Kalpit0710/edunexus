@@ -1,9 +1,7 @@
 'use server'
 
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { cookies } from 'next/headers'
 import type { Database } from '@/types/database.types'
-import { createAdminClient } from '@/lib/supabase/server'
+import { createAdminClient, createClient as getSupabase } from '@/lib/supabase/server'
 import { normalizeParentContact } from '@/lib/student-parent-link'
 import { syncPrimaryParentForStudent, unlinkParentsForStudent } from '@/lib/student-parent-sync'
 
@@ -24,30 +22,6 @@ interface ParentSummaryRow {
     full_name: string
     phone: string | null
     email: string | null
-}
-
-async function getSupabase() {
-    const cookieStore = await cookies()
-    return createServerClient<Database>(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() {
-                    return cookieStore.getAll()
-                },
-                setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-                    try {
-                        cookiesToSet.forEach(({ name, value, options }) =>
-                            cookieStore.set(name, value, options)
-                        )
-                    } catch {
-                        // The `setAll` method was called from a Server Component.
-                    }
-                },
-            },
-        }
-    )
 }
 
 async function getActorProfile(
@@ -183,7 +157,7 @@ async function getPrimaryParentsByStudentIds(schoolId: string, studentIds: strin
     }
 
     const admin = await createAdminClient()
-    const db = admin as any
+    const db = admin
 
     const { data: parents, error } = await db
         .from('parents')
@@ -208,7 +182,7 @@ async function getPrimaryParentsByStudentIds(schoolId: string, studentIds: strin
 
 async function getPrimaryParentForStudent(schoolId: string, studentId: string): Promise<ParentSummaryRow | null> {
     const admin = await createAdminClient()
-    const db = admin as any
+    const db = admin
 
     const { data: primaryParent, error } = await db
         .from('parents')
@@ -285,14 +259,13 @@ export async function deleteStudent(studentId: string) {
 
     const { error } = await supabase
         .from('students')
-        // @ts-expect-error
-        .update({ is_active: false, deleted_at: new Date().toISOString() } as any)
+        .update({ is_active: false, deleted_at: new Date().toISOString() })
         .eq('id', studentId)
 
     if (error) throw new Error(error.message)
 
     const admin = await createAdminClient()
-    await unlinkParentsForStudent(admin as any, student.school_id, studentId)
+    await unlinkParentsForStudent(admin, student.school_id, studentId)
 }
 
 export async function getStudentById(id: string) {
@@ -338,7 +311,6 @@ export async function updateStudent(id: string, payload: any) {
     if (Object.keys(normalizedPayload).length > 0) {
         const { data, error } = await supabase
             .from('students')
-            // @ts-expect-error
             .update(normalizedPayload)
             .eq('id', id)
             .select('id, school_id, full_name, admission_number')
@@ -351,9 +323,8 @@ export async function updateStudent(id: string, payload: any) {
 
     if (parentFieldsProvided) {
         const admin = await createAdminClient()
-        const db = admin as any
 
-        await syncPrimaryParentForStudent(db, {
+        await syncPrimaryParentForStudent(admin, {
             schoolId: studentIdentity.school_id,
             studentId: studentIdentity.id,
             studentFullName: studentIdentity.full_name,
@@ -412,7 +383,6 @@ export async function bulkCreateStudents(schoolId: string, studentsData: any[]) 
 
     const { data: createdStudents, error } = await supabase
         .from('students')
-        // @ts-expect-error
         .insert(payloads)
         .select('id, school_id, full_name, admission_number')
 
@@ -424,13 +394,12 @@ export async function bulkCreateStudents(schoolId: string, studentsData: any[]) 
         )
 
         const admin = await createAdminClient()
-        const db = admin as any
 
         for (const createdStudent of (createdStudents ?? []) as StudentIdentityRow[]) {
             const parentPayload = parentByAdmission.get(createdStudent.admission_number)
             if (!parentPayload?.hasDetails) continue
 
-            await syncPrimaryParentForStudent(db, {
+            await syncPrimaryParentForStudent(admin, {
                 schoolId: createdStudent.school_id,
                 studentId: createdStudent.id,
                 studentFullName: createdStudent.full_name,

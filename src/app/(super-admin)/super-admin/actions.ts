@@ -1,7 +1,7 @@
 'use server'
 
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
+import { createClient as getSupabase } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 import {
   DEFAULT_PLAN_PRICE,
@@ -14,30 +14,6 @@ import {
 import { logAudit } from '@/lib/audit'
 
 // ── Supabase helpers ─────────────────────────────────────────────────────────
-
-async function getSupabase() {
-  const cookieStore = await cookies()
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll()
-        },
-        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            )
-          } catch {
-            /* called from a Server Component — safe to ignore */
-          }
-        },
-      },
-    }
-  )
-}
 
 /** Service-role client (bypasses RLS) for cross-tenant platform operations. */
 function getAdminClient() {
@@ -363,9 +339,28 @@ export async function updateSchool(id: string, payload: UpdateSchoolPayload): Pr
 }
 
 /** Suspend (or reactivate) a school. Suspending also disables `is_active`. */
-export async function setSchoolSuspended(id: string, suspended: boolean): Promise<void> {
+export async function setSchoolSuspended(
+  id: string,
+  suspended: boolean,
+  expectedName?: string,
+): Promise<void> {
   const actor = await requireSuperAdmin()
   const admin = getAdminClient()
+
+  // Server-side re-check for the destructive (suspend) path: suspending blocks
+  // an entire tenant, so require the caller to confirm the exact school name.
+  if (suspended) {
+    const { data: school, error: lookupError } = await admin
+      .from('schools')
+      .select('name')
+      .eq('id', id)
+      .single()
+    if (lookupError || !school) throw new Error('School not found.')
+    const actualName = ((school as { name: string }).name ?? '').trim()
+    if (!expectedName || expectedName.trim().toLowerCase() !== actualName.toLowerCase()) {
+      throw new Error('Confirmation failed: the typed school name does not match.')
+    }
+  }
 
   const { error } = await admin
     .from('schools')

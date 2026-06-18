@@ -1,7 +1,10 @@
 'use client'
 
 import { useAuthStore } from '@/stores/auth.store'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
+import { DataLoadError } from '@/components/shared/DataLoadError'
 import { getManagerDashboardStats, type ManagerDashboardStats } from './actions'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -26,19 +29,30 @@ export default function ManagerDashboardPage() {
   const { user, school } = useAuthStore()
   const [stats, setStats] = useState<ManagerDashboardStats>(EMPTY_STATS)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const today = new Date().toISOString().split('T')[0]!
 
-  useEffect(() => {
+  const loadStats = useCallback(async () => {
     if (!school?.id) return
-    getManagerDashboardStats(school.id, today)
-      .then(setStats)
-      .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [school?.id])
+    setLoading(true)
+    setError(null)
+    try {
+      const data = await getManagerDashboardStats(school.id, today)
+      setStats(data)
+    } catch (err) {
+      setError(getErrorMessage(err))
+      toast.error('Unable to load dashboard data. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }, [school?.id, today])
+
+  useEffect(() => {
+    loadStats()
+  }, [loadStats])
 
   const todayLabel = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })
   const fullName = (user?.user_metadata?.full_name as string) || 'Manager'
-
   const statCards = [
     {
       label: "Today's Collection",
@@ -84,6 +98,10 @@ export default function ManagerDashboardPage() {
     { href: '/manager/inventory', label: 'Inventory', icon: Package },
     { href: '/school-admin/students', label: 'Students', icon: Users },
   ]
+
+  if (error) {
+    return <DataLoadError title="Couldn’t load dashboard" message={error} onRetry={() => loadStats()} retrying={loading} />
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">

@@ -64,7 +64,7 @@ export default function PendingFeesPage() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex items-center gap-3">
                     <Link href={'/school-admin/fees' as any}>
-                        <Button variant="outline" size="icon" className="h-9 w-9">
+                        <Button variant="outline" size="icon" aria-label="Go back" className="h-9 w-9">
                             <ArrowLeft className="h-4 w-4" />
                         </Button>
                     </Link>

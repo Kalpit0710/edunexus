@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { getGradingRules, createGradingRule, deleteGradingRule } from '../actions'
 import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
@@ -20,11 +20,7 @@ export function GradingRulesTab() {
     const [gradeName, setGradeName] = useState('')
     const [gradePoint, setGradePoint] = useState('')
 
-    useEffect(() => {
-        if (school?.id) fetchData()
-    }, [school?.id])
-
-    async function fetchData() {
+    const fetchData = useCallback(async () => {
         const sid = school?.id
         if (!sid) return
         setLoading(true)
@@ -36,7 +32,11 @@ export function GradingRulesTab() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [school?.id])
+
+    useEffect(() => {
+        if (school?.id) fetchData()
+    }, [fetchData, school?.id])
 
     async function handleAddRule(e: React.FormEvent) {
         e.preventDefault()
@@ -110,7 +110,7 @@ export function GradingRulesTab() {
                                 <div className="col-span-1"><span className="bg-primary/10 text-primary px-2 py-0.5 rounded font-bold">{r.grade_name}</span></div>
                                 <div className="col-span-1 text-muted-foreground">{r.grade_point}</div>
                                 <div className="col-span-2 text-right">
-                                    <Button variant="ghost" size="icon" onClick={() => handleDeleteRule(r.id)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950">
+                                    <Button variant="ghost" size="icon" aria-label="Delete grading rule" onClick={() => handleDeleteRule(r.id)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950">
                                         <Trash2 className="w-4 h-4" />
                                     </Button>
                                 </div>

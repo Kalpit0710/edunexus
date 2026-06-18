@@ -19,6 +19,8 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
+import type { Database } from '@/types/database.types'
+import type { SubscriptionPlan, SubscriptionStatus } from '@/lib/subscription'
 import { useAuthStore } from '@/stores/auth.store'
 
 const loginSchema = z.object({
@@ -56,7 +58,7 @@ export default function LoginPage() {
         .eq('auth_user_id', authData.user.id)
         .single()
 
-      const profileData = profileResp as any
+      const profileData = profileResp
 
       if (profileError || !profileData) {
         console.error('Profile fetch error:', profileError)
@@ -64,14 +66,14 @@ export default function LoginPage() {
         return
       }
 
-      let schoolData: any = null
+      let schoolData: Database['public']['Tables']['schools']['Row'] | null = null
       if (profileData.school_id) {
         const { data: s, error: sError } = await supabase
           .from('schools')
           .select('*')
           .eq('id', profileData.school_id)
           .single()
-        if (!sError && s) schoolData = s as any
+        if (!sError && s) schoolData = s
       }
 
       setUser({
@@ -93,8 +95,8 @@ export default function LoginPage() {
           theme_color: schoolData.theme_color,
           academic_year_start_month: schoolData.academic_year_start_month,
           is_active: schoolData.is_active,
-          subscription_plan: schoolData.subscription_plan ?? 'basic',
-          subscription_status: schoolData.subscription_status ?? 'active',
+          subscription_plan: (schoolData.subscription_plan ?? 'basic') as SubscriptionPlan,
+          subscription_status: (schoolData.subscription_status ?? 'active') as SubscriptionStatus,
           trial_ends_at: schoolData.trial_ends_at ?? null,
           created_at: schoolData.created_at,
           updated_at: schoolData.updated_at,

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/utils'
@@ -26,26 +26,19 @@ export default function InventoryReportsPage() {
         to: new Date().toISOString().split('T')[0] || ''
     })
 
-    useEffect(() => {
-        if (school?.id) {
-            loadInitialData()
-        }
-    }, [school?.id])
+    // Latest date range for the initial full load, kept out of loadInitialData's
+    // deps so the mount load runs once; date changes reload sales via the effect below.
+    const dateRangeRef = useRef(dateRange)
+    dateRangeRef.current = dateRange
+    const isInitialMount = useRef(true)
 
-    useEffect(() => {
-        if (school?.id && !loading) {
-            // Reload sales only when dates change after initial load
-            loadSales()
-        }
-    }, [dateRange.from, dateRange.to])
-
-    async function loadInitialData() {
+    const loadInitialData = useCallback(async () => {
         if (!school?.id) return
         setLoading(true)
         try {
             const [sumData, salesData, minStockData] = await Promise.all([
                 getInventorySummary(school.id),
-                getInventorySales(school.id, { fromDate: dateRange.from, toDate: dateRange.to }),
+                getInventorySales(school.id, { fromDate: dateRangeRef.current.from, toDate: dateRangeRef.current.to }),
                 getLowStockItems(school.id, 20)
             ])
             setSummary(sumData)
@@ -56,9 +49,9 @@ export default function InventoryReportsPage() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [school?.id])
 
-    async function loadSales() {
+    const loadSales = useCallback(async () => {
         if (!school?.id) return
         try {
             const salesData = await getInventorySales(school.id, { fromDate: dateRange.from, toDate: dateRange.to })
@@ -66,7 +59,20 @@ export default function InventoryReportsPage() {
         } catch (e) {
             toast.error("Failed to fetch sales: " + getErrorMessage(e))
         }
-    }
+    }, [school?.id, dateRange.from, dateRange.to])
+
+    useEffect(() => {
+        loadInitialData()
+    }, [loadInitialData])
+
+    useEffect(() => {
+        // Reload sales only when the date range changes after the initial mount load.
+        if (isInitialMount.current) {
+            isInitialMount.current = false
+            return
+        }
+        loadSales()
+    }, [loadSales])
 
     const exportSales = () => {
         if (!sales.length) return
@@ -94,7 +100,7 @@ export default function InventoryReportsPage() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex items-center gap-4">
                     <Link href={"/manager/inventory" as any}>
-                        <Button variant="outline" size="icon">
+                        <Button variant="outline" size="icon" aria-label="Go back">
                             <ArrowLeft className="w-4 h-4" />
                         </Button>
                     </Link>

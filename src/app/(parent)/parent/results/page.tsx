@@ -1,7 +1,10 @@
 'use client'
 
 import { useAuthStore } from '@/stores/auth.store'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
+import { DataLoadError } from '@/components/shared/DataLoadError'
 import { getChildExamsAndResults, type ExamResultRow } from '../actions'
 import { BookOpen, Lock, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -121,17 +124,28 @@ export default function ResultsPage() {
   const [results, setResults] = useState<ExamResultRow[]>([])
   const [hasPendingFees, setHasPendingFees] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+  const loadResults = useCallback(async () => {
     const childId = activeChildId
     if (!childId || !school?.id) return
     setLoading(true)
-    getChildExamsAndResults(childId, school.id).then(({ results, hasPendingFees }) => {
+    setError(null)
+    try {
+      const { results, hasPendingFees } = await getChildExamsAndResults(childId, school.id)
       setResults(results)
       setHasPendingFees(hasPendingFees)
+    } catch (err) {
+      setError(getErrorMessage(err))
+      toast.error('Unable to load exam results. Please try again.')
+    } finally {
       setLoading(false)
-    })
+    }
   }, [activeChildId, school?.id])
+
+  useEffect(() => {
+    loadResults()
+  }, [loadResults])
 
   return (
     <div className="p-5 space-y-5 animate-fade-in">
@@ -164,6 +178,8 @@ export default function ResultsPage() {
         <div className="space-y-3">
           {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 rounded-2xl bg-white/5" />)}
         </div>
+      ) : error ? (
+        <DataLoadError title="Couldn’t load exam results" message={error} onRetry={() => loadResults()} retrying={loading} />
       ) : results.length === 0 ? (
         <div className="flex flex-col items-center gap-3 mt-16">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-white/5">

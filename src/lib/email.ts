@@ -81,8 +81,7 @@ export async function sendEmail({
     }
 
     // 2. Log to notification_logs
-    const db = supabase as any
-    const { error: dbError } = await db.from('notification_logs').insert({
+    const { error: dbError } = await supabase.from('notification_logs').insert({
       school_id: schoolId,
       type: 'email',
       event: event,

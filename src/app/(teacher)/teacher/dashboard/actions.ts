@@ -1,24 +1,7 @@
 'use server'
 
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { cookies } from 'next/headers'
-import type { Database } from '@/types/database.types'
-
-async function getSupabase() {
-  const cookieStore = await cookies()
-  return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return cookieStore.getAll() },
-        setAll(list: { name: string; value: string; options: CookieOptions }[]) {
-          try { list.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) } catch {}
-        },
-      },
-    }
-  )
-}
+import { createClient as getSupabase } from '@/lib/supabase/server'
+import { computePendingAttendanceSections } from '@/lib/teacher-utils'
 
 export interface TeacherAssignment {
   sectionName: string
@@ -107,17 +90,16 @@ export async function getTeacherDashboardData(
   const sectionIds = ((assignmentsData ?? []) as any[]).map(a => a.section_id).filter(Boolean) as string[]
   const classTchrSectionIds = classTeacherSections.map(s => s.sectionId)
 
-  const [pendingFlags, studentsRes, todayAttendanceRes] = await Promise.all([
-    Promise.all(
-      classTeacherSections.map(async sec => {
-        const { count } = await db
+  const [markedSectionsRes, studentsRes, todayAttendanceRes] = await Promise.all([
+    // Single grouped lookup: which class-teacher sections already have attendance
+    // marked today. Replaces the previous one-count-query-per-section fan-out.
+    classTchrSectionIds.length > 0
+      ? db
           .from('attendance_records')
-          .select('id', { count: 'exact', head: true })
-          .eq('section_id', sec.sectionId)
+          .select('section_id')
+          .in('section_id', classTchrSectionIds)
           .eq('date', today)
-        return (count ?? 0) === 0 ? sec.label : null
-      })
-    ),
+      : Promise.resolve({ data: [] }),
     sectionIds.length > 0
       ? db
           .from('students')
@@ -142,7 +124,9 @@ export async function getTeacherDashboardData(
       : Promise.resolve([{ count: 0 }, { count: 0 }]),
   ])
 
-  const pendingAttendance = (pendingFlags as (string | null)[]).filter(Boolean) as string[]
+  const markedSectionIds = (((markedSectionsRes as any).data ?? []) as { section_id: string }[])
+    .map(r => r.section_id)
+  const pendingAttendance = computePendingAttendanceSections(classTeacherSections, markedSectionIds)
   const totalStudents = (studentsRes as any).count ?? 0
 
   const [presentRes, totalForPctRes] = todayAttendanceRes as [any, any]

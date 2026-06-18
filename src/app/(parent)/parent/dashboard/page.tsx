@@ -1,7 +1,10 @@
 'use client'
 
 import { useAuthStore } from '@/stores/auth.store'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
+import { DataLoadError } from '@/components/shared/DataLoadError'
 import {
   getParentChildData,
   getChildAttendanceSummary,
@@ -30,33 +33,42 @@ export default function ParentDashboardPage() {
   const [performanceTrend, setPerformanceTrend] = useState<ChildPerformanceTrendPoint[]>([])
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+  const loadData = useCallback(async () => {
     if (!user?.email || !school?.id) return
     setLoading(true)
     setNotFound(false)
-    getParentChildData(user.email, school.id, activeChildId)
-      .then(childData => {
-        if (!childData) { setNotFound(true); setLoading(false); return }
-        setChild(childData)
-        return Promise.all([
-          getChildAttendanceSummary(childData.id, school.id, now.getMonth() + 1, now.getFullYear()),
-          getChildFeeStatus(childData.id, school.id),
-          getChildAttendanceTrend(childData.id, school.id),
-          getChildPerformanceTrend(childData.id, school.id),
-        ])
-      })
-      .then(res => {
-        if (res) {
-          setAttendance(res[0])
-          setFeeStatus(res[1])
-          setAttendanceTrend(res[2])
-          setPerformanceTrend(res[3])
-        }
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false))
+    setError(null)
+    const d = new Date()
+    try {
+      const childData = await getParentChildData(user.email, school.id, activeChildId)
+      if (!childData) {
+        setNotFound(true)
+        return
+      }
+      setChild(childData)
+      const [att, fee, attTrend, perfTrend] = await Promise.all([
+        getChildAttendanceSummary(childData.id, school.id, d.getMonth() + 1, d.getFullYear()),
+        getChildFeeStatus(childData.id, school.id),
+        getChildAttendanceTrend(childData.id, school.id),
+        getChildPerformanceTrend(childData.id, school.id),
+      ])
+      setAttendance(att)
+      setFeeStatus(fee)
+      setAttendanceTrend(attTrend)
+      setPerformanceTrend(perfTrend)
+    } catch (err) {
+      setError(getErrorMessage(err))
+      toast.error('Unable to load your dashboard. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }, [user?.email, school?.id, activeChildId])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
   if (loading) {
     return (
@@ -67,6 +79,10 @@ export default function ParentDashboardPage() {
         </div>
       </div>
     )
+  }
+
+  if (error) {
+    return <DataLoadError title="Couldn’t load your dashboard" message={error} onRetry={() => loadData()} retrying={loading} />
   }
 
   if (notFound || !child) {

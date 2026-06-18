@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import * as React from 'react'
 import { useAuthStore } from '@/stores/auth.store'
 import { getStudentById } from '../actions'
@@ -28,16 +28,13 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
     const [payments, setPayments] = useState<FeePaymentRow[]>([])
     const [paymentsLoading, setPaymentsLoading] = useState(false)
 
-    useEffect(() => {
-        if (school?.id && id) loadData()
-    }, [school?.id, id])
-
-    async function loadData() {
+    const loadData = useCallback(async () => {
+        if (!school?.id) return
         try {
             const data = await getStudentById(id)
             setStudent(data)
             if (data.class_id) {
-                const clRes = await getClassesAndSections(school!.id)
+                const clRes = await getClassesAndSections(school.id)
                 const cls = (clRes.classes as any[]).find(c => c.id === data.class_id)
                 if (cls) setClassName(cls.name)
                 if (data.section_id) {
@@ -50,7 +47,7 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
                 setPaymentsLoading(true)
                 getStudentPaymentHistory(school.id, id)
                     .then(setPayments)
-                    .catch(console.error)
+                    .catch(() => toast.error('Could not load payment history.'))
                     .finally(() => setPaymentsLoading(false))
             }
         } catch (e) {
@@ -58,7 +55,11 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
         } finally {
             setLoading(false)
         }
-    }
+    }, [school?.id, id])
+
+    useEffect(() => {
+        if (school?.id && id) loadData()
+    }, [loadData, school?.id, id])
 
     if (loading) {
         return (
@@ -85,7 +86,7 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <Link href={'/school-admin/students' as any}>
-                        <Button variant="outline" size="icon"><ArrowLeft className="w-4 h-4" /></Button>
+                        <Button variant="outline" size="icon" aria-label="Go back"><ArrowLeft className="w-4 h-4" /></Button>
                     </Link>
                     <div>
                         <h2 className="text-2xl font-bold tracking-tight">Student Profile</h2>

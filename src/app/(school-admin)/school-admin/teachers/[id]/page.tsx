@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth.store'
 import {
@@ -49,11 +49,7 @@ export default function TeacherProfilePage() {
   const [isClassTeacher, setIsClassTeacher] = useState(false)
   const [assigning, setAssigning] = useState(false)
 
-  useEffect(() => {
-    if (params.id) loadAll()
-  }, [params.id])
-
-  async function loadAll() {
+  const loadAll = useCallback(async () => {
     setLoading(true)
     try {
       const [t, a] = await Promise.all([
@@ -73,7 +69,11 @@ export default function TeacherProfilePage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [params.id, school?.id])
+
+  useEffect(() => {
+    if (params.id) loadAll()
+  }, [loadAll, params.id])
 
   async function handleToggleStatus() {
     if (!teacher) return
@@ -273,6 +273,7 @@ export default function TeacherProfilePage() {
                   <Button
                     variant="ghost"
                     size="icon"
+                    aria-label="Remove assignment"
                     className="h-7 w-7 text-muted-foreground hover:text-red-500"
                     onClick={() => handleRemoveAssignment(a.id)}
                   >

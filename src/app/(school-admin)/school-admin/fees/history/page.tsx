@@ -1,7 +1,7 @@
 'use client'
 
 import { useAuthStore } from '@/stores/auth.store'
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { getAllPayments, type FeePaymentRow } from '../actions'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -42,20 +42,27 @@ export default function PaymentHistoryPage() {
     const [payments, setPayments] = useState<FeePaymentRow[]>([])
     const [loading, setLoading] = useState(true)
 
-    const load = async () => {
+    // Keep latest filter values without making `load` re-run the mount effect;
+    // the date filters are applied explicitly via the Apply button.
+    const fromDateRef = useRef(fromDate)
+    const toDateRef = useRef(toDate)
+    fromDateRef.current = fromDate
+    toDateRef.current = toDate
+
+    const load = useCallback(async () => {
         if (!school?.id) return
         setLoading(true)
         try {
-            const data = await getAllPayments(school.id, { fromDate, toDate })
+            const data = await getAllPayments(school.id, { fromDate: fromDateRef.current, toDate: toDateRef.current })
             setPayments(data)
         } catch (e) {
             toast.error(getErrorMessage(e))
         } finally {
             setLoading(false)
         }
-    }
+    }, [school?.id])
 
-    useEffect(() => { load() }, [school?.id])
+    useEffect(() => { load() }, [load])
 
     const filtered = useMemo(() => {
         if (!search.trim()) return payments
@@ -98,7 +105,7 @@ export default function PaymentHistoryPage() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex items-center gap-3">
                     <Link href={'/school-admin/fees' as any}>
-                        <Button variant="outline" size="icon" className="h-9 w-9">
+                        <Button variant="outline" size="icon" aria-label="Go back" className="h-9 w-9">
                             <ArrowLeft className="h-4 w-4" />
                         </Button>
                     </Link>

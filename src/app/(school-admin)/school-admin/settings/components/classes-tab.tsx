@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { getClasses, getSections, createClass, deleteClass, createSection, deleteSection } from '../actions'
 import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
@@ -26,13 +26,7 @@ export function ClassesTab() {
     const [newSectionCapacity, setNewSectionCapacity] = useState(40)
     const [selectedClassId, setSelectedClassId] = useState('')
 
-    useEffect(() => {
-        if (school?.id) {
-            fetchData()
-        }
-    }, [school?.id])
-
-    async function fetchData() {
+    const fetchData = useCallback(async () => {
         if (!school?.id) return
         setLoading(true)
         try {
@@ -50,7 +44,13 @@ export function ClassesTab() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [school?.id])
+
+    useEffect(() => {
+        if (school?.id) {
+            fetchData()
+        }
+    }, [fetchData, school?.id])
 
     async function handleAddClass(e: React.FormEvent) {
         e.preventDefault()
@@ -134,7 +134,7 @@ export function ClassesTab() {
                             <Card key={c.id}>
                                 <CardContent className="p-4 flex items-center justify-between">
                                     <div className="font-medium">{c.name} <span className="text-xs text-muted-foreground ml-2">(Order: {c.display_order})</span></div>
-                                    <Button variant="ghost" size="icon" onClick={() => handleDeleteClass(c.id)} className="text-red-500">
+                                    <Button variant="ghost" size="icon" aria-label="Delete class" onClick={() => handleDeleteClass(c.id)} className="text-red-500">
                                         <Trash2 className="w-4 h-4" />
                                     </Button>
                                 </CardContent>
@@ -193,7 +193,7 @@ export function ClassesTab() {
                                             <div className="font-medium">{s.name} <span className="text-sm text-muted-foreground ml-2">in {className}</span></div>
                                             <div className="text-xs text-muted-foreground mt-1">Capacity: {s.capacity} students</div>
                                         </div>
-                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteSection(s.id)} className="text-red-500">
+                                        <Button variant="ghost" size="icon" aria-label="Delete section" onClick={() => handleDeleteSection(s.id)} className="text-red-500">
                                             <Trash2 className="w-4 h-4" />
                                         </Button>
                                     </CardContent>

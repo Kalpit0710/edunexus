@@ -1,44 +1,57 @@
 'use server'
 
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { cookies } from 'next/headers'
 import type { Database } from '@/types/database.types'
-import { createAdminClient } from '@/lib/supabase/server'
+import { createAdminClient, createClient as getSupabase } from '@/lib/supabase/server'
 import { syncPrimaryParentForStudent } from '@/lib/student-parent-sync'
 import { normalizeParentContact } from '@/lib/student-parent-link'
 import { logAudit } from '@/lib/audit'
 import { z } from 'zod'
 
+// Optional-field validators: tolerate empty string and null/undefined (the
+// multi-step form sends '' for skipped fields), but reject malformed values.
+const optionalEmail = z
+  .string()
+  .trim()
+  .email('Enter a valid parent email address')
+  .or(z.literal(''))
+  .nullish()
+const optionalPhone = z
+  .string()
+  .trim()
+  .min(6, 'Parent contact number is too short')
+  .max(30, 'Parent contact number is too long')
+  .or(z.literal(''))
+  .nullish()
+const optionalUuid = z
+  .string()
+  .trim()
+  .uuid('Invalid class or section selection')
+  .or(z.literal(''))
+  .nullish()
+const optionalGender = z.preprocess(
+  (v) => (typeof v === 'string' ? v.trim().toLowerCase() : v),
+  z.enum(['male', 'female', 'other']).or(z.literal('')).nullish()
+)
+const optionalDate = z
+  .string()
+  .trim()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Enter a valid date of birth (YYYY-MM-DD)')
+  .refine((v) => !Number.isNaN(Date.parse(v)), 'Enter a valid date of birth')
+  .or(z.literal(''))
+  .nullish()
+
 const studentCreateSchema = z
   .object({
     first_name: z.string().trim().min(1, 'First name is required'),
     admission_number: z.string().trim().min(1, 'Admission number is required'),
+    gender: optionalGender,
+    date_of_birth: optionalDate,
+    class_id: optionalUuid,
+    section_id: optionalUuid,
+    parent_email: optionalEmail,
+    parent_contact: optionalPhone,
   })
   .passthrough()
-
-async function getSupabase() {
-    const cookieStore = await cookies()
-    return createServerClient<Database>(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() {
-                    return cookieStore.getAll()
-                },
-                setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-                    try {
-                        cookiesToSet.forEach(({ name, value, options }) =>
-                            cookieStore.set(name, value, options)
-                        )
-                    } catch {
-                        // The `setAll` method was called from a Server Component.
-                    }
-                },
-            },
-        }
-    )
-}
 
 interface ActorProfile {
     id: string
@@ -120,8 +133,11 @@ export async function createStudent(_schoolId: string, studentData: StudentCreat
         throw new Error('Your account is not linked to any school.')
     }
 
-    // Validate required fields at the trust boundary (runtime, not just TS types).
-    studentCreateSchema.parse(studentData)
+    // Validate input at the trust boundary (runtime, not just TS types).
+    const validation = studentCreateSchema.safeParse(studentData)
+    if (!validation.success) {
+        throw new Error(validation.error.issues[0]?.message ?? 'Invalid student details')
+    }
 
     const effectiveSchoolId = actorProfile.school_id
 
@@ -157,7 +173,6 @@ export async function createStudent(_schoolId: string, studentData: StudentCreat
 
     const { data: createdStudent, error } = await supabase
         .from('students')
-        // @ts-expect-error Supabase generated types currently resolve insert values to never.
         .insert([payload])
         .select('id, full_name')
         .single() as { data: CreatedStudentRow | null; error: { message: string } | null }

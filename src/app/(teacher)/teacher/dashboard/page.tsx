@@ -1,7 +1,10 @@
 'use client'
 
 import { useAuthStore } from '@/stores/auth.store'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
+import { DataLoadError } from '@/components/shared/DataLoadError'
 import { getTeacherDashboardData, type TeacherDashboardData } from './actions'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -16,17 +19,29 @@ export default function TeacherDashboardPage() {
     teacherId: null, assignments: [], pendingAttendance: [], totalStudents: 0, todayAttendancePct: 0,
   })
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (school?.id && user?.id) {
-      getTeacherDashboardData(school.id, user.id)
-        .then(setStats)
-        .catch(e => console.error(e))
-        .finally(() => setLoading(false))
-    } else {
+  const loadData = useCallback(async () => {
+    if (!school?.id || !user?.id) {
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    setError(null)
+    try {
+      const data = await getTeacherDashboardData(school.id, user.id)
+      setStats(data)
+    } catch (err) {
+      setError(getErrorMessage(err))
+      toast.error('Unable to load your dashboard. Please try again.')
+    } finally {
       setLoading(false)
     }
   }, [school?.id, user?.id])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
   const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })
   const fullName = (user?.user_metadata?.full_name as string) || 'Teacher'
@@ -64,6 +79,10 @@ export default function TeacherDashboardPage() {
       </div>
     </div>
   )
+
+  if (error) {
+    return <DataLoadError title="Couldn’t load your dashboard" message={error} onRetry={() => loadData()} retrying={loading} />
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">

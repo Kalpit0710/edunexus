@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { getAcademicYears, createAcademicYear, deleteAcademicYear, updateSchoolSettings, getSchoolSettings } from '../actions'
 import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
@@ -23,13 +23,7 @@ export function AcademicTab() {
 
     const [startMonth, setStartMonth] = useState(4) // Default April
 
-    useEffect(() => {
-        if (school?.id) {
-            fetchData()
-        }
-    }, [school?.id])
-
-    async function fetchData() {
+    const fetchData = useCallback(async () => {
         const sid = school?.id
         if (!sid) return
         setLoading(true)
@@ -45,7 +39,13 @@ export function AcademicTab() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [school?.id])
+
+    useEffect(() => {
+        if (school?.id) {
+            fetchData()
+        }
+    }, [fetchData, school?.id])
 
     async function handleAddYear(e: React.FormEvent) {
         e.preventDefault()
@@ -157,7 +157,7 @@ export function AcademicTab() {
                                             {new Date(y.start_date).toLocaleDateString()} to {new Date(y.end_date).toLocaleDateString()}
                                         </div>
                                     </div>
-                                    <Button variant="ghost" size="icon" onClick={() => handleDeleteYear(y.id)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950">
+                                    <Button variant="ghost" size="icon" aria-label="Delete academic year" onClick={() => handleDeleteYear(y.id)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950">
                                         <Trash2 className="w-4 h-4" />
                                     </Button>
                                 </CardContent>

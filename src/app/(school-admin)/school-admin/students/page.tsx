@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
 import { getStudents, deleteStudent, bulkCreateStudents } from './actions'
 import { toast } from 'sonner'
@@ -21,13 +21,7 @@ export default function StudentsPage() {
   const [search, setSearch] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (school?.id) {
-      fetchStudents()
-    }
-  }, [school?.id])
-
-  async function fetchStudents() {
+  const fetchStudents = useCallback(async () => {
     if (!school?.id) return
     setLoading(true)
     try {
@@ -38,7 +32,13 @@ export default function StudentsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [school?.id])
+
+  useEffect(() => {
+    if (school?.id) {
+      fetchStudents()
+    }
+  }, [fetchStudents, school?.id])
 
   async function handleDelete(id: string) {
     if (!confirm('Are you sure you want to delete this student?')) return
@@ -238,13 +238,14 @@ export default function StudentsPage() {
                       <td className="px-6 py-4 capitalize">{student.gender || '-'}</td>
                       <td className="px-6 py-4 text-right space-x-2">
                         <Link href={`/school-admin/students/${student.id}/edit` as any}>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary">
+                          <Button variant="ghost" size="icon" aria-label="Edit student" className="h-8 w-8 text-muted-foreground hover:text-primary">
                             <Edit className="h-4 w-4" />
                           </Button>
                         </Link>
                         <Button
                           variant="ghost"
                           size="icon"
+                          aria-label="Delete student"
                           onClick={() => handleDelete(student.id)}
                           disabled={deletingId === student.id}
                           className="h-8 w-8 text-muted-foreground hover:text-red-600 disabled:opacity-50"

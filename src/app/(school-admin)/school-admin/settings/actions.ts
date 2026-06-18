@@ -1,35 +1,12 @@
 'use server'
 
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { cookies } from 'next/headers'
 import type { Database } from '@/types/database.types'
 import { createClient as createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server'
 import { requireActor } from '@/lib/auth/require-actor'
 import { logAudit } from '@/lib/audit'
 
-async function getSupabase() {
-    const cookieStore = await cookies()
-    return createServerClient<Database>(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() {
-                    return cookieStore.getAll()
-                },
-                setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-                    try {
-                        cookiesToSet.forEach(({ name, value, options }) =>
-                            cookieStore.set(name, value, options)
-                        )
-                    } catch {
-                        // The `setAll` method was called from a Server Component.
-                    }
-                },
-            },
-        }
-    )
-}
+// Local alias for the shared cookie-aware server client (see lib/supabase/server).
+const getSupabase = createServerSupabaseClient
 
 // ─── Soft-delete helpers ───────────────────────────────────────────────────
 
@@ -166,7 +143,6 @@ export async function updateSchoolSettings(schoolId: string, data: Database['pub
 
     const { error } = await supabase
         .from('schools')
-        // @ts-expect-error
         .update(data)
         .eq('id', schoolId)
 
@@ -214,7 +190,6 @@ export async function createClass(schoolId: string, name: string, displayOrder: 
     const supabase = await getSupabase()
     const { error } = await supabase
         .from('classes')
-        // @ts-expect-error
         .insert([{ school_id: schoolId, name, display_order: displayOrder }])
     if (error) throw new Error(error.message)
 }
@@ -231,7 +206,6 @@ export async function createSection(schoolId: string, classId: string, name: str
     const supabase = await getSupabase()
     const { error } = await supabase
         .from('sections')
-        // @ts-expect-error
         .insert([{ school_id: schoolId, class_id: classId, name, capacity }])
     if (error) throw new Error(error.message)
 }
@@ -248,7 +222,6 @@ export async function createSubject(schoolId: string, classId: string, name: str
     const supabase = await getSupabase()
     const { error } = await supabase
         .from('subjects')
-        // @ts-expect-error
         .insert([{ school_id: schoolId, class_id: classId, name, code }])
     if (error) throw new Error(error.message)
 }
@@ -277,15 +250,16 @@ export async function createAcademicYear(schoolId: string, name: string, startDa
 
     if (isCurrent) {
         // Find existing current and set to false
-        const payload = { is_current: false } as any
-        const updateReq = supabase.from('academic_years')
-        // @ts-expect-error
-        await updateReq.update(payload).eq('school_id', schoolId).eq('is_current', true)
+        await supabase
+            .from('academic_years')
+            .update({ is_current: false })
+            .eq('school_id', schoolId)
+            .eq('is_current', true)
     }
 
-    const insertReq = supabase.from('academic_years')
-    // @ts-expect-error
-    const { error } = await insertReq.insert([{ school_id: schoolId, name, start_date: startDate, end_date: endDate, is_current: isCurrent }])
+    const { error } = await supabase
+        .from('academic_years')
+        .insert([{ school_id: schoolId, name, start_date: startDate, end_date: endDate, is_current: isCurrent }])
     if (error) throw new Error(error.message)
 }
 
@@ -312,7 +286,6 @@ export async function createGradingRule(schoolId: string, minMarks: number, maxM
     const supabase = await getSupabase()
     const { error } = await supabase
         .from('grading_rules')
-        // @ts-expect-error
         .insert([{ school_id: schoolId, min_marks: minMarks, max_marks: maxMarks, grade_name: gradeName, grade_point: gradePoint }])
     if (error) throw new Error(error.message)
 }

@@ -1,7 +1,10 @@
 'use client'
 
 import { useAuthStore } from '@/stores/auth.store'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
+import { DataLoadError } from '@/components/shared/DataLoadError'
 import { getDashboardStats, getWeeklyCollectionTrend, type DashboardStats } from './actions'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -24,19 +27,34 @@ export default function SchoolAdminDashboardPage() {
     todayCollection: 0, totalPendingFees: 0, todayAttendancePct: 0, needsOnboarding: false,
   })
   const [trend, setTrend] = useState<{ date: string; label: string; amount: number }[]>([])
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+  const loadDashboard = useCallback(async () => {
     if (!school?.id) return
     const today = new Date().toISOString().split('T')[0]!
-    getDashboardStats(school.id, today)
-      .then(setStats)
-      .catch(console.error)
-      .finally(() => setLoading(false))
-    getWeeklyCollectionTrend(school.id)
-      .then(setTrend)
-      .catch(console.error)
-      .finally(() => setTrendLoading(false))
+    setLoading(true)
+    setTrendLoading(true)
+    setError(null)
+    const [statsRes, trendRes] = await Promise.allSettled([
+      getDashboardStats(school.id, today),
+      getWeeklyCollectionTrend(school.id),
+    ])
+    if (statsRes.status === 'fulfilled') {
+      setStats(statsRes.value)
+    } else {
+      setError(getErrorMessage(statsRes.reason))
+      toast.error('Unable to load dashboard. Please try again.')
+    }
+    if (trendRes.status === 'fulfilled') {
+      setTrend(trendRes.value)
+    }
+    setLoading(false)
+    setTrendLoading(false)
   }, [school?.id])
+
+  useEffect(() => {
+    loadDashboard()
+  }, [loadDashboard])
 
   const statCards = [
     { label: 'Total Students', value: stats.totalStudents, icon: Users, href: '/school-admin/students', accent: '#3b82f6' },
@@ -54,6 +72,10 @@ export default function SchoolAdminDashboardPage() {
     { href: '/school-admin/students', label: 'Manage Students', icon: Users, feature: 'students' as Feature },
     { href: '/school-admin/teachers', label: 'Manage Teachers', icon: GraduationCap, feature: 'teachers' as Feature },
   ]).filter((a) => hasFeature(a.feature))
+
+  if (error) {
+    return <DataLoadError title="Couldn’t load dashboard" message={error} onRetry={() => loadDashboard()} retrying={loading} />
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">

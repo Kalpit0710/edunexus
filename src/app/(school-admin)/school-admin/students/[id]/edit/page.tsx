@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth.store'
 import { getStudentById, updateStudent } from '../../actions'
@@ -32,15 +32,10 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
 
     const [formData, setFormData] = useState<any>(null)
 
-    useEffect(() => {
-        if (school?.id && id) {
-            loadData()
-        }
-    }, [school?.id, id])
-
-    async function loadData() {
+    const loadData = useCallback(async () => {
+        if (!school?.id) return
         try {
-            const resLevels = await getClassesAndSections(school!.id)
+            const resLevels = await getClassesAndSections(school.id)
             setClasses(resLevels.classes || [])
             setSections(resLevels.sections || [])
 
@@ -51,7 +46,13 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
         } finally {
             setLoading(false)
         }
-    }
+    }, [school?.id, id])
+
+    useEffect(() => {
+        if (school?.id && id) {
+            loadData()
+        }
+    }, [loadData, school?.id, id])
 
     const updateForm = (field: string, value: string) => {
         setFormData((prev: any) => ({ ...prev, [field]: value }))
@@ -110,7 +111,7 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
         <div className="max-w-4xl mx-auto space-y-6">
             <div className="flex items-center gap-4">
                 <Link href={"/school-admin/students" as any}>
-                    <Button variant="outline" size="icon">
+                    <Button variant="outline" size="icon" aria-label="Go back">
                         <ArrowLeft className="w-4 h-4" />
                     </Button>
                 </Link>
@@ -161,7 +162,7 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
                                 <div className="flex items-center gap-4 mt-2">
                                     {formData.photo_url && !photoFile && (
                                         // eslint-disable-next-line @next/next/no-img-element -- dynamic uploaded-photo preview
-                                        <img src={formData.photo_url} alt="Current photo" className="w-12 h-12 rounded-full object-cover border shadow-sm" />
+                                        <img src={formData.photo_url} alt="Student's current profile photo" className="w-12 h-12 rounded-full object-cover border shadow-sm" />
                                     )}
                                     <Input type="file" accept="image/*" onChange={e => setPhotoFile(e.target.files?.[0] || null)} className="max-w-xs" />
                                 </div>

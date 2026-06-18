@@ -1,26 +1,8 @@
 'use server'
 
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { cookies } from 'next/headers'
-import type { Database } from '@/types/database.types'
+import { createClient as getSupabase } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email'
 import { AttendanceAlertEmail } from '@/emails/AttendanceAlertEmail'
-
-async function getSupabase() {
-  const cookieStore = await cookies()
-  return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return cookieStore.getAll() },
-        setAll(list: { name: string; value: string; options: CookieOptions }[]) {
-          try { list.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) } catch {}
-        },
-      },
-    }
-  )
-}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

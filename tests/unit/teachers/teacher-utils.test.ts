@@ -7,6 +7,7 @@ import {
   buildAssignmentLabel,
   generateEmployeeId,
   matchesTeacherSearch,
+  computePendingAttendanceSections,
 } from '@/lib/teacher-utils'
 
 // ── Create field validation ───────────────────────────────────────────────────
@@ -162,5 +163,45 @@ describe('matchesTeacherSearch() (M1.6)', () => {
     const t = { fullName: 'Ali', email: 'ali@x.com', employeeId: null, specialization: null }
     expect(matchesTeacherSearch(t, 'ali')).toBe(true)
     expect(matchesTeacherSearch(t, 'math')).toBe(false)
+  })
+})
+
+// ── Pending attendance computation (Chunk 4.1 — query fan-out removal) ─────────
+
+describe('computePendingAttendanceSections() (Chunk 4.1)', () => {
+  const sections = [
+    { sectionId: 'sec-1', label: 'Grade 1 A' },
+    { sectionId: 'sec-2', label: 'Grade 2 B' },
+    { sectionId: 'sec-3', label: 'Grade 3 C' },
+  ]
+
+  it('returns all sections as pending when none are marked', () => {
+    expect(computePendingAttendanceSections(sections, [])).toEqual(['Grade 1 A', 'Grade 2 B', 'Grade 3 C'])
+  })
+
+  it('returns empty when every section is marked', () => {
+    expect(computePendingAttendanceSections(sections, ['sec-1', 'sec-2', 'sec-3'])).toEqual([])
+  })
+
+  it('returns only the unmarked section labels', () => {
+    expect(computePendingAttendanceSections(sections, ['sec-2'])).toEqual(['Grade 1 A', 'Grade 3 C'])
+  })
+
+  it('deduplicates repeated marked section IDs (grouped-query rows)', () => {
+    // A single query returns one row per attendance record, so the same section
+    // ID can repeat many times — the result must still treat it as marked once.
+    expect(computePendingAttendanceSections(sections, ['sec-1', 'sec-1', 'sec-1'])).toEqual(['Grade 2 B', 'Grade 3 C'])
+  })
+
+  it('ignores marked IDs that are not class-teacher sections', () => {
+    expect(computePendingAttendanceSections(sections, ['sec-99', 'sec-2'])).toEqual(['Grade 1 A', 'Grade 3 C'])
+  })
+
+  it('returns empty for no class-teacher sections', () => {
+    expect(computePendingAttendanceSections([], ['sec-1'])).toEqual([])
+  })
+
+  it('accepts a Set of marked IDs', () => {
+    expect(computePendingAttendanceSections(sections, new Set(['sec-3']))).toEqual(['Grade 1 A', 'Grade 2 B'])
   })
 })

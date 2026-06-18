@@ -2,6 +2,8 @@
  * Pure utility functions for Fee & Billing module (Milestone 1.8).
  */
 
+import { z } from 'zod'
+
 export type PaymentMode = 'cash' | 'cheque' | 'upi' | 'neft' | 'card' | 'online'
 
 export const PAYMENT_MODE_LABELS: Record<PaymentMode, string> = {
@@ -87,6 +89,59 @@ export function validateFeePayload(payload: CollectFeePayload): string[] {
   }
   if (!payload.collectedBy) errors.push('Collector is required.')
   return errors
+}
+
+/** Maximum amount accepted in a single fee transaction (₹1 crore) — a sane upper bound. */
+export const MAX_FEE_TRANSACTION_AMOUNT = 10_000_000
+
+const feeMoney = (label: string) =>
+  z
+    .number({ invalid_type_error: `${label} must be a number.` })
+    .finite(`${label} must be a valid amount.`)
+    .nonnegative(`${label} cannot be negative.`)
+    .max(MAX_FEE_TRANSACTION_AMOUNT, `${label} exceeds the maximum allowed amount.`)
+
+/**
+ * Runtime schema for the fee-collection server action input (`CollectFeeInput`).
+ * Note: paid amount is intentionally NOT capped at net payable — cash
+ * overpayment (with change returned) is a supported POS flow.
+ */
+export const collectFeeInputSchema = z
+  .object({
+    studentId: z.string().uuid('A valid student is required.'),
+    items: z
+      .array(
+        z.object({
+          categoryId: z.string().uuid('A valid fee category is required.'),
+          amount: feeMoney('Fee amount'),
+        }),
+      )
+      .min(1, 'At least one fee item is required.'),
+    paidAmount: feeMoney('Paid amount').refine((v) => v > 0, 'Paid amount must be greater than 0.'),
+    discountAmount: feeMoney('Discount'),
+    paymentMode: z.enum(['cash', 'cheque', 'upi', 'neft', 'card', 'online'], {
+      errorMap: () => ({ message: 'Invalid payment mode.' }),
+    }),
+    collectedById: z.string().uuid('A valid collector is required.'),
+    referenceNumber: z.string().trim().max(100).optional(),
+    remarks: z.string().trim().max(500).optional(),
+  })
+  .superRefine((data, ctx) => {
+    const total = data.items.reduce((sum, i) => sum + i.amount, 0)
+    if (data.discountAmount > total) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['discountAmount'],
+        message: 'Discount cannot exceed the total fee amount.',
+      })
+    }
+  })
+
+/** Validate the fee-collection input; returns the first error message, or null when valid. */
+export function validateCollectFeeInput(input: unknown): string | null {
+  const parsed = collectFeeInputSchema.safeParse(input)
+  if (parsed.success) return null
+  return parsed.error.issues[0]?.message ?? 'Invalid payment details.'
 }
 
 /**

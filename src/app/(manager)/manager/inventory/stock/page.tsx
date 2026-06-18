@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
@@ -41,23 +41,24 @@ export default function StockAdjustmentPage() {
         reason: ''
     })
 
-    useEffect(() => {
-        if (school?.id) {
-            loadItems()
-        }
-    }, [school?.id])
-
-    async function loadItems() {
+    const loadItems = useCallback(async () => {
+        if (!school?.id) return
         setLoading(true)
         try {
-            const data = await getInventoryItems(school!.id, { activeOnly: true, limit: 1000 })
+            const data = await getInventoryItems(school.id, { activeOnly: true, limit: 1000 })
             setItems(data || [])
         } catch (e) {
             toast.error("Failed to load items: " + getErrorMessage(e))
         } finally {
             setLoading(false)
         }
-    }
+    }, [school?.id])
+
+    useEffect(() => {
+        if (school?.id) {
+            loadItems()
+        }
+    }, [loadItems, school?.id])
 
     const updateForm = (field: string, value: any) => {
         setFormData(prev => ({ ...prev, [field]: value }))
@@ -118,7 +119,7 @@ export default function StockAdjustmentPage() {
         <div className="max-w-3xl mx-auto space-y-6">
             <div className="flex items-center gap-4">
                 <Link href={"/manager/inventory" as any}>
-                    <Button variant="outline" size="icon">
+                    <Button variant="outline" size="icon" aria-label="Go back">
                         <ArrowLeft className="w-4 h-4" />
                     </Button>
                 </Link>

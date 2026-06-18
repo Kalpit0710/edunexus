@@ -291,7 +291,7 @@ export default function OnboardingWizardPage() {
                                             <Label className="text-xs">Points</Label>
                                             <Input type="number" step="0.1" value={rule.grade_point} onChange={e => updateGradingRule(idx, 'grade_point', e.target.value)} />
                                         </div>
-                                        <Button variant="ghost" size="icon" className="text-red-500 hover:text-white hover:bg-red-500 rounded-md" onClick={() => removeGradingRule(idx)}>
+                                        <Button variant="ghost" size="icon" aria-label="Remove grading rule" className="text-red-500 hover:text-white hover:bg-red-500 rounded-md" onClick={() => removeGradingRule(idx)}>
                                             <Trash2 className="w-4 h-4" />
                                         </Button>
                                     </div>

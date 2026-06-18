@@ -59,3 +59,24 @@ export function matchesTeacherSearch(t: TeacherFilterable, search: string): bool
     (t.specialization?.toLowerCase().includes(term) ?? false)
   )
 }
+
+/** A class-teacher section paired with its display label. */
+export interface ClassTeacherSection {
+  sectionId: string
+  label: string
+}
+
+/**
+ * Given the class-teacher sections and the set of section IDs that already have
+ * attendance marked for the day, return the labels of the sections still pending.
+ * Lets the dashboard replace a per-section count fan-out with one grouped lookup.
+ */
+export function computePendingAttendanceSections(
+  classTeacherSections: ClassTeacherSection[],
+  markedSectionIds: Iterable<string>,
+): string[] {
+  const marked = new Set(markedSectionIds)
+  return classTeacherSections
+    .filter((sec) => !marked.has(sec.sectionId))
+    .map((sec) => sec.label)
+}

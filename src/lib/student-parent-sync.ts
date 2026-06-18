@@ -3,6 +3,8 @@ import {
   selectBestSiblingParent,
   type ParentLinkCandidate,
 } from '@/lib/student-parent-link'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '@/types/database.types'
 
 interface ExistingPrimaryParentRow {
   id: string
@@ -23,7 +25,7 @@ export interface StudentParentSyncInput {
   clearWhenEmpty?: boolean
 }
 
-export async function unlinkParentsForStudent(db: any, schoolId: string, studentId: string): Promise<void> {
+export async function unlinkParentsForStudent(db: SupabaseClient<Database>, schoolId: string, studentId: string): Promise<void> {
   const { error } = await db
     .from('parents')
     .delete()
@@ -36,7 +38,7 @@ export async function unlinkParentsForStudent(db: any, schoolId: string, student
 }
 
 export async function syncPrimaryParentForStudent(
-  db: any,
+  db: SupabaseClient<Database>,
   input: StudentParentSyncInput,
 ): Promise<void> {
   const parent = normalizeParentContact({

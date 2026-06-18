@@ -1,32 +1,7 @@
 'use server'
 
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { createClient as getSupabase } from '@/lib/supabase/server'
 import type { Database } from '@/types/database.types'
-
-async function getSupabase() {
-    const cookieStore = await cookies()
-    return createServerClient<Database>(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() {
-                    return cookieStore.getAll()
-                },
-                setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-                    try {
-                        cookiesToSet.forEach(({ name, value, options }) =>
-                            cookieStore.set(name, value, options)
-                        )
-                    } catch {
-                        // The `setAll` method was called from a Server Component.
-                    }
-                },
-            },
-        }
-    )
-}
 
 export type OnboardingData = {
     profile: {
@@ -55,21 +30,17 @@ export async function completeOnboarding(schoolId: string, data: OnboardingData)
 
     // 1. Update Profile
     if (data.profile.address || data.profile.theme_color) {
-        const payload: any = {}
+        const payload: Database['public']['Tables']['schools']['Update'] = {}
         if (data.profile.address) payload.address = data.profile.address
         if (data.profile.theme_color) payload.theme_color = data.profile.theme_color
 
-        const req = supabase.from('schools')
-        // @ts-expect-error
-        const { error } = await req.update(payload).eq('id', schoolId);
+        const { error } = await supabase.from('schools').update(payload).eq('id', schoolId);
         if (error) throw new Error("Failed to update school profile: " + error.message);
     }
 
     // 2. Create Academic Year
     if (data.academicYear.name && data.academicYear.start_date && data.academicYear.end_date) {
-        const req = supabase.from('academic_years')
-        // @ts-expect-error
-        const { error } = await req.insert([{
+        const { error } = await supabase.from('academic_years').insert([{
             school_id: schoolId,
             name: data.academicYear.name,
             start_date: data.academicYear.start_date,
@@ -84,9 +55,7 @@ export async function completeOnboarding(schoolId: string, data: OnboardingData)
         for (let i = 0; i < data.classes.length; i++) {
             const cls = data.classes[i]!;
 
-            const req = supabase.from('classes')
-            // @ts-expect-error
-            const { data: classData, error: classErr } = await req.insert([{
+            const { data: classData, error: classErr } = await supabase.from('classes').insert([{
                 school_id: schoolId,
                 name: cls.name,
                 display_order: i + 1
@@ -94,7 +63,7 @@ export async function completeOnboarding(schoolId: string, data: OnboardingData)
 
             if (classErr) throw new Error("Failed to create class: " + classErr.message);
 
-            const classId = (classData as any)?.id;
+            const classId = classData?.id;
 
             if (cls.sections.length > 0) {
                 const sectionInserts = cls.sections.map(secName => ({
@@ -103,9 +72,7 @@ export async function completeOnboarding(schoolId: string, data: OnboardingData)
                     name: secName,
                     capacity: 40 // Default capacity
                 }));
-                const secReq = supabase.from('sections')
-                // @ts-expect-error
-                const { error: secErr } = await secReq.insert(sectionInserts);
+                const { error: secErr } = await supabase.from('sections').insert(sectionInserts);
                 if (secErr) throw new Error("Failed to create sections: " + secErr.message);
             }
         }
@@ -120,9 +87,7 @@ export async function completeOnboarding(schoolId: string, data: OnboardingData)
             max_marks: rule.max_marks,
             grade_point: rule.grade_point
         }));
-        const req = supabase.from('grading_rules')
-        // @ts-expect-error
-        const { error: gradeErr } = await req.insert(rulesInserts);
+        const { error: gradeErr } = await supabase.from('grading_rules').insert(rulesInserts);
         if (gradeErr) throw new Error("Failed to create grading rules: " + gradeErr.message);
     }
 
@@ -158,9 +123,7 @@ export async function uploadSchoolLogo(formData: FormData) {
         .from('school-logos')
         .getPublicUrl(fileName);
 
-    const req = supabase.from('schools')
-    // @ts-expect-error
-    const { error: updateErr } = await req.update({
+    const { error: updateErr } = await supabase.from('schools').update({
         logo_url: urlData.publicUrl
     }).eq('id', schoolId);
 

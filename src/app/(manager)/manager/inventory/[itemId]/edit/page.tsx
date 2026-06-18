@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
@@ -46,20 +46,15 @@ export default function EditInventoryItemPage() {
         lowStockAlert: 10
     })
 
-    useEffect(() => {
-        if (school?.id && itemId) {
-            loadItem()
-        }
-    }, [school?.id, itemId])
-
-    async function loadItem() {
+    const loadItem = useCallback(async () => {
+        if (!school?.id) return
         setLoading(true)
         try {
             const supabase = createClient()
             const { data, error } = await supabase
                 .from('inventory_items')
                 .select('*')
-                .eq('school_id', school!.id)
+                .eq('school_id', school.id)
                 .eq('id', itemId)
                 .single()
 
@@ -84,7 +79,13 @@ export default function EditInventoryItemPage() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [school?.id, itemId, router])
+
+    useEffect(() => {
+        if (school?.id && itemId) {
+            loadItem()
+        }
+    }, [loadItem, school?.id, itemId])
 
     const updateForm = (field: keyof InventoryItemInput, value: any) => {
         setFormData(prev => ({ ...prev, [field]: value }))
@@ -155,7 +156,7 @@ export default function EditInventoryItemPage() {
         <div className="max-w-3xl mx-auto space-y-6">
             <div className="flex items-center gap-4">
                 <Link href={"/manager/inventory" as any}>
-                    <Button variant="outline" size="icon">
+                    <Button variant="outline" size="icon" aria-label="Go back">
                         <ArrowLeft className="w-4 h-4" />
                     </Button>
                 </Link>
@@ -173,8 +174,9 @@ export default function EditInventoryItemPage() {
                         </CardHeader>
                         <CardContent className="space-y-6">
                             <div className="space-y-2">
-                                <Label>Item Name <span className="text-destructive">*</span></Label>
+                                <Label htmlFor="edit-item-name">Item Name <span className="text-destructive">*</span></Label>
                                 <Input
+                                    id="edit-item-name"
                                     value={formData.name}
                                     onChange={e => updateForm('name', e.target.value)}
                                 />
@@ -182,8 +184,9 @@ export default function EditInventoryItemPage() {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>Category <span className="text-destructive">*</span></Label>
+                                    <Label htmlFor="edit-item-category">Category <span className="text-destructive">*</span></Label>
                                     <select
+                                        id="edit-item-category"
                                         className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm"
                                         value={formData.category}
                                         onChange={e => updateForm('category', e.target.value)}
@@ -194,8 +197,9 @@ export default function EditInventoryItemPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label>SKU / Barcode</Label>
+                                    <Label htmlFor="edit-item-sku">SKU / Barcode</Label>
                                     <Input
+                                        id="edit-item-sku"
                                         value={formData.sku}
                                         onChange={e => updateForm('sku', e.target.value)}
                                     />
@@ -203,8 +207,9 @@ export default function EditInventoryItemPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Description</Label>
+                                <Label htmlFor="edit-item-description">Description</Label>
                                 <textarea
+                                    id="edit-item-description"
                                     className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[80px]"
                                     value={formData.description}
                                     onChange={e => updateForm('description', e.target.value)}
@@ -213,8 +218,9 @@ export default function EditInventoryItemPage() {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>Selling Price (Unit) <span className="text-destructive">*</span></Label>
+                                    <Label htmlFor="edit-item-unit-price">Selling Price (Unit) <span className="text-destructive">*</span></Label>
                                     <Input
+                                        id="edit-item-unit-price"
                                         type="number"
                                         min="0" step="0.01"
                                         value={formData.unitPrice === 0 ? '' : formData.unitPrice}
@@ -223,8 +229,9 @@ export default function EditInventoryItemPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label>Cost Price</Label>
+                                    <Label htmlFor="edit-item-cost-price">Cost Price</Label>
                                     <Input
+                                        id="edit-item-cost-price"
                                         type="number"
                                         min="0" step="0.01"
                                         value={formData.costPrice === 0 || formData.costPrice == null ? '' : formData.costPrice}
@@ -251,8 +258,9 @@ export default function EditInventoryItemPage() {
                         </CardHeader>
                         <CardContent className="space-y-6">
                             <div className="space-y-2">
-                                <Label>Current Stock Quantity</Label>
+                                <Label htmlFor="edit-item-stock">Current Stock Quantity</Label>
                                 <Input
+                                    id="edit-item-stock"
                                     type="number"
                                     min="0"
                                     value={formData.stockQuantity}
@@ -264,8 +272,9 @@ export default function EditInventoryItemPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Low Stock Alert</Label>
+                                <Label htmlFor="edit-item-low-stock">Low Stock Alert</Label>
                                 <Input
+                                    id="edit-item-low-stock"
                                     type="number"
                                     min="1"
                                     value={formData.lowStockAlert}

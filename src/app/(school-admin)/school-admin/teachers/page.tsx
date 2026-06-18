@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
 import { getTeachers, toggleTeacherStatus, type TeacherRow } from './actions'
 import { toast } from 'sonner'
@@ -25,11 +25,7 @@ export default function TeachersPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [togglingId, setTogglingId] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (school?.id) fetchTeachers()
-  }, [school?.id])
-
-  async function fetchTeachers() {
+  const fetchTeachers = useCallback(async () => {
     if (!school?.id) return
     setLoading(true)
     try {
@@ -40,7 +36,11 @@ export default function TeachersPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [school?.id])
+
+  useEffect(() => {
+    if (school?.id) fetchTeachers()
+  }, [fetchTeachers, school?.id])
 
   async function handleToggleStatus(teacher: TeacherRow) {
     const nextState = !teacher.is_active

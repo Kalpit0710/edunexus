@@ -8,6 +8,7 @@
 import { useEffect } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
 import { createClient } from '@/lib/supabase/client'
+import type { SubscriptionPlan, SubscriptionStatus } from '@/lib/subscription'
 
 export function AppInitializer() {
     const { user, setUser, setSchool, setLoading } = useAuthStore()
@@ -38,35 +39,35 @@ export function AppInitializer() {
                 setUser({
                     ...authUser,
                     user_metadata: {
-                        role: (profile as any).role,
-                        school_id: (profile as any).school_id ?? undefined,
-                        full_name: (profile as any).full_name,
-                        avatar_url: (profile as any).avatar_url ?? undefined,
+                        role: profile.role,
+                        school_id: profile.school_id ?? undefined,
+                        full_name: profile.full_name,
+                        avatar_url: profile.avatar_url ?? undefined,
                     },
                 })
 
                 // Fetch school data if applicable
-                if ((profile as any).school_id) {
+                if (profile.school_id) {
                     const { data: school } = await supabase
                         .from('schools')
                         .select('*')
-                        .eq('id', (profile as any).school_id)
+                        .eq('id', profile.school_id)
                         .single()
 
                     if (school) {
                         setSchool({
-                            id: (school as any).id,
-                            name: (school as any).name,
-                            code: (school as any).code,
-                            logo_url: (school as any).logo_url,
-                            theme_color: (school as any).theme_color,
-                            academic_year_start_month: (school as any).academic_year_start_month,
-                            is_active: (school as any).is_active,
-                            subscription_plan: (school as any).subscription_plan ?? 'basic',
-                            subscription_status: (school as any).subscription_status ?? 'active',
-                            trial_ends_at: (school as any).trial_ends_at ?? null,
-                            created_at: (school as any).created_at,
-                            updated_at: (school as any).updated_at,
+                            id: school.id,
+                            name: school.name,
+                            code: school.code,
+                            logo_url: school.logo_url,
+                            theme_color: school.theme_color,
+                            academic_year_start_month: school.academic_year_start_month,
+                            is_active: school.is_active,
+                            subscription_plan: (school.subscription_plan ?? 'basic') as SubscriptionPlan,
+                            subscription_status: (school.subscription_status ?? 'active') as SubscriptionStatus,
+                            trial_ends_at: school.trial_ends_at ?? null,
+                            created_at: school.created_at,
+                            updated_at: school.updated_at,
                         })
                     }
                 }

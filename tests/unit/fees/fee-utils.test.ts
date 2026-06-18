@@ -8,6 +8,8 @@ import {
   calcNetPayable,
   isFullPayment,
   validateFeePayload,
+  validateCollectFeeInput,
+  MAX_FEE_TRANSACTION_AMOUNT,
   formatCurrency,
   buildReceiptSummary,
   PAYMENT_MODE_LABELS,
@@ -178,5 +180,74 @@ describe('buildReceiptSummary() (M1.8)', () => {
   it('omits discount line when discount is 0', () => {
     const summary = buildReceiptSummary({ ...receipt, discountAmount: 0 })
     expect(summary).not.toContain('Discount')
+  })
+})
+
+// ── validateCollectFeeInput (Chunk 2.2 — fee payment guards) ───────────────────
+
+describe('validateCollectFeeInput() (Chunk 2.2)', () => {
+  const validInput = {
+    studentId: '11111111-1111-1111-1111-111111111111',
+    items: [{ categoryId: '22222222-2222-2222-2222-222222222222', amount: 5000 }],
+    paidAmount: 5000,
+    discountAmount: 0,
+    paymentMode: 'cash' as const,
+    collectedById: '33333333-3333-3333-3333-333333333333',
+  }
+
+  it('accepts a valid payload', () => {
+    expect(validateCollectFeeInput(validInput)).toBeNull()
+  })
+
+  it('allows cash overpayment (change-due POS flow)', () => {
+    // paidAmount > net payable is intentionally permitted.
+    expect(validateCollectFeeInput({ ...validInput, paidAmount: 6000 })).toBeNull()
+  })
+
+  it('rejects an unknown payment mode', () => {
+    expect(validateCollectFeeInput({ ...validInput, paymentMode: 'bitcoin' })).toMatch(/payment mode/i)
+  })
+
+  it('rejects a negative paid amount', () => {
+    expect(validateCollectFeeInput({ ...validInput, paidAmount: -1 })).toMatch(/negative/i)
+  })
+
+  it('rejects a zero paid amount', () => {
+    expect(validateCollectFeeInput({ ...validInput, paidAmount: 0 })).toMatch(/greater than 0/i)
+  })
+
+  it('rejects a paid amount above the sane upper bound', () => {
+    expect(
+      validateCollectFeeInput({ ...validInput, paidAmount: MAX_FEE_TRANSACTION_AMOUNT + 1 }),
+    ).toMatch(/maximum/i)
+  })
+
+  it('rejects a non-finite amount', () => {
+    expect(validateCollectFeeInput({ ...validInput, paidAmount: Number.POSITIVE_INFINITY })).toMatch(
+      /valid amount|number/i,
+    )
+  })
+
+  it('rejects a negative item amount', () => {
+    expect(
+      validateCollectFeeInput({
+        ...validInput,
+        items: [{ categoryId: '22222222-2222-2222-2222-222222222222', amount: -100 }],
+      }),
+    ).toMatch(/negative/i)
+  })
+
+  it('rejects an empty items array', () => {
+    expect(validateCollectFeeInput({ ...validInput, items: [] })).toMatch(/at least one/i)
+  })
+
+  it('rejects a discount greater than the total fee', () => {
+    expect(validateCollectFeeInput({ ...validInput, discountAmount: 6000 })).toMatch(
+      /discount cannot exceed/i,
+    )
+  })
+
+  it('rejects a malformed student id', () => {
+    expect(validateCollectFeeInput({ ...validInput, studentId: 'not-a-uuid' })).toMatch(/student/i)
   })
 })

@@ -87,7 +87,7 @@ export default function NewInventoryItemPage() {
         <div className="max-w-2xl mx-auto space-y-6">
             <div className="flex items-center gap-4">
                 <Link href={"/manager/inventory" as any}>
-                    <Button variant="outline" size="icon">
+                    <Button variant="outline" size="icon" aria-label="Go back">
                         <ArrowLeft className="w-4 h-4" />
                     </Button>
                 </Link>
@@ -105,8 +105,9 @@ export default function NewInventoryItemPage() {
                 <CardContent className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2 md:col-span-2">
-                            <Label>Item Name <span className="text-destructive">*</span></Label>
+                            <Label htmlFor="item-name">Item Name <span className="text-destructive">*</span></Label>
                             <Input
+                                id="item-name"
                                 placeholder="e.g. Class 10 Mathematics Textbook"
                                 value={formData.name}
                                 onChange={e => updateForm('name', e.target.value)}
@@ -114,8 +115,9 @@ export default function NewInventoryItemPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label>Category <span className="text-destructive">*</span></Label>
+                            <Label htmlFor="item-category">Category <span className="text-destructive">*</span></Label>
                             <select
+                                id="item-category"
                                 className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm"
                                 value={formData.category}
                                 onChange={e => updateForm('category', e.target.value)}
@@ -126,8 +128,9 @@ export default function NewInventoryItemPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label>SKU / Barcode (Optional)</Label>
+                            <Label htmlFor="item-sku">SKU / Barcode (Optional)</Label>
                             <Input
+                                id="item-sku"
                                 placeholder="e.g. BK-MT-10"
                                 value={formData.sku}
                                 onChange={e => updateForm('sku', e.target.value)}
@@ -135,8 +138,9 @@ export default function NewInventoryItemPage() {
                         </div>
 
                         <div className="space-y-2 md:col-span-2">
-                            <Label>Description (Optional)</Label>
+                            <Label htmlFor="item-description">Description (Optional)</Label>
                             <textarea
+                                id="item-description"
                                 className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[80px]"
                                 value={formData.description}
                                 onChange={e => updateForm('description', e.target.value)}
@@ -147,8 +151,9 @@ export default function NewInventoryItemPage() {
 
                     <div className="border-t pt-6 mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <Label>Selling Price (Unit) <span className="text-destructive">*</span></Label>
+                            <Label htmlFor="item-unit-price">Selling Price (Unit) <span className="text-destructive">*</span></Label>
                             <Input
+                                id="item-unit-price"
                                 type="number"
                                 min="0" step="0.01"
                                 value={formData.unitPrice}
@@ -157,8 +162,9 @@ export default function NewInventoryItemPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label>Cost Price (Optional)</Label>
+                            <Label htmlFor="item-cost-price">Cost Price (Optional)</Label>
                             <Input
+                                id="item-cost-price"
                                 type="number"
                                 min="0" step="0.01"
                                 value={formData.costPrice ?? ''}
@@ -169,8 +175,9 @@ export default function NewInventoryItemPage() {
 
                     <div className="border-t pt-6 mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <Label>Initial Stock Quantity</Label>
+                            <Label htmlFor="item-stock">Initial Stock Quantity</Label>
                             <Input
+                                id="item-stock"
                                 type="number"
                                 min="0"
                                 value={formData.stockQuantity}
@@ -179,8 +186,9 @@ export default function NewInventoryItemPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label>Low Stock Alert Threshold</Label>
+                            <Label htmlFor="item-low-stock">Low Stock Alert Threshold</Label>
                             <Input
+                                id="item-low-stock"
                                 type="number"
                                 min="1"
                                 value={formData.lowStockAlert}

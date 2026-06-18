@@ -8,6 +8,14 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { ContentAreaLoader } from '@/components/loaders/page-loaders'
@@ -41,6 +49,8 @@ export default function SchoolDetailPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [toggling, setToggling] = useState(false)
+  const [suspendOpen, setSuspendOpen] = useState(false)
+  const [confirmName, setConfirmName] = useState('')
 
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -116,11 +126,32 @@ export default function SchoolDetailPage() {
   async function handleToggleSuspend() {
     if (!school || toggling) return
     const suspend = school.subscription_status !== 'suspended'
-    if (suspend && !confirm('Suspend this school? Its users will be blocked from operating.')) return
+    if (suspend) {
+      // Destructive: suspending blocks an entire tenant. Require typed confirmation.
+      setConfirmName('')
+      setSuspendOpen(true)
+      return
+    }
+    // Reactivation is non-destructive — proceed directly.
     setToggling(true)
     try {
-      await setSchoolSuspended(id, suspend)
-      toast.success(suspend ? 'School suspended' : 'School reactivated')
+      await setSchoolSuspended(id, false)
+      toast.success('School reactivated')
+      await load()
+    } catch (err) {
+      toast.error(getErrorMessage(err))
+    } finally {
+      setToggling(false)
+    }
+  }
+
+  async function confirmSuspend() {
+    if (!school || toggling) return
+    setToggling(true)
+    try {
+      await setSchoolSuspended(id, true, confirmName.trim())
+      toast.success('School suspended')
+      setSuspendOpen(false)
       await load()
     } catch (err) {
       toast.error(getErrorMessage(err))
@@ -316,6 +347,42 @@ export default function SchoolDetailPage() {
           </Button>
         </div>
       </form>
+
+      <Dialog open={suspendOpen} onOpenChange={(open) => !toggling && setSuspendOpen(open)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Suspend {school.name}?</DialogTitle>
+            <DialogDescription>
+              This blocks every user of this school from operating until it is reactivated.
+              To confirm, type the school name <span className="font-semibold text-white">{school.name}</span> below.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="confirm-school-name">School name</Label>
+            <Input
+              id="confirm-school-name"
+              value={confirmName}
+              onChange={(e) => setConfirmName(e.target.value)}
+              placeholder={school.name}
+              autoComplete="off"
+            />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setSuspendOpen(false)} disabled={toggling}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={confirmSuspend}
+              disabled={toggling || confirmName.trim().toLowerCase() !== school.name.trim().toLowerCase()}
+              className="border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20"
+            >
+              {toggling ? <Spinner size="sm" className="mr-2" /> : <Power className="mr-2 h-4 w-4" />}
+              Suspend School
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

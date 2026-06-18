@@ -2,10 +2,16 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const navMocks = vi.hoisted(() => ({
-  push: vi.fn(),
-  itemId: 'item-1',
-}))
+const navMocks = vi.hoisted(() => {
+  const push = vi.fn()
+  return {
+    push,
+    itemId: 'item-1',
+    // Stable router instance — real next/navigation useRouter() returns a stable
+    // reference, so memoising it here keeps useCallback deps from looping.
+    router: { push, replace: vi.fn(), prefetch: vi.fn(), back: vi.fn(), forward: vi.fn(), refresh: vi.fn() },
+  }
+})
 
 const inventoryActionMocks = vi.hoisted(() => ({
   getInventoryItems: vi.fn(),
@@ -45,14 +51,7 @@ const dbFixture = vi.hoisted(() => ({
 }))
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: navMocks.push,
-    replace: vi.fn(),
-    prefetch: vi.fn(),
-    back: vi.fn(),
-    forward: vi.fn(),
-    refresh: vi.fn(),
-  }),
+  useRouter: () => navMocks.router,
   useParams: () => ({ itemId: navMocks.itemId }),
   usePathname: () => '/',
   useSearchParams: () => new URLSearchParams(),
@@ -113,6 +112,17 @@ import NewInventoryItemPage from '../../../src/app/(manager)/manager/inventory/n
 import EditInventoryItemPage from '../../../src/app/(manager)/manager/inventory/[itemId]/edit/page'
 import POSPage from '../../../src/app/(manager)/manager/inventory/pos/page'
 import InventoryReportsPage from '../../../src/app/(manager)/manager/inventory/reports/page'
+import { axe } from 'vitest-axe'
+import * as axeMatchers from 'vitest-axe/matchers'
+
+expect.extend(axeMatchers)
+
+declare module 'vitest' {
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+  interface Assertion extends axeMatchers.AxeMatchers {}
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+  interface AsymmetricMatchersContaining extends axeMatchers.AxeMatchers {}
+}
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -225,5 +235,32 @@ describe('Inventory/POS UI flows (Phase 2.2)', () => {
     expect(screen.getByText(/restock required/i)).toBeInTheDocument()
     expect(screen.getByText(/chem lab kit/i)).toBeInTheDocument()
     expect(screen.getByText(/sku: lab-001/i)).toBeInTheDocument()
+  })
+
+  it('has no critical accessibility violations on the inventory create form (Chunk 5.1)', async () => {
+    const { container } = render(<NewInventoryItemPage />)
+    await waitFor(() => expect(screen.getByText(/add new item/i)).toBeInTheDocument())
+
+    // Scope to label/button/image rules — the structural a11y fixes from Chunk 5.1
+    // (associated form labels, named icon-only buttons). Colour-contrast is skipped
+    // since jsdom does not compute styles.
+    const results = await axe(container, {
+      rules: {
+        'color-contrast': { enabled: false },
+      },
+    })
+    expect(results).toHaveNoViolations()
+  })
+
+  it('has no critical accessibility violations on the inventory edit form (Chunk 5.1)', async () => {
+    const { container } = render(<EditInventoryItemPage />)
+    await waitFor(() => expect(screen.getByText(/edit item/i)).toBeInTheDocument())
+
+    const results = await axe(container, {
+      rules: {
+        'color-contrast': { enabled: false },
+      },
+    })
+    expect(results).toHaveNoViolations()
   })
 })

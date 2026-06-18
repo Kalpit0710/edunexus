@@ -1,39 +1,15 @@
 'use server'
 
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
 import type { Database } from '@/types/database.types'
+import { createClient as getSupabase } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email'
 import { WelcomeEmail } from '@/emails/WelcomeEmail'
 import { requireActor } from '@/lib/auth/require-actor'
 import { logAudit } from '@/lib/audit'
+import { validateTeacherCreateFields } from '@/lib/teacher-utils'
 
 // ── Supabase helpers ─────────────────────────────────────────────────────────
-
-async function getSupabase() {
-  const cookieStore = await cookies()
-  return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll()
-        },
-        setAll(
-          cookiesToSet: { name: string; value: string; options: CookieOptions }[]
-        ) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            )
-          } catch { }
-        },
-      },
-    }
-  )
-}
 
 /** Service-role client for admin auth operations (user creation / deletion) */
 function getAdminClient() {
@@ -179,6 +155,21 @@ export async function createTeacher(
   const actor = await requireActor(session, ['school_admin'])
   const admin = getAdminClient()
 
+  // Validate input at the trust boundary (runtime) before creating any account.
+  const validationErrors = validateTeacherCreateFields({
+    full_name: payload.full_name,
+    email: payload.email,
+    password: payload.password,
+    join_date: payload.join_date ?? '',
+  })
+  const trimmedPhone = payload.phone?.trim() ?? ''
+  if (trimmedPhone && (trimmedPhone.length < 6 || trimmedPhone.length > 30)) {
+    validationErrors.push('a valid phone number is required')
+  }
+  if (validationErrors.length > 0) {
+    throw new Error(validationErrors.join('; '))
+  }
+
   // 1. Create Supabase Auth user
   const { data: authData, error: authError } = await admin.auth.admin.createUser({
     email: payload.email,
@@ -282,20 +273,19 @@ export async function updateTeacher(
 
   // Update user_profile fields
   if (payload.full_name || payload.phone !== undefined) {
-    const profileUpdate: Record<string, unknown> = {}
+    const profileUpdate: Database['public']['Tables']['user_profiles']['Update'] = {}
     if (payload.full_name) profileUpdate.full_name = payload.full_name
     if (payload.phone !== undefined) profileUpdate.phone = payload.phone
 
     const { error } = await supabase
       .from('user_profiles')
-      // @ts-expect-error
-      .update(profileUpdate as any)
+      .update(profileUpdate)
       .eq('id', userProfileId)
     if (error) throw new Error(error.message)
   }
 
   // Update teacher-specific fields
-  const teacherUpdate: Record<string, unknown> = {}
+  const teacherUpdate: Database['public']['Tables']['teachers']['Update'] = {}
   if (payload.employee_id !== undefined) teacherUpdate.employee_id = payload.employee_id
   if (payload.qualification !== undefined) teacherUpdate.qualification = payload.qualification
   if (payload.specialization !== undefined) teacherUpdate.specialization = payload.specialization
@@ -304,8 +294,7 @@ export async function updateTeacher(
   if (Object.keys(teacherUpdate).length > 0) {
     const { error } = await supabase
       .from('teachers')
-      // @ts-expect-error
-      .update(teacherUpdate as any)
+      .update(teacherUpdate)
       .eq('id', teacherId)
     if (error) throw new Error(error.message)
   }
@@ -319,10 +308,8 @@ export async function toggleTeacherStatus(
   const supabase = await getSupabase()
   const actor = await requireActor(supabase, ['school_admin'])
   const [teacherRes, profileRes] = await Promise.all([
-    // @ts-expect-error
-    supabase.from('teachers').update({ is_active: isActive } as any).eq('id', teacherId),
-    // @ts-expect-error
-    supabase.from('user_profiles').update({ is_active: isActive } as any).eq('id', userProfileId),
+    supabase.from('teachers').update({ is_active: isActive }).eq('id', teacherId),
+    supabase.from('user_profiles').update({ is_active: isActive }).eq('id', userProfileId),
   ])
   if (teacherRes.error) throw new Error(teacherRes.error.message)
   if (profileRes.error) throw new Error(profileRes.error.message)

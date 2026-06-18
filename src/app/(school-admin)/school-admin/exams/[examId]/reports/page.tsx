@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth.store'
 import { createClient } from '@/lib/supabase/client'
@@ -41,13 +41,7 @@ export default function ExamReportsPage() {
     const [batchPdfLoading, setBatchPdfLoading] = useState(false)
     const [studentSearch, setStudentSearch] = useState('')
 
-    useEffect(() => {
-        if (school?.id && examId) {
-            loadInitialData()
-        }
-    }, [school?.id, examId])
-
-    async function loadInitialData() {
+    const loadInitialData = useCallback(async () => {
         if (!school?.id) return
         setLoading(true)
         try {
@@ -74,7 +68,13 @@ export default function ExamReportsPage() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [school?.id, examId])
+
+    useEffect(() => {
+        if (school?.id && examId) {
+            loadInitialData()
+        }
+    }, [loadInitialData, school?.id, examId])
 
     async function handleStudentSelect(studentId: string) {
         setSelectedStudentId(studentId)
@@ -254,7 +254,7 @@ export default function ExamReportsPage() {
             `}</style>
             <div className="flex items-center gap-4">
                 <Link href={"/school-admin/exams" as any}>
-                    <Button variant="outline" size="icon">
+                    <Button variant="outline" size="icon" aria-label="Go back">
                         <ArrowLeft className="w-4 h-4" />
                     </Button>
                 </Link>

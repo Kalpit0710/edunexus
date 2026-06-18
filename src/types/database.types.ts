@@ -17,6 +17,7 @@ export type Database = {
       academic_years: {
         Row: {
           created_at: string
+          deleted_at: string | null
           end_date: string
           id: string
           is_current: boolean
@@ -26,6 +27,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           end_date: string
           id?: string
           is_current?: boolean
@@ -35,6 +37,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           end_date?: string
           id?: string
           is_current?: boolean
@@ -127,9 +130,60 @@ export type Database = {
           },
         ]
       }
+      audit_logs: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          actor_role: string | null
+          created_at: string
+          entity_id: string | null
+          entity_label: string | null
+          entity_type: string | null
+          id: string
+          metadata: Json | null
+          school_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          actor_role?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_label?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json | null
+          school_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          actor_role?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_label?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json | null
+          school_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       classes: {
         Row: {
           created_at: string
+          deleted_at: string | null
           display_order: number
           id: string
           is_active: boolean
@@ -138,6 +192,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           display_order?: number
           id?: string
           is_active?: boolean
@@ -146,6 +201,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           display_order?: number
           id?: string
           is_active?: boolean
@@ -155,6 +211,154 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "classes_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exam_subjects: {
+        Row: {
+          created_at: string
+          duration_mins: number | null
+          exam_date: string | null
+          exam_id: string
+          id: string
+          max_marks: number
+          pass_marks: number
+          school_id: string
+          start_time: string | null
+          subject_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration_mins?: number | null
+          exam_date?: string | null
+          exam_id: string
+          id?: string
+          max_marks: number
+          pass_marks?: number
+          school_id: string
+          start_time?: string | null
+          subject_id: string
+        }
+        Update: {
+          created_at?: string
+          duration_mins?: number | null
+          exam_date?: string | null
+          exam_id?: string
+          id?: string
+          max_marks?: number
+          pass_marks?: number
+          school_id?: string
+          start_time?: string | null
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_subjects_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_subjects_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_subjects_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exams: {
+        Row: {
+          academic_year_id: string | null
+          class_id: string
+          created_at: string
+          created_by: string | null
+          end_date: string | null
+          id: string
+          name: string
+          published_at: string | null
+          published_by: string | null
+          result_visible: boolean
+          school_id: string
+          start_date: string | null
+          status: Database["public"]["Enums"]["exam_status"]
+          updated_at: string
+        }
+        Insert: {
+          academic_year_id?: string | null
+          class_id: string
+          created_at?: string
+          created_by?: string | null
+          end_date?: string | null
+          id?: string
+          name: string
+          published_at?: string | null
+          published_by?: string | null
+          result_visible?: boolean
+          school_id: string
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["exam_status"]
+          updated_at?: string
+        }
+        Update: {
+          academic_year_id?: string | null
+          class_id?: string
+          created_at?: string
+          created_by?: string | null
+          end_date?: string | null
+          id?: string
+          name?: string
+          published_at?: string | null
+          published_by?: string | null
+          result_visible?: boolean
+          school_id?: string
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["exam_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exams_academic_year_id_fkey"
+            columns: ["academic_year_id"]
+            isOneToOne: false
+            referencedRelation: "academic_years"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exams_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exams_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exams_published_by_fkey"
+            columns: ["published_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exams_school_id_fkey"
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
@@ -313,6 +517,7 @@ export type Database = {
           category_id: string
           class_id: string
           created_at: string
+          deleted_at: string | null
           due_date: string | null
           id: string
           is_active: boolean
@@ -324,6 +529,7 @@ export type Database = {
           category_id: string
           class_id: string
           created_at?: string
+          deleted_at?: string | null
           due_date?: string | null
           id?: string
           is_active?: boolean
@@ -335,6 +541,7 @@ export type Database = {
           category_id?: string
           class_id?: string
           created_at?: string
+          deleted_at?: string | null
           due_date?: string | null
           id?: string
           is_active?: boolean
@@ -364,6 +571,377 @@ export type Database = {
           },
           {
             foreignKeyName: "fee_structures_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      grading_rules: {
+        Row: {
+          class_id: string | null
+          created_at: string
+          deleted_at: string | null
+          description: string | null
+          grade_name: string
+          grade_point: number | null
+          id: string
+          max_marks: number
+          min_marks: number
+          school_id: string
+        }
+        Insert: {
+          class_id?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          grade_name: string
+          grade_point?: number | null
+          id?: string
+          max_marks: number
+          min_marks: number
+          school_id: string
+        }
+        Update: {
+          class_id?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          grade_name?: string
+          grade_point?: number | null
+          id?: string
+          max_marks?: number
+          min_marks?: number
+          school_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grading_rules_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grading_rules_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_items: {
+        Row: {
+          category: Database["public"]["Enums"]["inventory_category"]
+          cost_price: number | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          low_stock_alert: number
+          name: string
+          school_id: string
+          sku: string | null
+          stock_quantity: number
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["inventory_category"]
+          cost_price?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          low_stock_alert?: number
+          name: string
+          school_id: string
+          sku?: string | null
+          stock_quantity?: number
+          unit_price: number
+          updated_at?: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["inventory_category"]
+          cost_price?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          low_stock_alert?: number
+          name?: string
+          school_id?: string
+          sku?: string | null
+          stock_quantity?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_sale_items: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          quantity: number
+          sale_id: string
+          school_id: string
+          total_price: number
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          quantity: number
+          sale_id: string
+          school_id: string
+          total_price: number
+          unit_price: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          quantity?: number
+          sale_id?: string
+          school_id?: string
+          total_price?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_sale_items_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_sale_items_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_sale_items_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_sales: {
+        Row: {
+          bill_number: string
+          created_at: string
+          id: string
+          payment_mode: Database["public"]["Enums"]["payment_mode"]
+          sale_date: string
+          school_id: string
+          sold_by: string | null
+          student_id: string | null
+          total_amount: number
+        }
+        Insert: {
+          bill_number: string
+          created_at?: string
+          id?: string
+          payment_mode: Database["public"]["Enums"]["payment_mode"]
+          sale_date?: string
+          school_id: string
+          sold_by?: string | null
+          student_id?: string | null
+          total_amount: number
+        }
+        Update: {
+          bill_number?: string
+          created_at?: string
+          id?: string
+          payment_mode?: Database["public"]["Enums"]["payment_mode"]
+          sale_date?: string
+          school_id?: string
+          sold_by?: string | null
+          student_id?: string | null
+          total_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_sales_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_sales_sold_by_fkey"
+            columns: ["sold_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_sales_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marks: {
+        Row: {
+          created_at: string
+          entered_at: string | null
+          entered_by: string | null
+          exam_id: string
+          exam_subject_id: string
+          grade: string | null
+          id: string
+          is_absent: boolean
+          marks_obtained: number | null
+          school_id: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          entered_at?: string | null
+          entered_by?: string | null
+          exam_id: string
+          exam_subject_id: string
+          grade?: string | null
+          id?: string
+          is_absent?: boolean
+          marks_obtained?: number | null
+          school_id: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          entered_at?: string | null
+          entered_by?: string | null
+          exam_id?: string
+          exam_subject_id?: string
+          grade?: string | null
+          id?: string
+          is_absent?: boolean
+          marks_obtained?: number | null
+          school_id?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marks_entered_by_fkey"
+            columns: ["entered_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marks_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marks_exam_subject_id_fkey"
+            columns: ["exam_subject_id"]
+            isOneToOne: false
+            referencedRelation: "exam_subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marks_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marks_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_logs: {
+        Row: {
+          created_at: string | null
+          error_msg: string | null
+          event: string
+          id: string
+          recipient_email: string | null
+          recipient_id: string | null
+          school_id: string
+          sent_at: string | null
+          status: string | null
+          subject: string | null
+          type: string
+        }
+        Insert: {
+          created_at?: string | null
+          error_msg?: string | null
+          event: string
+          id?: string
+          recipient_email?: string | null
+          recipient_id?: string | null
+          school_id: string
+          sent_at?: string | null
+          status?: string | null
+          subject?: string | null
+          type: string
+        }
+        Update: {
+          created_at?: string | null
+          error_msg?: string | null
+          event?: string
+          id?: string
+          recipient_email?: string | null
+          recipient_id?: string | null
+          school_id?: string
+          sent_at?: string | null
+          status?: string | null
+          subject?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_logs_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_logs_school_id_fkey"
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
@@ -425,6 +1003,27 @@ export type Database = {
           },
         ]
       }
+      plan_prices: {
+        Row: {
+          plan: string
+          price_inr: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          plan: string
+          price_inr: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          plan?: string
+          price_inr?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       schools: {
         Row: {
           academic_year_start_month: number
@@ -440,7 +1039,10 @@ export type Database = {
           phone: string | null
           pincode: string | null
           state: string | null
+          subscription_plan: string
+          subscription_status: string
           theme_color: string | null
+          trial_ends_at: string | null
           updated_at: string
           website: string | null
         }
@@ -458,7 +1060,10 @@ export type Database = {
           phone?: string | null
           pincode?: string | null
           state?: string | null
+          subscription_plan?: string
+          subscription_status?: string
           theme_color?: string | null
+          trial_ends_at?: string | null
           updated_at?: string
           website?: string | null
         }
@@ -476,7 +1081,10 @@ export type Database = {
           phone?: string | null
           pincode?: string | null
           state?: string | null
+          subscription_plan?: string
+          subscription_status?: string
           theme_color?: string | null
+          trial_ends_at?: string | null
           updated_at?: string
           website?: string | null
         }
@@ -487,6 +1095,7 @@ export type Database = {
           capacity: number | null
           class_id: string
           created_at: string
+          deleted_at: string | null
           id: string
           is_active: boolean
           name: string
@@ -496,6 +1105,7 @@ export type Database = {
           capacity?: number | null
           class_id: string
           created_at?: string
+          deleted_at?: string | null
           id?: string
           is_active?: boolean
           name: string
@@ -505,6 +1115,7 @@ export type Database = {
           capacity?: number | null
           class_id?: string
           created_at?: string
+          deleted_at?: string | null
           id?: string
           is_active?: boolean
           name?: string
@@ -520,6 +1131,61 @@ export type Database = {
           },
           {
             foreignKeyName: "sections_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_adjustments: {
+        Row: {
+          adjusted_by: string | null
+          created_at: string
+          id: string
+          item_id: string
+          quantity: number
+          reason: string | null
+          school_id: string
+          type: Database["public"]["Enums"]["stock_adjustment_type"]
+        }
+        Insert: {
+          adjusted_by?: string | null
+          created_at?: string
+          id?: string
+          item_id: string
+          quantity: number
+          reason?: string | null
+          school_id: string
+          type: Database["public"]["Enums"]["stock_adjustment_type"]
+        }
+        Update: {
+          adjusted_by?: string | null
+          created_at?: string
+          id?: string
+          item_id?: string
+          quantity?: number
+          reason?: string | null
+          school_id?: string
+          type?: Database["public"]["Enums"]["stock_adjustment_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_adjustments_adjusted_by_fkey"
+            columns: ["adjusted_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_adjustments_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_adjustments_school_id_fkey"
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
@@ -614,6 +1280,7 @@ export type Database = {
           class_id: string
           code: string | null
           created_at: string
+          deleted_at: string | null
           id: string
           is_active: boolean
           name: string
@@ -623,6 +1290,7 @@ export type Database = {
           class_id: string
           code?: string | null
           created_at?: string
+          deleted_at?: string | null
           id?: string
           is_active?: boolean
           name: string
@@ -632,6 +1300,7 @@ export type Database = {
           class_id?: string
           code?: string | null
           created_at?: string
+          deleted_at?: string | null
           id?: string
           is_active?: boolean
           name?: string
@@ -832,20 +1501,82 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      adjust_stock: {
+        Args: {
+          p_adjusted_by?: string
+          p_item_id: string
+          p_quantity: number
+          p_reason?: string
+          p_type: Database["public"]["Enums"]["stock_adjustment_type"]
+        }
+        Returns: Json
+      }
+      calculate_grade: {
+        Args: { p_class_id: string; p_percentage: number; p_school_id: string }
+        Returns: string
+      }
+      create_inventory_sale: {
+        Args: {
+          p_items: Json
+          p_payment_mode: Database["public"]["Enums"]["payment_mode"]
+          p_school_id: string
+          p_sold_by?: string
+          p_student_id?: string
+        }
+        Returns: Json
+      }
       get_my_role: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
       get_my_school_id: { Args: never; Returns: string }
+      get_pending_fees: {
+        Args: { p_school_id: string }
+        Returns: {
+          admission_number: string
+          balance: number
+          class_name: string
+          section_name: string
+          student_id: string
+          student_name: string
+          total_fee: number
+          total_paid: number
+        }[]
+      }
       is_admin_or_manager: { Args: never; Returns: boolean }
       is_school_admin: { Args: never; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
+      publish_exam_results: {
+        Args: { p_exam_id: string; p_notify_parents?: boolean }
+        Returns: Json
+      }
+      save_attendance_atomic: {
+        Args: {
+          p_class_id: string
+          p_date: string
+          p_marked_by: string
+          p_records: Json
+          p_school_id: string
+          p_section_id: string
+        }
+        Returns: number
+      }
+      unlock_exam_results: { Args: { p_exam_id: string }; Returns: boolean }
     }
     Enums: {
       attendance_status: "present" | "absent" | "late" | "half_day" | "holiday"
+      exam_status: "draft" | "published" | "ongoing" | "completed" | "locked"
       fee_status: "pending" | "partial" | "paid" | "overdue" | "waived"
       gender: "male" | "female" | "other"
+      inventory_category:
+        | "book"
+        | "stationery"
+        | "uniform"
+        | "sports"
+        | "lab"
+        | "other"
       payment_mode: "cash" | "cheque" | "upi" | "neft" | "card" | "online"
+      stock_adjustment_type: "add" | "remove" | "adjustment" | "sale"
       user_role:
         | "super_admin"
         | "school_admin"
@@ -981,9 +1712,19 @@ export const Constants = {
   public: {
     Enums: {
       attendance_status: ["present", "absent", "late", "half_day", "holiday"],
+      exam_status: ["draft", "published", "ongoing", "completed", "locked"],
       fee_status: ["pending", "partial", "paid", "overdue", "waived"],
       gender: ["male", "female", "other"],
+      inventory_category: [
+        "book",
+        "stationery",
+        "uniform",
+        "sports",
+        "lab",
+        "other",
+      ],
       payment_mode: ["cash", "cheque", "upi", "neft", "card", "online"],
+      stock_adjustment_type: ["add", "remove", "adjustment", "sale"],
       user_role: [
         "super_admin",
         "school_admin",

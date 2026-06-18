@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { getClasses, getSubjects, createSubject, deleteSubject } from '../actions'
 import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
@@ -21,13 +21,7 @@ export function SubjectsTab() {
     const [newSubjectCode, setNewSubjectCode] = useState('')
     const [selectedClassId, setSelectedClassId] = useState('')
 
-    useEffect(() => {
-        if (school?.id) {
-            fetchData()
-        }
-    }, [school?.id])
-
-    async function fetchData() {
+    const fetchData = useCallback(async () => {
         const sid = school?.id
         if (!sid) return
         setLoading(true)
@@ -46,7 +40,13 @@ export function SubjectsTab() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [school?.id])
+
+    useEffect(() => {
+        if (school?.id) {
+            fetchData()
+        }
+    }, [fetchData, school?.id])
 
     async function handleAddSubject(e: React.FormEvent) {
         e.preventDefault()
@@ -119,7 +119,7 @@ export function SubjectsTab() {
                                         <div className="text-sm text-muted-foreground">{className}</div>
                                         {s.code && <div className="text-xs mt-1 bg-gray-100 px-2 py-0.5 rounded-md inline-block dark:bg-gray-800">{s.code}</div>}
                                     </div>
-                                    <Button variant="ghost" size="icon" onClick={() => handleDeleteSubject(s.id)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950">
+                                    <Button variant="ghost" size="icon" aria-label="Delete subject" onClick={() => handleDeleteSubject(s.id)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950">
                                         <Trash2 className="w-4 h-4" />
                                     </Button>
                                 </CardContent>

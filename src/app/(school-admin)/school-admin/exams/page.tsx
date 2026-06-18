@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
 import { getExams } from './actions'
 import { getClasses } from '../settings/actions'
@@ -35,13 +35,7 @@ export default function ExamsPage() {
     const [selectedClassId, setSelectedClassId] = useState<string>('all')
     const [selectedStatus, setSelectedStatus] = useState<string>('all')
 
-    useEffect(() => {
-        if (school?.id) {
-            fetchInitialData()
-        }
-    }, [school?.id])
-
-    async function fetchInitialData() {
+    const fetchInitialData = useCallback(async () => {
         if (!school?.id) return
         setLoading(true)
         try {
@@ -56,7 +50,13 @@ export default function ExamsPage() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [school?.id])
+
+    useEffect(() => {
+        if (school?.id) {
+            fetchInitialData()
+        }
+    }, [fetchInitialData, school?.id])
 
     const filteredExams = exams.filter(e => {
         if (selectedClassId !== 'all' && e.class_id !== selectedClassId) return false

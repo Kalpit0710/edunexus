@@ -33,9 +33,13 @@ export default function ParentLayout({ children }: { children: React.ReactNode }
     if (!user?.email || !school?.id) return
     getLinkedChildren(user.email, school.id).then(list => {
       setChildren_(list)
-      if (!activeChildId && list.length > 0) setActiveChildId(list[0]?.id ?? null)
+      // Read the latest activeChildId imperatively so switching children does not
+      // re-trigger this fetch (and so the dep array stays honest).
+      if (!useAuthStore.getState().activeChildId && list.length > 0) {
+        setActiveChildId(list[0]?.id ?? null)
+      }
     })
-  }, [user?.email, school?.id])
+  }, [user?.email, school?.id, setActiveChildId])
 
   return (
     <div className="flex flex-col min-h-screen bg-[#0a0a0a]">

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
@@ -33,44 +33,7 @@ export default function ExamMarksPage() {
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
 
-    useEffect(() => {
-        if (school?.id && examId) {
-            loadInitialData()
-        }
-    }, [school?.id, examId])
-
-    async function loadInitialData() {
-        if (!school?.id) return
-        setLoading(true)
-        try {
-            const [exRaw, subs, studs, rules] = await Promise.all([
-                getExamById(school.id, examId),
-                getExamSubjects(school.id, examId),
-                getStudents(school.id),
-                getGradingRules(school.id)
-            ])
-            const ex: any = exRaw;
-            setExam(ex)
-            setSubjects(subs || [])
-            setGradingRules(rules || [])
-
-            // Filter students to only those in the exam's class
-            const examClassId = (ex as any)?.class_id
-            const classStuds = Array.isArray(studs) ? (studs as any[]).filter((s: any) => s.class_id === examClassId) : []
-            setStudents(classStuds)
-
-            if (subs && subs.length > 0) {
-                setSelectedSubjectId(subs[0].id)
-                await loadMarksForSubject(subs[0].id, classStuds)
-            }
-        } catch (e) {
-            toast.error("Failed to load exam data: " + getErrorMessage(e))
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    async function loadMarksForSubject(subjectId: string, classStudents: any[]) {
+    const loadMarksForSubject = useCallback(async (subjectId: string, classStudents: any[]) => {
         if (!school?.id) return
         try {
             const supabase = createClient()
@@ -104,7 +67,44 @@ export default function ExamMarksPage() {
             })
             setMarksData(blankMarks)
         }
-    }
+    }, [school?.id, examId])
+
+    const loadInitialData = useCallback(async () => {
+        if (!school?.id) return
+        setLoading(true)
+        try {
+            const [exRaw, subs, studs, rules] = await Promise.all([
+                getExamById(school.id, examId),
+                getExamSubjects(school.id, examId),
+                getStudents(school.id),
+                getGradingRules(school.id)
+            ])
+            const ex: any = exRaw;
+            setExam(ex)
+            setSubjects(subs || [])
+            setGradingRules(rules || [])
+
+            // Filter students to only those in the exam's class
+            const examClassId = (ex as any)?.class_id
+            const classStuds = Array.isArray(studs) ? (studs as any[]).filter((s: any) => s.class_id === examClassId) : []
+            setStudents(classStuds)
+
+            if (subs && subs.length > 0) {
+                setSelectedSubjectId(subs[0].id)
+                await loadMarksForSubject(subs[0].id, classStuds)
+            }
+        } catch (e) {
+            toast.error("Failed to load exam data: " + getErrorMessage(e))
+        } finally {
+            setLoading(false)
+        }
+    }, [school?.id, examId, loadMarksForSubject])
+
+    useEffect(() => {
+        if (school?.id && examId) {
+            loadInitialData()
+        }
+    }, [loadInitialData, school?.id, examId])
 
     const handleSubjectChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
         const subId = e.target.value
@@ -174,7 +174,7 @@ export default function ExamMarksPage() {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <Link href={"/school-admin/exams" as any}>
-                        <Button variant="outline" size="icon">
+                        <Button variant="outline" size="icon" aria-label="Go back">
                             <ArrowLeft className="w-4 h-4" />
                         </Button>
                     </Link>

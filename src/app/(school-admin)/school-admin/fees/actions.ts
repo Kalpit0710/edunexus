@@ -4,6 +4,7 @@ import { createClient as createServerSupabaseClient, createAdminClient } from '@
 import { requireActor } from '@/lib/auth/require-actor'
 import { sendEmail } from '@/lib/email'
 import { logAudit } from '@/lib/audit'
+import { validateCollectFeeInput } from '@/lib/fee-utils'
 import { FeeReceiptEmail } from '@/emails/FeeReceiptEmail'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -332,6 +333,11 @@ export async function collectFeePayment(
   receiptNumber: string,
   input: CollectFeeInput,
 ): Promise<{ paymentId: string; receiptNumber: string }> {
+  // Validate the payment payload at the trust boundary (payment mode + amount
+  // bounds) before touching the ledger.
+  const validationError = validateCollectFeeInput(input)
+  if (validationError) throw new Error(validationError)
+
   const supabase = await createServerSupabaseClient()
   const db = supabase as any
   const totalAmount = input.items.reduce((s, i) => s + i.amount, 0)
@@ -434,6 +440,7 @@ export async function getNextReceiptSeq(schoolId: string): Promise<number> {
 export async function getPaymentsByStudent(
   schoolId: string,
   studentId: string,
+  limit = 200,
 ): Promise<FeePaymentRow[]> {
   const supabase = await createServerSupabaseClient()
   const { data, error } = await supabase
@@ -442,6 +449,7 @@ export async function getPaymentsByStudent(
     .eq('school_id', schoolId)
     .eq('student_id', studentId)
     .order('payment_date', { ascending: false })
+    .limit(limit)
   if (error) throw new Error(error.message)
   return ((data ?? []) as any[]).map(r => ({
     ...r,
@@ -490,78 +498,32 @@ export interface PendingFeeRow {
 export async function getPendingFees(schoolId: string): Promise<PendingFeeRow[]> {
   const supabase = await createServerSupabaseClient()
 
-  // Get current academic year
-  const { data: yearData } = await supabase
-    .from('academic_years')
-    .select('id')
-    .eq('school_id', schoolId)
-    .eq('is_current', true)
-    .single()
-  if (!yearData) return []
-  const yearId = (yearData as any).id as string
+  // Aggregation happens in the DB (get_pending_fees RPC) so we no longer pull
+  // every student + every payment into Node and join them in memory. The RPC
+  // returns only students with a positive balance, already sorted by balance.
+  const { data, error } = await (supabase as any).rpc('get_pending_fees', {
+    p_school_id: schoolId,
+  })
+  if (error) throw new Error(error.message)
 
-  // All active students with class info
-  const { data: students } = await supabase
-    .from('students')
-    .select('id, full_name, admission_number, class_id, section_id, classes(name), sections(name)')
-    .eq('school_id', schoolId)
-    .eq('is_active', true)
-
-  if (!students?.length) return []
-
-  // All fee structures for this year
-  const { data: structures } = await supabase
-    .from('fee_structures')
-    .select('class_id, amount')
-    .eq('school_id', schoolId)
-    .eq('academic_year_id', yearId)
-    .eq('is_active', true)
-
-  // All payments for this school
-  const { data: payments } = await supabase
-    .from('fee_payments')
-    .select('student_id, paid_amount')
-    .eq('school_id', schoolId)
-
-  // Build class → total fee map
-  const classFeeMap: Record<string, number> = {}
-    ; (structures ?? []).forEach((s: any) => {
-      classFeeMap[s.class_id] = (classFeeMap[s.class_id] ?? 0) + Number(s.amount)
-    })
-
-  // Build student → total paid map
-  const paidMap: Record<string, number> = {}
-    ; (payments ?? []).forEach((p: any) => {
-      paidMap[p.student_id] = (paidMap[p.student_id] ?? 0) + Number(p.paid_amount)
-    })
-
-  const rows: PendingFeeRow[] = []
-  for (const s of students as any[]) {
-    const totalFee = classFeeMap[s.class_id] ?? 0
-    const totalPaid = paidMap[s.id] ?? 0
-    const balance = totalFee - totalPaid
-    if (balance > 0) {
-      rows.push({
-        studentId: s.id,
-        studentName: s.full_name,
-        admissionNumber: s.admission_number ?? '',
-        className: s.classes?.name ?? '',
-        sectionName: s.sections?.name ?? '',
-        totalFee,
-        totalPaid,
-        balance,
-      })
-    }
-  }
-
-  return rows.sort((a, b) => b.balance - a.balance)
+  return ((data ?? []) as any[]).map(r => ({
+    studentId: r.student_id,
+    studentName: r.student_name,
+    admissionNumber: r.admission_number ?? '',
+    className: r.class_name ?? '',
+    sectionName: r.section_name ?? '',
+    totalFee: Number(r.total_fee),
+    totalPaid: Number(r.total_paid),
+    balance: Number(r.balance),
+  }))
 }
 
 export async function getStudentPaymentHistory(
   schoolId: string,
   studentId: string,
+  limit = 200,
 ): Promise<FeePaymentRow[]> {
-  return getPaymentsByStudent(schoolId, studentId)
+  return getPaymentsByStudent(schoolId, studentId, limit)
 }
 
 export async function getAllPayments(

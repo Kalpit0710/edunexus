@@ -1,7 +1,10 @@
 'use client'
 
 import { useAuthStore } from '@/stores/auth.store'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
+import { DataLoadError } from '@/components/shared/DataLoadError'
 import {
   getAttendanceSummaryByClass,
   getExamAnalyticsSummary,
@@ -35,28 +38,38 @@ export default function ReportsPage() {
   const [examAnalytics, setExamAnalytics] = useState<ExamAnalyticsSummary | null>(null)
   const [enrollment, setEnrollment] = useState<EnrollmentStat[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const loadReports = useCallback(async () => {
+    if (!school?.id) return
+    setLoading(true)
+    setError(null)
+    try {
+      const [att, fee, momentum, trend, analytics, enr] = await Promise.all([
+        getAttendanceSummaryByClass(school.id, month, year),
+        getFeeCollectionSummary(school.id),
+        getFeeMomentumSummary(school.id),
+        getWeeklyCollectionTrend(school.id),
+        getExamAnalyticsSummary(school.id),
+        getStudentEnrollmentStats(school.id),
+      ])
+      setAttendance(att)
+      setFeeSummary(fee)
+      setFeeMomentum(momentum)
+      setCollectionTrend(trend)
+      setExamAnalytics(analytics)
+      setEnrollment(enr)
+    } catch (err) {
+      setError(getErrorMessage(err))
+      toast.error('Unable to load reports. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }, [school?.id, month, year])
 
   useEffect(() => {
-    if (!school?.id) return
-    Promise.all([
-      getAttendanceSummaryByClass(school.id, month, year),
-      getFeeCollectionSummary(school.id),
-      getFeeMomentumSummary(school.id),
-      getWeeklyCollectionTrend(school.id),
-      getExamAnalyticsSummary(school.id),
-      getStudentEnrollmentStats(school.id),
-    ])
-      .then(([att, fee, momentum, trend, analytics, enr]) => {
-        setAttendance(att)
-        setFeeSummary(fee)
-        setFeeMomentum(momentum)
-        setCollectionTrend(trend)
-        setExamAnalytics(analytics)
-        setEnrollment(enr)
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [school?.id])
+    loadReports()
+  }, [loadReports])
 
   const totalStudents = enrollment.reduce((s, e) => s + e.total, 0)
   const totalMale = enrollment.reduce((s, e) => s + e.maleCount, 0)
@@ -69,6 +82,10 @@ export default function ReportsPage() {
     ? attendance.reduce((best, row) => (row.percentage > best.percentage ? row : best), attendance[0]!)
     : null
   const trendDirectionUp = (feeMomentum?.growthPercentage ?? 0) >= 0
+
+  if (error) {
+    return <DataLoadError title="Couldn’t load reports" message={error} onRetry={() => loadReports()} retrying={loading} />
+  }
 
   return (
     <div className="space-y-8">

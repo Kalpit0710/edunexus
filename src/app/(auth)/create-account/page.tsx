@@ -2,11 +2,41 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useForm } from 'react-hook-form'
+import { z } from 'zod'
 import { toast } from 'sonner'
 import { ArrowLeft, CheckCircle2, ShieldCheck, UserRoundPlus } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+
+// Mirrors the server-side registerSchema in /api/auth/parent-register so inline
+// field validation never rejects an input the server would accept.
+const parentSchema = z
+  .object({
+    parentEmail: z.string().trim().min(1, 'Parent email is required').email('Enter a valid email address'),
+    parentPhone: z.string().trim().min(6, 'Enter a valid phone number').max(30, 'Phone number is too long'),
+    password: z
+      .string()
+      .min(8, 'Password must be at least 8 characters')
+      .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/, 'Include an uppercase, a lowercase, and a number'),
+    confirmPassword: z.string().min(1, 'Re-enter your password'),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  })
+
+type ParentFormValues = z.infer<typeof parentSchema>
 
 interface LookupStudent {
   schoolName: string
@@ -27,16 +57,18 @@ interface LinkedStudent {
 export default function CreateAccountPage() {
   const [schoolCode, setSchoolCode] = useState('')
   const [admissionNumber, setAdmissionNumber] = useState('')
-  const [parentEmail, setParentEmail] = useState('')
-  const [parentPhone, setParentPhone] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
 
   const [lookupLoading, setLookupLoading] = useState(false)
   const [registerLoading, setRegisterLoading] = useState(false)
   const [student, setStudent] = useState<LookupStudent | null>(null)
   const [createdEmail, setCreatedEmail] = useState<string | null>(null)
   const [linkedStudents, setLinkedStudents] = useState<LinkedStudent[]>([])
+
+  const form = useForm<ParentFormValues>({
+    resolver: zodResolver(parentSchema),
+    mode: 'onTouched',
+    defaultValues: { parentEmail: '', parentPhone: '', password: '', confirmPassword: '' },
+  })
 
   const lookupStudent = async () => {
     if (!schoolCode.trim() || !admissionNumber.trim()) {
@@ -77,30 +109,9 @@ export default function CreateAccountPage() {
     }
   }
 
-  const createParentAccount = async () => {
+  const createParentAccount = async (data: ParentFormValues) => {
     if (!student) {
       toast.error('Verify student details first')
-      return
-    }
-
-    if (!parentEmail.trim() || !parentPhone.trim()) {
-      toast.error('Parent email and phone are required')
-      return
-    }
-
-    if (password.length < 8) {
-      toast.error('Password must be at least 8 characters')
-      return
-    }
-
-    const passwordStrength = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/
-    if (!passwordStrength.test(password)) {
-      toast.error('Password must include uppercase, lowercase, and a number')
-      return
-    }
-
-    if (password !== confirmPassword) {
-      toast.error('Passwords do not match')
       return
     }
 
@@ -114,10 +125,10 @@ export default function CreateAccountPage() {
           action: 'register',
           schoolCode: schoolCode.trim(),
           admissionNumber: admissionNumber.trim(),
-          parentEmail: parentEmail.trim(),
-          parentPhone: parentPhone.trim(),
-          password,
-          confirmPassword,
+          parentEmail: data.parentEmail.trim(),
+          parentPhone: data.parentPhone.trim(),
+          password: data.password,
+          confirmPassword: data.confirmPassword,
         }),
       })
 
@@ -128,7 +139,7 @@ export default function CreateAccountPage() {
         return
       }
 
-      setCreatedEmail(payload.account?.email ?? parentEmail.trim())
+      setCreatedEmail(payload.account?.email ?? data.parentEmail.trim())
       setLinkedStudents((payload.account?.linkedStudents ?? []) as LinkedStudent[])
       toast.success('Account created successfully. You can now login.')
     } catch (error) {
@@ -261,62 +272,95 @@ export default function CreateAccountPage() {
 
               <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
                 <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-400">Step 2: Parent Verification</p>
-                <div className="space-y-3">
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Parent Email</label>
-                    <Input
-                      type="email"
-                      placeholder="parent@example.com"
-                      value={parentEmail}
-                      onChange={(e) => setParentEmail(e.target.value)}
-                      className="h-11 rounded-xl border-white/10 bg-white/5 text-white placeholder:text-zinc-600"
-                      disabled={registerLoading}
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(createParentAccount)} className="space-y-3" noValidate>
+                    <FormField
+                      control={form.control}
+                      name="parentEmail"
+                      render={({ field }) => (
+                        <FormItem className="space-y-1.5">
+                          <FormLabel className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Parent Email</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="email"
+                              placeholder="parent@example.com"
+                              disabled={registerLoading}
+                              className="h-11 rounded-xl border-white/10 bg-white/5 text-white placeholder:text-zinc-600"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage className="text-red-400" />
+                        </FormItem>
+                      )}
                     />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Parent Phone</label>
-                    <Input
-                      type="tel"
-                      placeholder="+91 98765 43210"
-                      value={parentPhone}
-                      onChange={(e) => setParentPhone(e.target.value)}
-                      className="h-11 rounded-xl border-white/10 bg-white/5 text-white placeholder:text-zinc-600"
-                      disabled={registerLoading}
+                    <FormField
+                      control={form.control}
+                      name="parentPhone"
+                      render={({ field }) => (
+                        <FormItem className="space-y-1.5">
+                          <FormLabel className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Parent Phone</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="tel"
+                              placeholder="+91 98765 43210"
+                              disabled={registerLoading}
+                              className="h-11 rounded-xl border-white/10 bg-white/5 text-white placeholder:text-zinc-600"
+                              {...field}
+                            />
+                          </FormControl>
+                          <p className="text-[11px] text-zinc-500">
+                            You can enter phone as <span className="font-mono">+91 98765 43210</span>, <span className="font-mono">9876543210</span>, or with spaces/hyphens.
+                          </p>
+                          <FormMessage className="text-red-400" />
+                        </FormItem>
+                      )}
                     />
-                    <p className="text-[11px] text-zinc-500">
-                      You can enter phone as <span className="font-mono">+91 98765 43210</span>, <span className="font-mono">9876543210</span>, or with spaces/hyphens.
-                    </p>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Password</label>
-                    <Input
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="h-11 rounded-xl border-white/10 bg-white/5 text-white placeholder:text-zinc-600"
-                      disabled={registerLoading}
+                    <FormField
+                      control={form.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem className="space-y-1.5">
+                          <FormLabel className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Password</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="password"
+                              disabled={registerLoading}
+                              className="h-11 rounded-xl border-white/10 bg-white/5 text-white placeholder:text-zinc-600"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage className="text-red-400" />
+                        </FormItem>
+                      )}
                     />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Confirm Password</label>
-                    <Input
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="h-11 rounded-xl border-white/10 bg-white/5 text-white placeholder:text-zinc-600"
-                      disabled={registerLoading}
+                    <FormField
+                      control={form.control}
+                      name="confirmPassword"
+                      render={({ field }) => (
+                        <FormItem className="space-y-1.5">
+                          <FormLabel className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Confirm Password</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="password"
+                              disabled={registerLoading}
+                              className="h-11 rounded-xl border-white/10 bg-white/5 text-white placeholder:text-zinc-600"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage className="text-red-400" />
+                        </FormItem>
+                      )}
                     />
-                  </div>
-                </div>
 
-                <Button
-                  type="button"
-                  onClick={createParentAccount}
-                  disabled={!student || registerLoading}
-                  className="mt-4 h-11 w-full rounded-full bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50"
-                >
-                  {registerLoading ? 'Creating Account...' : 'Create Account'}
-                </Button>
+                    <Button
+                      type="submit"
+                      disabled={!student || registerLoading}
+                      className="mt-1 h-11 w-full rounded-full bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50"
+                    >
+                      {registerLoading ? 'Creating Account...' : 'Create Account'}
+                    </Button>
+                  </form>
+                </Form>
               </div>
 
               <p className="text-center text-xs text-zinc-500">

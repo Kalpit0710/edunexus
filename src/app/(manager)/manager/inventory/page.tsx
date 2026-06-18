@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
 import { getInventoryItems } from './actions'
 import { toast } from 'sonner'
@@ -34,13 +34,7 @@ export default function InventoryPage() {
     const [selectedCategory, setSelectedCategory] = useState<string>('all')
     const [activeFilter, setActiveFilter] = useState<string>('active')
 
-    useEffect(() => {
-        if (school?.id) {
-            fetchItems()
-        }
-    }, [school?.id, activeFilter])
-
-    async function fetchItems() {
+    const fetchItems = useCallback(async () => {
         if (!school?.id) return
         setLoading(true)
         try {
@@ -54,7 +48,13 @@ export default function InventoryPage() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [school?.id, activeFilter])
+
+    useEffect(() => {
+        if (school?.id) {
+            fetchItems()
+        }
+    }, [fetchItems, school?.id])
 
     const filteredItems = items.filter(i => {
         if (selectedCategory !== 'all' && i.category !== selectedCategory) return false

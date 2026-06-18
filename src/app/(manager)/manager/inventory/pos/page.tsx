@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/utils'
@@ -32,18 +32,13 @@ export default function POSPage() {
     const [paymentMode, setPaymentMode] = useState<PaymentMode>('cash')
     const [successBill, setSuccessBill] = useState<any>(null)
 
-    useEffect(() => {
-        if (school?.id) {
-            loadInitialData()
-        }
-    }, [school?.id])
-
-    async function loadInitialData() {
+    const loadInitialData = useCallback(async () => {
+        if (!school?.id) return
         setLoading(true)
         try {
             const [fetchedItems, fetchedStudents] = await Promise.all([
-                getInventoryItems(school!.id, { activeOnly: true, limit: 1000 }),
-                getStudents(school!.id)
+                getInventoryItems(school.id, { activeOnly: true, limit: 1000 }),
+                getStudents(school.id)
             ])
             setItems(fetchedItems || [])
             setStudents(fetchedStudents || [])
@@ -52,7 +47,13 @@ export default function POSPage() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [school?.id])
+
+    useEffect(() => {
+        if (school?.id) {
+            loadInitialData()
+        }
+    }, [loadInitialData, school?.id])
 
     const addToCart = (item: any) => {
         setCart(prev => {
@@ -221,7 +222,7 @@ export default function POSPage() {
         <div className="h-[calc(100vh-6rem)] flex flex-col space-y-4">
             <div className="flex items-center gap-4 flex-none">
                 <Link href={"/manager/inventory" as any}>
-                    <Button variant="outline" size="icon">
+                    <Button variant="outline" size="icon" aria-label="Go back">
                         <ArrowLeft className="w-4 h-4" />
                     </Button>
                 </Link>
