@@ -76,6 +76,8 @@ export default function LandingPage() {
     else if (latest < 0.75) setActiveIndex(2)
     else setActiveIndex(3)
   })
+
+  const activeHighlight = SCROLL_HIGHLIGHTS[activeIndex] ?? SCROLL_HIGHLIGHTS[0]!
   
   const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0])
   const y = useTransform(scrollYProgress, [0, 0.5], [0, 100])
@@ -255,10 +257,10 @@ export default function LandingPage() {
                     className="absolute inset-0 flex flex-col justify-center"
                   >
                     <div>
-                      <h2 className="text-sm font-semibold text-violet-400 tracking-wider uppercase mb-3">{SCROLL_HIGHLIGHTS[activeIndex].tag}</h2>
-                      <h3 className="text-4xl md:text-5xl font-black tracking-tight leading-tight">{SCROLL_HIGHLIGHTS[activeIndex].title}</h3>
+                      <h2 className="text-sm font-semibold text-violet-400 tracking-wider uppercase mb-3">{activeHighlight.tag}</h2>
+                      <h3 className="text-4xl md:text-5xl font-black tracking-tight leading-tight">{activeHighlight.title}</h3>
                       <p className="mt-6 text-zinc-400 text-lg leading-relaxed">
-                        {SCROLL_HIGHLIGHTS[activeIndex].desc}
+                        {activeHighlight.desc}
                       </p>
                     </div>
                   </motion.div>
