@@ -131,36 +131,27 @@ export async function saveAttendance(
     throw new Error('Your account is not linked to a staff profile for this school.')
   }
 
-  // Delete existing records for this date (clean upsert approach)
-
-  await supabase
-    .from('attendance_records')
-    .delete()
-    .eq('school_id', schoolId)
-    .eq('class_id', classId)
-    .eq('section_id', sectionId)
-    .eq('date', date)
-
-  if (records.length === 0) return
-
-  const payload = records.map((r) => ({
-    school_id: schoolId,
-    class_id: classId,
-    section_id: sectionId,
-    student_id: r.student_id,
-    date,
-    status: r.status,
-    remarks: r.remarks ?? null,
-    marked_by: resolvedMarkedBy,
-  }))
-
-  const { error } = await supabase
-    .from('attendance_records')
-    // @ts-expect-error untyped admin payload
-    .upsert(payload, { onConflict: 'school_id,student_id,date' })
+  // Persist atomically: a single transactional RPC deletes the day's existing
+  // records for this class/section and re-inserts the submitted rows. This
+  // replaces the previous non-atomic delete-then-upsert, which could lose the
+  // day's attendance if the insert failed after the delete.
+  const db = supabase as any
+  const { error } = await db.rpc('save_attendance_atomic', {
+    p_school_id: schoolId,
+    p_class_id: classId,
+    p_section_id: sectionId,
+    p_date: date,
+    p_marked_by: resolvedMarkedBy,
+    p_records: records.map((r) => ({
+      student_id: r.student_id,
+      status: r.status,
+      remarks: r.remarks ?? null,
+    })),
+  })
 
   if (error) throw new Error(error.message)
 
+  if (records.length === 0) return
 
   // Send Attendance Alerts for absent students
   const absentStudents = records.filter(r => r.status === 'absent')

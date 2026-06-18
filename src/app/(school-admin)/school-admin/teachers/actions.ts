@@ -6,6 +6,8 @@ import { cookies } from 'next/headers'
 import type { Database } from '@/types/database.types'
 import { sendEmail } from '@/lib/email'
 import { WelcomeEmail } from '@/emails/WelcomeEmail'
+import { requireActor } from '@/lib/auth/require-actor'
+import { logAudit } from '@/lib/audit'
 
 // ── Supabase helpers ─────────────────────────────────────────────────────────
 
@@ -173,6 +175,8 @@ export async function createTeacher(
   schoolId: string,
   payload: CreateTeacherPayload
 ): Promise<string> {
+  const session = await getSupabase()
+  const actor = await requireActor(session, ['school_admin'])
   const admin = getAdminClient()
 
   // 1. Create Supabase Auth user
@@ -224,6 +228,18 @@ export async function createTeacher(
       .single()
 
     if (teacherError) throw new Error('Teacher record creation failed: ' + teacherError.message)
+
+    // Audit trail: staff onboarding is a critical record creation.
+    await logAudit({
+      schoolId,
+      actorId: actor.id,
+      actorRole: actor.role,
+      action: 'teacher.created',
+      entityType: 'teacher',
+      entityId: teacherData.id,
+      entityLabel: payload.full_name,
+      metadata: { email: payload.email, employeeId: payload.employee_id ?? null },
+    })
 
     // 4. Send Welcome Email
     try {
@@ -301,6 +317,7 @@ export async function toggleTeacherStatus(
   isActive: boolean
 ): Promise<void> {
   const supabase = await getSupabase()
+  const actor = await requireActor(supabase, ['school_admin'])
   const [teacherRes, profileRes] = await Promise.all([
     // @ts-expect-error
     supabase.from('teachers').update({ is_active: isActive } as any).eq('id', teacherId),
@@ -309,6 +326,16 @@ export async function toggleTeacherStatus(
   ])
   if (teacherRes.error) throw new Error(teacherRes.error.message)
   if (profileRes.error) throw new Error(profileRes.error.message)
+
+  // Audit trail: enabling/disabling staff access is security-relevant.
+  await logAudit({
+    schoolId: actor.school_id,
+    actorId: actor.id,
+    actorRole: actor.role,
+    action: isActive ? 'teacher.activated' : 'teacher.deactivated',
+    entityType: 'teacher',
+    entityId: teacherId,
+  })
 }
 
 export async function assignTeacherToSection(

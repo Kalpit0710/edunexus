@@ -6,6 +6,7 @@ import type { Database } from '@/types/database.types'
 import { createAdminClient } from '@/lib/supabase/server'
 import { syncPrimaryParentForStudent } from '@/lib/student-parent-sync'
 import { normalizeParentContact } from '@/lib/student-parent-link'
+import { logAudit } from '@/lib/audit'
 import { z } from 'zod'
 
 const studentCreateSchema = z
@@ -40,6 +41,7 @@ async function getSupabase() {
 }
 
 interface ActorProfile {
+    id: string
     school_id: string | null
     role: string
 }
@@ -95,7 +97,7 @@ async function getActorProfile(supabase: Awaited<ReturnType<typeof getSupabase>>
 
     const { data: profile, error: profileError } = await supabase
         .from('user_profiles')
-        .select('school_id, role')
+        .select('id, school_id, role')
         .eq('auth_user_id', user.id)
         .maybeSingle()
 
@@ -166,6 +168,22 @@ export async function createStudent(_schoolId: string, studentData: StudentCreat
         }
         throw new Error(error.message)
     }
+
+    // Audit trail: student admission is a critical record creation.
+    await logAudit({
+        schoolId: effectiveSchoolId,
+        actorId: actorProfile.id,
+        actorRole: actorProfile.role,
+        action: 'student.created',
+        entityType: 'student',
+        entityId: createdStudent?.id ?? null,
+        entityLabel: createdStudent?.full_name ?? payload.full_name,
+        metadata: {
+            admissionNumber: payload.admission_number,
+            classId: payload.class_id,
+            sectionId: payload.section_id,
+        },
+    })
 
     const normalizedParent = normalizeParentContact({
         parent_name: studentData.parent_name,

@@ -1,7 +1,9 @@
 'use server'
 
-import { createClient as createServerSupabaseClient } from '@/lib/supabase/server'
+import { createClient as createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server'
+import { requireActor } from '@/lib/auth/require-actor'
 import { sendEmail } from '@/lib/email'
+import { logAudit } from '@/lib/audit'
 import { FeeReceiptEmail } from '@/emails/FeeReceiptEmail'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -174,8 +176,72 @@ export async function updateFeeStructureAmount(structureId: string, amount: numb
 
 export async function deleteFeeStructure(structureId: string): Promise<void> {
   const supabase = await createServerSupabaseClient()
-  const { error } = await supabase.from('fee_structures').delete().eq('id', structureId)
+  const actor = await requireActor(supabase, ['school_admin'])
+  if (!actor.school_id) throw new Error('Your account is not linked to any school.')
+
+  const admin = (await createAdminClient()) as any
+
+  const { data: row, error: readErr } = await admin
+    .from('fee_structures')
+    .select('id, school_id')
+    .eq('id', structureId)
+    .maybeSingle()
+  if (readErr) throw new Error(readErr.message)
+  if (!row || row.school_id !== actor.school_id) {
+    throw new Error('Fee structure not found or not permitted.')
+  }
+
+  const { error } = await admin
+    .from('fee_structures')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', structureId)
+    .eq('school_id', actor.school_id)
+    .is('deleted_at', null)
   if (error) throw new Error(error.message)
+
+  await logAudit({
+    schoolId: actor.school_id,
+    actorId: actor.id,
+    actorRole: actor.role,
+    action: 'fee_structure.deleted',
+    entityType: 'fee_structure',
+    entityId: structureId,
+  })
+}
+
+export async function restoreFeeStructure(structureId: string): Promise<void> {
+  const supabase = await createServerSupabaseClient()
+  const actor = await requireActor(supabase, ['school_admin'])
+  if (!actor.school_id) throw new Error('Your account is not linked to any school.')
+
+  const admin = (await createAdminClient()) as any
+
+  const { data: row, error: readErr } = await admin
+    .from('fee_structures')
+    .select('id, school_id')
+    .eq('id', structureId)
+    .maybeSingle()
+  if (readErr) throw new Error(readErr.message)
+  if (!row || row.school_id !== actor.school_id) {
+    throw new Error('Fee structure not found or not permitted.')
+  }
+
+  const { error } = await admin
+    .from('fee_structures')
+    .update({ deleted_at: null })
+    .eq('id', structureId)
+    .eq('school_id', actor.school_id)
+    .not('deleted_at', 'is', null)
+  if (error) throw new Error(error.message)
+
+  await logAudit({
+    schoolId: actor.school_id,
+    actorId: actor.id,
+    actorRole: actor.role,
+    action: 'fee_structure.restored',
+    entityType: 'fee_structure',
+    entityId: structureId,
+  })
 }
 
 // ─── Academic Year helpers ────────────────────────────────────────────────────
@@ -297,6 +363,24 @@ export async function collectFeePayment(
     })),
   )
   if (itemErr) throw new Error(itemErr.message)
+
+  // Audit trail: a fee collection is a financial state change.
+  await logAudit({
+    schoolId,
+    actorId: input.collectedById,
+    actorRole: 'school_admin',
+    action: 'fee.payment.collected',
+    entityType: 'fee_payment',
+    entityId: paymentId,
+    entityLabel: receiptNumber,
+    metadata: {
+      studentId: input.studentId,
+      totalAmount,
+      paidAmount: input.paidAmount,
+      discountAmount: input.discountAmount,
+      paymentMode: input.paymentMode,
+    },
+  })
 
   // Send Fee Receipt Email
   try {

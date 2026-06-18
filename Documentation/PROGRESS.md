@@ -38,7 +38,16 @@
 
 ## Completed Tasks
 
-### 2026-06-16 — Tech Debt — Demo Auth Repair + Lint Warning Burndown
+### 2026-06-18 — Production Hardening — Part 1 (Data Integrity & Audit)
+- Status: ✅ Completed
+- What was done: Executed Part 1 of `Documentation/QA_AUDIT_AND_HARDENING_PLAN.md` (P0 data-integrity track) in three chunks, each shipping a migration (where needed) + integration tests + doc/context refresh.
+  - **1.1 Atomic attendance:** Migration `20260618000001_attendance_atomic_save.sql` moves the mark-attendance write into a single transactional RPC so a partial failure can no longer leave a day half-saved. 4 integration tests.
+  - **1.2 Consistent soft-delete + restore:** Migration `20260618000002_soft_delete_config_entities.sql` adds `deleted_at` to all 6 config/template tables (classes, sections, subjects, academic_years, grading_rules, fee_structures), replaces the hard `UNIQUE(...)` constraints with **partial unique indexes** (`WHERE deleted_at IS NULL`, so a deleted name is reusable), and updates RLS so soft-deleted rows are hidden from every session-client read (staff-read **and** FOR-ALL manage USING; manage WITH CHECK still allows live-row writes). `academic_years` (RLS-enabled but **policy-less → default-deny**) gained the standard staff-read + admin-manage policies. Delete actions in `settings/actions.ts` + `fees/actions.ts` now soft-delete; new `restore*` actions clear `deleted_at` — both via the **service-role client explicitly scoped to the caller's `school_id`** (resolved through `requireActor`) and each writes an audit row. Added `getDeletedConfigEntities()` to back a future restore/trash UI. 4 integration tests (`tests/integration/soft-delete-config.test.ts`).
+  - **1.3 Audit-log wiring:** `logAudit()` added to the high-value school-admin writes — fee collection, exam publish/unlock, student admission, teacher onboarding + activate/deactivate. The two teacher actions also gained the previously-missing `requireActor(['school_admin'])` auth gate. Destructive-delete audits ride along with 1.2 (`*.deleted` / `*.restored`).
+- Tests: `pnpm type-check` → 0 errors; `pnpm lint` → 0 errors (warnings only); full Vitest suite → **193 passed** (189 prior + 4 soft-delete). Both migrations applied to the remote project and verified via `information_schema` / `pg_policies` / `pg_indexes` introspection.
+- Notes: Migrations are applied with `node scripts/apply-migration.mjs <path>` (the repo isn't `supabase link`-ed locally). Confirmed **no false positives** acted on: students/teachers/schools have no user-facing hard delete (super-admin `.delete()` calls are rollback cleanup inside `createSchool`; schools suspend via `is_active`); super-admin actions were already audited; `audit_logs` already existed. Next: **Part 2 — Validation & Security Boundary** (Zod on server actions, fee-payment guards, destructive-action confirmation UI).
+
+
 - Status: ✅ Completed
 - What was done:
   - **Demo login repair:** Made `scripts/repair-seeded-auth.mjs` idempotent — it now reuses an existing `*.login@` account (via a targeted `signInWithPassword`) instead of failing on email collisions, and verifies/prints the actually-created login emails. Ran it: all seven demo logins are recreated, relinked to their profiles, and verified end-to-end (e.g. `admin.login@demo.school / Admin@1234`, `parent.login@demo.school / Parent@1234`). The parent's `parents` link row is re-pointed too.

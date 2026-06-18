@@ -3,6 +3,9 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import type { Database } from '@/types/database.types'
+import { createClient as createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server'
+import { requireActor } from '@/lib/auth/require-actor'
+import { logAudit } from '@/lib/audit'
 
 async function getSupabase() {
     const cookieStore = await cookies()
@@ -26,6 +29,124 @@ async function getSupabase() {
             },
         }
     )
+}
+
+// ─── Soft-delete helpers ───────────────────────────────────────────────────
+
+type ConfigEntity = 'classes' | 'sections' | 'subjects' | 'academic_years' | 'grading_rules'
+
+function labelColumnFor(entity: ConfigEntity): 'name' | 'grade_name' {
+    return entity === 'grading_rules' ? 'grade_name' : 'name'
+}
+
+/**
+ * Soft-delete a school-configuration row. Runs via the service-role client
+ * (so it can write the `deleted_at` flag) but is explicitly scoped to the
+ * caller's own school to preserve tenant isolation. Records an audit entry.
+ */
+async function softDeleteConfig(entity: ConfigEntity, id: string, action: string): Promise<void> {
+    const supabase = await createServerSupabaseClient()
+    const actor = await requireActor(supabase, ['school_admin'])
+    if (!actor.school_id) throw new Error('Your account is not linked to any school.')
+
+    const admin = (await createAdminClient()) as any
+    const labelCol = labelColumnFor(entity)
+
+    const { data: row, error: readErr } = await admin
+        .from(entity)
+        .select(`id, school_id, ${labelCol}`)
+        .eq('id', id)
+        .maybeSingle()
+    if (readErr) throw new Error(readErr.message)
+    if (!row || row.school_id !== actor.school_id) {
+        throw new Error('Item not found or not permitted.')
+    }
+
+    const { error } = await admin
+        .from(entity)
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', id)
+        .eq('school_id', actor.school_id)
+        .is('deleted_at', null)
+    if (error) throw new Error(error.message)
+
+    await logAudit({
+        schoolId: actor.school_id,
+        actorId: actor.id,
+        actorRole: actor.role,
+        action,
+        entityType: entity,
+        entityId: id,
+        entityLabel: (row[labelCol] as string | null) ?? null,
+    })
+}
+
+/**
+ * Restore a previously soft-deleted configuration row (clears `deleted_at`).
+ * RLS hides soft-deleted rows from the session client, so this uses the
+ * service-role client, still scoped to the caller's school.
+ */
+async function restoreConfig(entity: ConfigEntity, id: string, action: string): Promise<void> {
+    const supabase = await createServerSupabaseClient()
+    const actor = await requireActor(supabase, ['school_admin'])
+    if (!actor.school_id) throw new Error('Your account is not linked to any school.')
+
+    const admin = (await createAdminClient()) as any
+    const labelCol = labelColumnFor(entity)
+
+    const { data: row, error: readErr } = await admin
+        .from(entity)
+        .select(`id, school_id, ${labelCol}`)
+        .eq('id', id)
+        .maybeSingle()
+    if (readErr) throw new Error(readErr.message)
+    if (!row || row.school_id !== actor.school_id) {
+        throw new Error('Item not found or not permitted.')
+    }
+
+    const { error } = await admin
+        .from(entity)
+        .update({ deleted_at: null })
+        .eq('id', id)
+        .eq('school_id', actor.school_id)
+        .not('deleted_at', 'is', null)
+    if (error) throw new Error(error.message)
+
+    await logAudit({
+        schoolId: actor.school_id,
+        actorId: actor.id,
+        actorRole: actor.role,
+        action,
+        entityType: entity,
+        entityId: id,
+        entityLabel: (row[labelCol] as string | null) ?? null,
+    })
+}
+
+/** List soft-deleted configuration rows for the caller's school (for a restore UI). */
+export async function getDeletedConfigEntities(
+    entity: ConfigEntity,
+): Promise<{ id: string; label: string | null; deletedAt: string }[]> {
+    const supabase = await createServerSupabaseClient()
+    const actor = await requireActor(supabase, ['school_admin'])
+    if (!actor.school_id) throw new Error('Your account is not linked to any school.')
+
+    const admin = (await createAdminClient()) as any
+    const labelCol = labelColumnFor(entity)
+
+    const { data, error } = await admin
+        .from(entity)
+        .select(`id, deleted_at, ${labelCol}`)
+        .eq('school_id', actor.school_id)
+        .not('deleted_at', 'is', null)
+        .order('deleted_at', { ascending: false })
+    if (error) throw new Error(error.message)
+
+    return ((data ?? []) as any[]).map(r => ({
+        id: r.id as string,
+        label: (r[labelCol] as string | null) ?? null,
+        deletedAt: r.deleted_at as string,
+    }))
 }
 
 export async function getSchoolSettings(schoolId: string) {
@@ -99,12 +220,11 @@ export async function createClass(schoolId: string, name: string, displayOrder: 
 }
 
 export async function deleteClass(classId: string) {
-    const supabase = await getSupabase()
-    const { error } = await supabase
-        .from('classes')
-        .delete()
-        .eq('id', classId)
-    if (error) throw new Error(error.message)
+    await softDeleteConfig('classes', classId, 'class.deleted')
+}
+
+export async function restoreClass(classId: string) {
+    await restoreConfig('classes', classId, 'class.restored')
 }
 
 export async function createSection(schoolId: string, classId: string, name: string, capacity: number) {
@@ -117,12 +237,11 @@ export async function createSection(schoolId: string, classId: string, name: str
 }
 
 export async function deleteSection(sectionId: string) {
-    const supabase = await getSupabase()
-    const { error } = await supabase
-        .from('sections')
-        .delete()
-        .eq('id', sectionId)
-    if (error) throw new Error(error.message)
+    await softDeleteConfig('sections', sectionId, 'section.deleted')
+}
+
+export async function restoreSection(sectionId: string) {
+    await restoreConfig('sections', sectionId, 'section.restored')
 }
 
 export async function createSubject(schoolId: string, classId: string, name: string, code: string) {
@@ -135,12 +254,11 @@ export async function createSubject(schoolId: string, classId: string, name: str
 }
 
 export async function deleteSubject(subjectId: string) {
-    const supabase = await getSupabase()
-    const { error } = await supabase
-        .from('subjects')
-        .delete()
-        .eq('id', subjectId)
-    if (error) throw new Error(error.message)
+    await softDeleteConfig('subjects', subjectId, 'subject.deleted')
+}
+
+export async function restoreSubject(subjectId: string) {
+    await restoreConfig('subjects', subjectId, 'subject.restored')
 }
 
 export async function getAcademicYears(schoolId: string) {
@@ -172,12 +290,11 @@ export async function createAcademicYear(schoolId: string, name: string, startDa
 }
 
 export async function deleteAcademicYear(id: string) {
-    const supabase = await getSupabase()
-    const { error } = await supabase
-        .from('academic_years')
-        .delete()
-        .eq('id', id)
-    if (error) throw new Error(error.message)
+    await softDeleteConfig('academic_years', id, 'academic_year.deleted')
+}
+
+export async function restoreAcademicYear(id: string) {
+    await restoreConfig('academic_years', id, 'academic_year.restored')
 }
 
 export async function getGradingRules(schoolId: string) {
@@ -201,10 +318,9 @@ export async function createGradingRule(schoolId: string, minMarks: number, maxM
 }
 
 export async function deleteGradingRule(id: string) {
-    const supabase = await getSupabase()
-    const { error } = await supabase
-        .from('grading_rules')
-        .delete()
-        .eq('id', id)
-    if (error) throw new Error(error.message)
+    await softDeleteConfig('grading_rules', id, 'grading_rule.deleted')
+}
+
+export async function restoreGradingRule(id: string) {
+    await restoreConfig('grading_rules', id, 'grading_rule.restored')
 }

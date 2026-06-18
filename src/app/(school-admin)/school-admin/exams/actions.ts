@@ -10,6 +10,7 @@ import {
   type GradingRule,
 } from '@/lib/exam-utils'
 import { requireActor } from '@/lib/auth/require-actor'
+import { logAudit } from '@/lib/audit'
 
 export interface ExamSubjectInput {
   subjectId: string
@@ -318,7 +319,7 @@ export async function saveExamMarks(
 export async function publishExamResults(examId: string, notifyParents = true) {
   const supabase = await createServerSupabaseClient()
   const db = supabase as any
-  await requireActor(supabase, ['school_admin'])
+  const actor = await requireActor(supabase, ['school_admin'])
 
   const { data, error } = await db.rpc('publish_exam_results', {
     p_exam_id: examId,
@@ -326,19 +327,40 @@ export async function publishExamResults(examId: string, notifyParents = true) {
   })
 
   if (error) throw new Error(error.message)
+
+  await logAudit({
+    schoolId: actor.school_id,
+    actorId: actor.id,
+    actorRole: actor.role,
+    action: 'exam.results.published',
+    entityType: 'exam',
+    entityId: examId,
+    metadata: { notifyParents },
+  })
+
   return data
 }
 
 export async function unlockExamResults(examId: string) {
   const supabase = await createServerSupabaseClient()
   const db = supabase as any
-  await requireActor(supabase, ['school_admin'])
+  const actor = await requireActor(supabase, ['school_admin'])
 
   const { data, error } = await db.rpc('unlock_exam_results', {
     p_exam_id: examId,
   })
 
   if (error) throw new Error(error.message)
+
+  await logAudit({
+    schoolId: actor.school_id,
+    actorId: actor.id,
+    actorRole: actor.role,
+    action: 'exam.results.unlocked',
+    entityType: 'exam',
+    entityId: examId,
+  })
+
   return data as boolean
 }
 
