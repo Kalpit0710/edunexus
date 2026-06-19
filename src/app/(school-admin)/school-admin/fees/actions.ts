@@ -144,6 +144,45 @@ export async function getFeeStructures(schoolId: string, academicYearId?: string
   }))
 }
 
+/** List soft-deleted fee structures for the caller's school (for a restore UI). */
+export async function getDeletedFeeStructures(
+  schoolId: string,
+  academicYearId?: string,
+): Promise<{ id: string; label: string; deletedAt: string }[]> {
+  const supabase = await createServerSupabaseClient()
+  const actor = await requireActor(supabase, ['school_admin'])
+  if (!actor.school_id || actor.school_id !== schoolId) {
+    throw new Error('Item not found or not permitted.')
+  }
+
+  const admin = (await createAdminClient()) as any
+  let query = admin
+    .from('fee_structures')
+    .select(`
+      id, amount, deleted_at,
+      classes ( name ),
+      fee_categories ( name )
+    `)
+    .eq('school_id', actor.school_id)
+    .not('deleted_at', 'is', null)
+    .order('deleted_at', { ascending: false })
+  if (academicYearId) {
+    query = query.eq('academic_year_id', academicYearId)
+  }
+  const { data, error } = await query
+  if (error) throw new Error(error.message)
+
+  return ((data ?? []) as any[]).map(r => {
+    const cls = r.classes?.name ?? 'Unknown class'
+    const cat = r.fee_categories?.name ?? 'Unknown category'
+    return {
+      id: r.id as string,
+      label: `${cls} · ${cat} · ₹${Number(r.amount).toLocaleString('en-IN')}`,
+      deletedAt: r.deleted_at as string,
+    }
+  })
+}
+
 export async function createFeeStructure(
   schoolId: string,
   classId: string,

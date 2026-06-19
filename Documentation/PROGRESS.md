@@ -38,6 +38,36 @@
 
 ## Completed Tasks
 
+### 2026-06-19 — Documentation alignment & de-staling pass
+- Status: ✅ Completed
+- What was done: Audited all ~28 docs and aligned the stale ones to the current reality (Phases 1 & 2 complete; QA Parts 1–5 done; Part 6 seam-ready). **No docs deleted** — none were truly redundant/useless, and all are cross-referenced by the `.github` AI reference files; instead de-staled in place + added source-of-truth pointers.
+  - `.github/instructions/edunexus-context.instructions.md`: rewrote the "Known Current State (Baseline)" — it had wrongly claimed teacher/attendance/fee/dashboards/Phase-1 exit gate and Phase-2 UI were still pending. Now correctly states Phases 1 & 2 complete + Part 6 seam-ready, with PROGRESS.md as authoritative.
+  - `Documentation/README.md`: header was "1.0.0-planning / Pre-development — Planning Phase / 2026-02-27" → "2.0.0 / Active development, Phases 1&2 complete / 2026-06-19" + PROGRESS.md pointer.
+  - `Documentation/DEVELOPMENT_PLAN.md`: refreshed header (v1.2.0, 2026-06-19) + status banner; flipped stale milestone markers 1.10 and 2.1 from "🔄 In Progress" to "✅ Completed".
+  - `Documentation/phases/phase1_mvp.md` + `phase2_advanced.md`: status lines now "✅ Complete — exit gate signed off 2026-06-16".
+  - `Documentation/DATABASE_SCHEMA.md` + `API_DESIGN.md`: added "⚠️ Canonical source" banners pointing AI to the generated `database.types.ts` + `migrations/` and the `src/app/**/actions.ts` + `src/lib/**` code (incl. Part 6 seams) over the conceptual 2026-02-27 examples.
+  - Regenerated `Documentation/AI_CONTEXT_SNAPSHOT.md` via `pnpm ai:sync-context`.
+- Tests: N/A (docs only). Left historical records untouched — PROGRESS.md milestone table + older task-log entries (e.g. the 1.10 "183 passing" milestone description and dated "🔄 In Progress" log lines) are accurate point-in-time history.
+- Notes: Module specs (`modules/01–11`) and the schema/API docs keep their conceptual content (still useful reference) but now flag the code/types as canonical. No reference-list changes were needed in the `.github` files since nothing was removed.
+
+### 2026-06-19 — Part 6 readiness seams (payment gateway + SMS/WhatsApp — no live providers)
+- Status: ✅ Completed (seams only; mobile/PWA still fully deferred)
+- What was done: Prepared the codebase so the deferred Part 6 features (online payment gateway, SMS/WhatsApp alerts) drop in without a refactor, per user direction that they'll be added before deployment. **No** Razorpay/Stripe/Twilio SDKs or credentials were added.
+  - **Notifications seam** (`src/lib/notifications/index.ts`): channel-agnostic `notify({ channel, ... })` dispatcher + `NotificationChannelProvider` contract + channel registry. `email` is wired (delegates to existing `sendEmail`); `sms`/`whatsapp` are not-configured placeholders that resolve `{ success: false, skipped: true }`. `isChannelConfigured()` + shared `NotificationEvent` (= `EmailEvent`). Existing 5 email call sites are unchanged.
+  - **Payment seam** (`src/lib/payments/index.ts`): `PaymentProvider` contract (`createOrder`/`verifyWebhook`) with typed `PaymentOrderRequest`/`VerifiedPayment` (minor-unit amounts), empty provider registry, `getActivePaymentProvider()`/`isOnlinePaymentEnabled()`. Webhook route `src/app/api/payments/webhook/route.ts` returns **501** until a provider is registered and verifies signature before trusting amounts. Schema is already gateway-ready (`fee_payments.payment_mode='online'` + `reference_number`).
+  - **Docs:** rewrote the Part 6 section of `QA_AUDIT_AND_HARDENING_PLAN.md` with the readiness design + "to add a provider later" contracts.
+- Tests: `pnpm type-check` → 0 errors; `pnpm lint` → 0 errors (warnings only); full Vitest suite → **217 passed** (additive modules, no behaviour change).
+- Notes: Per user choice, **no DB readiness migration** yet — a real SMS/WhatsApp provider will need a small migration adding a generic `notification_logs.recipient` column (documented). Mobile app / PWA (6.2) remains fully deferred with no readiness work.
+
+### 2026-06-19 — Production Hardening — Follow-up threads (1.2 restore UI · 5.1 form labels · 5.2 parent typing)
+- Status: ✅ Completed
+- What was done: Executed the deferred follow-up threads from `Documentation/QA_AUDIT_AND_HARDENING_PLAN.md`.
+  - **1.2 Restore/trash UI (main ask):** Added a reusable `DeletedItemsPanel` (`settings/components/deleted-items-panel.tsx`) that auto-hides when the trash is empty, lists soft-deleted rows via the existing `getDeletedConfigEntities()`, and restores via the tenant-scoped `restore*` actions. Wired into all five settings config tabs (classes, sections, subjects, academic years, grading rules) with a `refreshKey`/`onRestored` handshake so deletes and restores keep both lists fresh. Fee structures gained a parallel trash section on the fees page, backed by a **new** `getDeletedFeeStructures(schoolId, academicYearId?)` action (tenant-scoped admin client; composed `class · category · ₹amount` label; uses existing `restoreFeeStructure`).
+  - **5.1 Label/`htmlFor` follow-up:** Associated every labelled field with its control across the remaining forms — settings **grading** (`<span>` → `<label htmlFor>`) + **academic** tabs, **students/new** (all 4 steps incl. selects/file/textarea), **students/[id]/edit**, **teachers/[id]** assignment Selects (`SelectTrigger id` ↔ label), **fees/collect** payment details, and **exams/new** (step-1 fields + indexed step-2 subject rows).
+  - **5.2 `any` burn-down:** Typed `parent/actions.ts` `ParentAccessContext.db` (and the `db` local) against the generated admin client instead of `any`, so all parent queries are now type-checked; only `getLatestAnnouncements` keeps one **localized** `(context.db as any)` cast because the `announcements` table isn't in the generated types. `no-explicit-any` 323 → 322.
+- Tests: `pnpm type-check` → 0 errors; `pnpm lint` → 0 errors (warnings only); full Vitest suite → **217 passed** (additive UI + a typing change, no behaviour change).
+- Notes: All restore paths reuse the existing tenant-scoped, audit-logged `restore*` server actions — no new privileged surface. Remaining 5.2 `any` (teacher-dashboard nested selects, reports/fees data-shape casts, `bulkCreateStudents(any[])`, Next typed-routes `href as any`, dead fee-reminders cron) stays incremental follow-up.
+
 ### 2026-06-18 — Production Hardening — Part 5 Chunk 5.2 (✅ DONE — root cause fixed: Supabase upgrade + types regen)
 - Status: ✅ Completed
 - What was done: Resolved Chunk 5.2 by fixing the root cause of the project-wide Supabase `never`-typing bug rather than working around it.

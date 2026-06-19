@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { getClasses, getSections, createClass, deleteClass, createSection, deleteSection } from '../actions'
+import { getClasses, getSections, createClass, deleteClass, restoreClass, createSection, deleteSection, restoreSection } from '../actions'
 import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -10,12 +10,14 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Trash2, Plus } from 'lucide-react'
 import { InlineLoader } from '@/components/loaders/page-loaders'
 import { getErrorMessage } from '@/lib/utils'
+import { DeletedItemsPanel } from './deleted-items-panel'
 
 export function ClassesTab() {
     const { school } = useAuthStore()
     const [classes, setClasses] = useState<any[]>([])
     const [sections, setSections] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
+    const [deletedRefresh, setDeletedRefresh] = useState(0)
 
     // New Class Form state
     const [newClassName, setNewClassName] = useState('')
@@ -71,6 +73,7 @@ export function ClassesTab() {
         try {
             await deleteClass(id)
             toast.success('Class deleted')
+            setDeletedRefresh(k => k + 1)
             fetchData()
         } catch (e) {
             toast.error(getErrorMessage(e))
@@ -94,6 +97,7 @@ export function ClassesTab() {
         try {
             await deleteSection(id)
             toast.success('Section deleted')
+            setDeletedRefresh(k => k + 1)
             fetchData()
         } catch (e) {
             toast.error(getErrorMessage(e))
@@ -142,6 +146,14 @@ export function ClassesTab() {
                         ))
                     )}
                 </div>
+
+                <DeletedItemsPanel
+                    entity="classes"
+                    title="Deleted classes"
+                    restoreAction={restoreClass}
+                    refreshKey={deletedRefresh}
+                    onRestored={fetchData}
+                />
             </div>
 
             {/* Sections Column */}
@@ -202,6 +214,14 @@ export function ClassesTab() {
                         })
                     )}
                 </div>
+
+                <DeletedItemsPanel
+                    entity="sections"
+                    title="Deleted sections"
+                    restoreAction={restoreSection}
+                    refreshKey={deletedRefresh}
+                    onRestored={fetchData}
+                />
             </div>
         </div>
     )

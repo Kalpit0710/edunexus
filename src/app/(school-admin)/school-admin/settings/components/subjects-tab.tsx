@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { getClasses, getSubjects, createSubject, deleteSubject } from '../actions'
+import { getClasses, getSubjects, createSubject, deleteSubject, restoreSubject } from '../actions'
 import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -10,12 +10,14 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Trash2, BookOpen } from 'lucide-react'
 import { InlineLoader } from '@/components/loaders/page-loaders'
 import { getErrorMessage } from '@/lib/utils'
+import { DeletedItemsPanel } from './deleted-items-panel'
 
 export function SubjectsTab() {
     const { school } = useAuthStore()
     const [classes, setClasses] = useState<any[]>([])
     const [subjects, setSubjects] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
+    const [deletedRefresh, setDeletedRefresh] = useState(0)
 
     const [newSubjectName, setNewSubjectName] = useState('')
     const [newSubjectCode, setNewSubjectCode] = useState('')
@@ -66,6 +68,7 @@ export function SubjectsTab() {
         try {
             await deleteSubject(id)
             toast.success('Subject deleted')
+            setDeletedRefresh(k => k + 1)
             fetchData()
         } catch (e) {
             toast.error(getErrorMessage(e))
@@ -128,6 +131,14 @@ export function SubjectsTab() {
                     })
                 )}
             </div>
+
+            <DeletedItemsPanel
+                entity="subjects"
+                title="Deleted subjects"
+                restoreAction={restoreSubject}
+                refreshKey={deletedRefresh}
+                onRestored={fetchData}
+            />
         </div>
     )
 }

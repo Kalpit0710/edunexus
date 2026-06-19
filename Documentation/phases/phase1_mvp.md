@@ -2,7 +2,7 @@
 
 > **Duration:** 3 months  
 > **Goal:** Onboard first 5 schools with core operations fully functional  
-> **Status:** ✅ Implemented — pending formal exit gate (E2E + UAT)
+> **Status:** ✅ Complete — exit gate signed off 2026-06-16 (see [PROGRESS.md](../PROGRESS.md))
 
 ---
 

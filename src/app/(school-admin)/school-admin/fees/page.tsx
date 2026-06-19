@@ -5,9 +5,11 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import {
   getFeeCategories,
   getFeeStructures,
+  getDeletedFeeStructures,
   createFeeCategory,
   createFeeStructure,
   deleteFeeStructure,
+  restoreFeeStructure,
   getAcademicYearsForFees,
   toggleCategoryStatus,
   type FeeCategoryRow,
@@ -23,7 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/utils'
-import { Plus, Trash2, Power, CircleDollarSign } from 'lucide-react'
+import { Plus, Trash2, Power, CircleDollarSign, RotateCcw } from 'lucide-react'
 import Link from 'next/link'
 import { Spinner } from '@/components/ui/spinner'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -32,6 +34,8 @@ export default function FeesPage() {
   const { school } = useAuthStore()
   const [categories, setCategories] = useState<FeeCategoryRow[]>([])
   const [structures, setStructures] = useState<FeeStructureRow[]>([])
+  const [deletedStructures, setDeletedStructures] = useState<{ id: string; label: string; deletedAt: string }[]>([])
+  const [restoringId, setRestoringId] = useState<string | null>(null)
   const [academicYears, setAcademicYears] = useState<AcademicYearRow[]>([])
   const [classes, setClasses] = useState<{ id: string; name: string }[]>([])
   const [selectedYear, setSelectedYear] = useState<string>('')
@@ -68,6 +72,9 @@ export default function FeesPage() {
       setStructures(structs)
       setAcademicYears(years)
       setClasses(cls as any)
+      getDeletedFeeStructures(school.id, yearId || selectedYearRef.current || undefined)
+        .then(setDeletedStructures)
+        .catch(() => setDeletedStructures([]))
       if (!selectedYearRef.current && years.length) {
         const current = years.find(y => y.is_current) ?? years[0]
         if (current) setSelectedYear(current.id)
@@ -130,6 +137,19 @@ export default function FeesPage() {
       load(selectedYear)
     } catch (e) {
       toast.error(getErrorMessage(e))
+    }
+  }
+
+  const handleRestoreStructure = async (id: string) => {
+    setRestoringId(id)
+    try {
+      await restoreFeeStructure(id)
+      toast.success('Fee structure restored')
+      load(selectedYear)
+    } catch (e) {
+      toast.error(getErrorMessage(e))
+    } finally {
+      setRestoringId(null)
     }
   }
 
@@ -339,6 +359,38 @@ export default function FeesPage() {
                 </tbody>
               </table>
             </div>
+
+            {deletedStructures.length > 0 && (
+              <div className="rounded-md border border-dashed bg-muted/30 p-4">
+                <div className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <Trash2 className="h-4 w-4" /> Deleted fee structures ({deletedStructures.length})
+                </div>
+                <div className="space-y-2">
+                  {deletedStructures.map(item => (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between gap-2 rounded-md bg-background px-3 py-2 text-sm"
+                    >
+                      <div className="min-w-0">
+                        <span className="font-medium">{item.label}</span>
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          deleted {new Date(item.deletedAt).toLocaleDateString('en-IN')}
+                        </span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={restoringId === item.id}
+                        onClick={() => handleRestoreStructure(item.id)}
+                      >
+                        <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                        {restoringId === item.id ? 'Restoring...' : 'Restore'}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

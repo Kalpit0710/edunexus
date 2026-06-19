@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { getAcademicYears, createAcademicYear, deleteAcademicYear, updateSchoolSettings, getSchoolSettings } from '../actions'
+import { getAcademicYears, createAcademicYear, deleteAcademicYear, restoreAcademicYear, updateSchoolSettings, getSchoolSettings } from '../actions'
 import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -10,11 +10,13 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { Trash2, Calendar, CheckSquare } from 'lucide-react'
 import { getErrorMessage } from '@/lib/utils'
+import { DeletedItemsPanel } from './deleted-items-panel'
 
 export function AcademicTab() {
     const { school, setSchool } = useAuthStore()
     const [years, setYears] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
+    const [deletedRefresh, setDeletedRefresh] = useState(0)
 
     const [newName, setNewName] = useState('')
     const [newStartDate, setNewStartDate] = useState('')
@@ -68,6 +70,7 @@ export function AcademicTab() {
         try {
             await deleteAcademicYear(id)
             toast.success('Academic year deleted')
+            setDeletedRefresh(k => k + 1)
             fetchData()
         } catch (e) {
             toast.error(getErrorMessage(e))
@@ -95,9 +98,10 @@ export function AcademicTab() {
                     <h3 className="text-lg font-medium">Default Cycle</h3>
                     <p className="text-sm text-muted-foreground mb-4">Set which month standard academic calculations start from.</p>
                     <div className="space-y-3">
-                        <Label>Start Month</Label>
+                        <Label htmlFor="ay-start-month">Start Month</Label>
                         <div className="flex gap-2">
                             <select
+                                id="ay-start-month"
                                 value={startMonth}
                                 onChange={e => setStartMonth(Number(e.target.value))}
                                 className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -122,16 +126,16 @@ export function AcademicTab() {
                     <p className="text-sm text-muted-foreground mb-4">Define terms like "2024-25" or "Spring 2024".</p>
                     <form onSubmit={handleAddYear} className="flex flex-col md:flex-row gap-3 items-end">
                         <div className="w-full">
-                            <Label className="text-xs mb-1 block">Term Name</Label>
-                            <Input placeholder="e.g. 2025-26" value={newName} onChange={e => setNewName(e.target.value)} />
+                            <Label htmlFor="ay-name" className="text-xs mb-1 block">Term Name</Label>
+                            <Input id="ay-name" placeholder="e.g. 2025-26" value={newName} onChange={e => setNewName(e.target.value)} />
                         </div>
                         <div className="w-full">
-                            <Label className="text-xs mb-1 block">Start Date</Label>
-                            <Input type="date" value={newStartDate} onChange={e => setNewStartDate(e.target.value)} />
+                            <Label htmlFor="ay-start" className="text-xs mb-1 block">Start Date</Label>
+                            <Input id="ay-start" type="date" value={newStartDate} onChange={e => setNewStartDate(e.target.value)} />
                         </div>
                         <div className="w-full">
-                            <Label className="text-xs mb-1 block">End Date</Label>
-                            <Input type="date" value={newEndDate} onChange={e => setNewEndDate(e.target.value)} />
+                            <Label htmlFor="ay-end" className="text-xs mb-1 block">End Date</Label>
+                            <Input id="ay-end" type="date" value={newEndDate} onChange={e => setNewEndDate(e.target.value)} />
                         </div>
                         <div className="flex items-center gap-2 h-10 bg-gray-50 dark:bg-gray-900 border rounded-md px-3">
                             <input type="checkbox" id="is_cur" checked={newIsCurrent} onChange={e => setNewIsCurrent(e.target.checked)} className="rounded text-primary focus:ring-primary" />
@@ -165,6 +169,14 @@ export function AcademicTab() {
                         ))
                     )}
                 </div>
+
+                <DeletedItemsPanel
+                    entity="academic_years"
+                    title="Deleted academic years"
+                    restoreAction={restoreAcademicYear}
+                    refreshKey={deletedRefresh}
+                    onRestored={fetchData}
+                />
             </div>
         </div>
     )

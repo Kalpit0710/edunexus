@@ -1,10 +1,12 @@
 # EduNexus
 ## "Connecting Every Layer of School Management."
 
-> **Version:** 1.0.0-planning  
-> **Status:** Pre-development — Documentation & Planning Phase  
-> **Last Updated:** 2026-02-27  
+> **Version:** 2.0.0  
+> **Status:** Active development — Phases 1 & 2 complete (signed off 2026-06-16); QA hardening Parts 1–5 done, Part 6 deferred/seam-ready  
+> **Last Updated:** 2026-06-19  
 > **Owner:** EduNexus Team
+>
+> **Authoritative current status:** see [PROGRESS.md](./PROGRESS.md). This index and the planning/spec docs below are roadmap/reference material.
 
 ---
 

@@ -246,9 +246,9 @@ function CollectFeePageContent() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <Label>Payment Mode</Label>
+                <Label htmlFor="payment-mode">Payment Mode</Label>
                 <Select value={paymentMode} onValueChange={v => setPaymentMode(v as PaymentMode)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="payment-mode"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {PAYMENT_MODES.map(m => (
                       <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
@@ -257,8 +257,9 @@ function CollectFeePageContent() {
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label>Discount (₹)</Label>
+                <Label htmlFor="discount">Discount (₹)</Label>
                 <Input
+                  id="discount"
                   type="number"
                   min="0"
                   placeholder="0"
@@ -267,8 +268,9 @@ function CollectFeePageContent() {
                 />
               </div>
               <div className="space-y-1">
-                <Label>Paid Amount (₹) *</Label>
+                <Label htmlFor="paid-amount">Paid Amount (₹) *</Label>
                 <Input
+                  id="paid-amount"
                   type="number"
                   min="0"
                   placeholder={String(netPayable)}
@@ -277,13 +279,13 @@ function CollectFeePageContent() {
                 />
               </div>
               <div className="space-y-1">
-                <Label>Reference No.</Label>
-                <Input placeholder="Cheque/UPI ref (optional)" value={reference} onChange={e => setReference(e.target.value)} />
+                <Label htmlFor="reference-no">Reference No.</Label>
+                <Input id="reference-no" placeholder="Cheque/UPI ref (optional)" value={reference} onChange={e => setReference(e.target.value)} />
               </div>
             </div>
             <div className="space-y-1">
-              <Label>Remarks</Label>
-              <Input placeholder="Optional remarks" value={remarks} onChange={e => setRemarks(e.target.value)} />
+              <Label htmlFor="remarks">Remarks</Label>
+              <Input id="remarks" placeholder="Optional remarks" value={remarks} onChange={e => setRemarks(e.target.value)} />
             </div>
             <Separator />
             <div className="flex items-center justify-between text-lg font-bold">

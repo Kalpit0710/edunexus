@@ -171,20 +171,21 @@ export default function NewStudentPage() {
                     {step === 1 && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>First Name <span className="text-red-500">*</span></Label>
-                                <Input value={formData.first_name} onChange={e => updateForm('first_name', e.target.value)} />
+                                <Label htmlFor="first_name">First Name <span className="text-red-500">*</span></Label>
+                                <Input id="first_name" value={formData.first_name} onChange={e => updateForm('first_name', e.target.value)} />
                             </div>
                             <div className="space-y-2">
-                                <Label>Middle Name</Label>
-                                <Input value={formData.middle_name} onChange={e => updateForm('middle_name', e.target.value)} />
+                                <Label htmlFor="middle_name">Middle Name</Label>
+                                <Input id="middle_name" value={formData.middle_name} onChange={e => updateForm('middle_name', e.target.value)} />
                             </div>
                             <div className="space-y-2">
-                                <Label>Last Name</Label>
-                                <Input value={formData.last_name} onChange={e => updateForm('last_name', e.target.value)} />
+                                <Label htmlFor="last_name">Last Name</Label>
+                                <Input id="last_name" value={formData.last_name} onChange={e => updateForm('last_name', e.target.value)} />
                             </div>
                             <div className="space-y-2">
-                                <Label>Gender <span className="text-red-500">*</span></Label>
+                                <Label htmlFor="gender">Gender <span className="text-red-500">*</span></Label>
                                 <select
+                                    id="gender"
                                     className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                     value={formData.gender}
                                     onChange={e => updateForm('gender', e.target.value)}
@@ -196,12 +197,12 @@ export default function NewStudentPage() {
                                 </select>
                             </div>
                             <div className="space-y-2">
-                                <Label>Date of Birth <span className="text-red-500">*</span></Label>
-                                <Input type="date" value={formData.date_of_birth} onChange={e => updateForm('date_of_birth', e.target.value)} />
+                                <Label htmlFor="date_of_birth">Date of Birth <span className="text-red-500">*</span></Label>
+                                <Input id="date_of_birth" type="date" value={formData.date_of_birth} onChange={e => updateForm('date_of_birth', e.target.value)} />
                             </div>
                             <div className="space-y-2 md:col-span-2">
-                                <Label>Student Photo (Optional)</Label>
-                                <Input type="file" accept="image/*" onChange={e => setPhotoFile(e.target.files?.[0] || null)} />
+                                <Label htmlFor="student_photo">Student Photo (Optional)</Label>
+                                <Input id="student_photo" type="file" accept="image/*" onChange={e => setPhotoFile(e.target.files?.[0] || null)} />
                             </div>
                         </div>
                     )}
@@ -209,8 +210,9 @@ export default function NewStudentPage() {
                     {step === 2 && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Class <span className="text-red-500">*</span></Label>
+                                <Label htmlFor="class_id">Class <span className="text-red-500">*</span></Label>
                                 <select
+                                    id="class_id"
                                     className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm"
                                     value={formData.class_id}
                                     onChange={e => {
@@ -223,8 +225,9 @@ export default function NewStudentPage() {
                                 </select>
                             </div>
                             <div className="space-y-2">
-                                <Label>Section</Label>
+                                <Label htmlFor="section_id">Section</Label>
                                 <select
+                                    id="section_id"
                                     className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-50"
                                     value={formData.section_id}
                                     onChange={e => updateForm('section_id', e.target.value)}
@@ -235,16 +238,16 @@ export default function NewStudentPage() {
                                 </select>
                             </div>
                             <div className="space-y-2">
-                                <Label>Admission No. <span className="text-red-500">*</span></Label>
-                                <Input value={formData.admission_number} onChange={e => updateForm('admission_number', e.target.value)} placeholder="e.g. ADM-2024-001" />
+                                <Label htmlFor="admission_number">Admission No. <span className="text-red-500">*</span></Label>
+                                <Input id="admission_number" value={formData.admission_number} onChange={e => updateForm('admission_number', e.target.value)} placeholder="e.g. ADM-2024-001" />
                             </div>
                             <div className="space-y-2">
-                                <Label>Roll Number</Label>
-                                <Input value={formData.roll_number} onChange={e => updateForm('roll_number', e.target.value)} placeholder="e.g. 42" />
+                                <Label htmlFor="roll_number">Roll Number</Label>
+                                <Input id="roll_number" value={formData.roll_number} onChange={e => updateForm('roll_number', e.target.value)} placeholder="e.g. 42" />
                             </div>
                             <div className="space-y-2">
-                                <Label>Date of Joining <span className="text-red-500">*</span></Label>
-                                <Input type="date" value={formData.date_of_joining} onChange={e => updateForm('date_of_joining', e.target.value)} />
+                                <Label htmlFor="date_of_joining">Date of Joining <span className="text-red-500">*</span></Label>
+                                <Input id="date_of_joining" type="date" value={formData.date_of_joining} onChange={e => updateForm('date_of_joining', e.target.value)} />
                             </div>
                         </div>
                     )}
@@ -252,22 +255,22 @@ export default function NewStudentPage() {
                     {step === 3 && (
                         <div className="space-y-4">
                             <div className="space-y-2">
-                                <Label>Parent / Guardian Name</Label>
-                                <Input value={formData.parent_name} onChange={e => updateForm('parent_name', e.target.value)} />
+                                <Label htmlFor="parent_name">Parent / Guardian Name</Label>
+                                <Input id="parent_name" value={formData.parent_name} onChange={e => updateForm('parent_name', e.target.value)} />
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>Contact Number</Label>
-                                    <Input value={formData.parent_contact} onChange={e => updateForm('parent_contact', e.target.value)} />
+                                    <Label htmlFor="parent_contact">Contact Number</Label>
+                                    <Input id="parent_contact" value={formData.parent_contact} onChange={e => updateForm('parent_contact', e.target.value)} />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Email Address</Label>
-                                    <Input type="email" value={formData.parent_email} onChange={e => updateForm('parent_email', e.target.value)} />
+                                    <Label htmlFor="parent_email">Email Address</Label>
+                                    <Input id="parent_email" type="email" value={formData.parent_email} onChange={e => updateForm('parent_email', e.target.value)} />
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label>Residential Address</Label>
-                                <Input value={formData.address} onChange={e => updateForm('address', e.target.value)} />
+                                <Label htmlFor="address">Residential Address</Label>
+                                <Input id="address" value={formData.address} onChange={e => updateForm('address', e.target.value)} />
                             </div>
                         </div>
                     )}
@@ -276,8 +279,9 @@ export default function NewStudentPage() {
                         <div className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>Blood Group</Label>
+                                    <Label htmlFor="blood_group">Blood Group</Label>
                                     <select
+                                        id="blood_group"
                                         className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm"
                                         value={formData.blood_group}
                                         onChange={e => updateForm('blood_group', e.target.value)}
@@ -290,8 +294,9 @@ export default function NewStudentPage() {
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label>Medical Conditions / Notes</Label>
+                                <Label htmlFor="medical_conditions">Medical Conditions / Notes</Label>
                                 <textarea
+                                    id="medical_conditions"
                                     className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[100px]"
                                     value={formData.medical_conditions}
                                     onChange={e => updateForm('medical_conditions', e.target.value)}

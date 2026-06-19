@@ -19,11 +19,11 @@ For non-trivial work, gather context from these files in this exact order:
 10. `Documentation/AI_CONTEXT_SNAPSHOT.md`
 
 ## Known Current State (Baseline)
-Use this baseline unless code/docs show newer facts:
-- Phase 1 setup/config/student work is marked complete.
-- Teacher, attendance, fee basics, dashboards, and formal Phase 1 exit gate still need completion or sign-off.
-- Phase 2.1 (exam backend) and 2.2 (inventory/POS backend) are marked complete at backend level.
-- Phase 2 UI implementation is still pending.
+Use this baseline unless code/docs show newer facts. `Documentation/PROGRESS.md` is the authoritative source of truth:
+- **Phase 1 COMPLETE** (setup, config, students, teachers, attendance, fee basics, dashboards) — exit gate signed off 2026-06-16.
+- **Phase 2 COMPLETE** (examinations, inventory/POS, email notifications, parent portal, advanced analytics) — UI included, exit gate signed off 2026-06-16.
+- **QA Audit & Hardening Plan Parts 1–5 DONE**; Part 6 (online payment gateway, SMS/WhatsApp, mobile/PWA) is deferred but **seam-ready** (`src/lib/payments`, `src/lib/notifications`, webhook stub at `src/app/api/payments/webhook`).
+- Full test suite is green (217 passing at last check) — always re-verify with `pnpm test`.
 
 ## Delivery Rules
 - Keep tenant isolation first: preserve `school_id` and RLS guarantees.

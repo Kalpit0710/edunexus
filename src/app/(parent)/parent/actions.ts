@@ -75,7 +75,7 @@ interface ParentAccessContext {
     authUserId: string
     schoolId: string
     admin: Awaited<ReturnType<typeof createAdminClient>>
-    db: any
+    db: Awaited<ReturnType<typeof createAdminClient>>
 }
 
 async function getParentAccessContext(expectedSchoolId: string): Promise<ParentAccessContext | null> {
@@ -85,7 +85,7 @@ async function getParentAccessContext(expectedSchoolId: string): Promise<ParentA
     if (userError || !user) return null
 
     const admin = await createAdminClient()
-    const db = admin as any
+    const db = admin
 
     const { data: profile, error: profileError } = await db
         .from('user_profiles')
@@ -515,8 +515,9 @@ export async function getLatestAnnouncements(
         const context = await getParentAccessContext(schoolId)
         if (!context) return []
 
-        // Table may not exist yet; fail closed.
-        const { data, error } = await context.db
+        // Table may not exist yet; fail closed. Not in generated types, so this
+        // single query uses an untyped client (the rest of the file is typed).
+        const { data, error } = await (context.db as any)
             .from('announcements')
             .select('id, title, body, created_at, target_class_id, target_audience')
             .eq('school_id', schoolId)

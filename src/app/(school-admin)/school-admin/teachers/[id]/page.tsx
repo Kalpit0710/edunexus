@@ -289,7 +289,7 @@ export default function TeacherProfilePage() {
             <p className="text-sm font-medium">Add Assignment</p>
             <div className="grid sm:grid-cols-3 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs">Class</Label>
+                <Label htmlFor="assign-class" className="text-xs">Class</Label>
                 <Select
                   value={selClass}
                   onValueChange={(v) => {
@@ -298,7 +298,7 @@ export default function TeacherProfilePage() {
                     setSelSubject('')
                   }}
                 >
-                  <SelectTrigger className="h-8 text-sm">
+                  <SelectTrigger id="assign-class" className="h-8 text-sm">
                     <SelectValue placeholder="Select class" />
                   </SelectTrigger>
                   <SelectContent>
@@ -312,13 +312,13 @@ export default function TeacherProfilePage() {
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs">Section</Label>
+                <Label htmlFor="assign-section" className="text-xs">Section</Label>
                 <Select
                   value={selSection}
                   onValueChange={setSelSection}
                   disabled={!selClass}
                 >
-                  <SelectTrigger className="h-8 text-sm">
+                  <SelectTrigger id="assign-section" className="h-8 text-sm">
                     <SelectValue placeholder="Select section" />
                   </SelectTrigger>
                   <SelectContent>
@@ -332,13 +332,13 @@ export default function TeacherProfilePage() {
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs">Subject (optional)</Label>
+                <Label htmlFor="assign-subject" className="text-xs">Subject (optional)</Label>
                 <Select
                   value={selSubject}
                   onValueChange={setSelSubject}
                   disabled={!selClass}
                 >
-                  <SelectTrigger className="h-8 text-sm">
+                  <SelectTrigger id="assign-subject" className="h-8 text-sm">
                     <SelectValue placeholder="Any / All subjects" />
                   </SelectTrigger>
                   <SelectContent>

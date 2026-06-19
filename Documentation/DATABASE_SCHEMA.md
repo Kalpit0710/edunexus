@@ -4,6 +4,8 @@
 > **Last Updated:** 2026-02-27  
 > **Database:** PostgreSQL 15+ (via Supabase)  
 > **Audience:** Developers, AI Assistants, DBAs
+>
+> **⚠️ Canonical source:** This doc is a **design reference** and predates Phase 2. The live schema is now ~26 tables (incl. `exams`, `exam_subjects`, `marks`, `inventory_*`, `fee_payments`, `audit_logs`, plus `deleted_at` soft-delete columns). For ground truth use the generated [`src/types/database.types.ts`](../src/types/database.types.ts) and the `supabase/migrations/` history — not this document.
 
 ---
 

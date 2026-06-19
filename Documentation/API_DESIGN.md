@@ -3,6 +3,8 @@
 > **Version:** 1.0.0  
 > **Last Updated:** 2026-02-27  
 > **API Provider:** Supabase PostgREST + Edge Functions
+>
+> **⚠️ Canonical source:** This doc describes API **patterns/conventions**. The live data access is implemented as Next.js server actions under `src/app/**/actions.ts` and helpers in `src/lib/**` (incl. the Part 6 seams `src/lib/payments` and `src/lib/notifications`). Treat the code + generated DB types as authoritative over the examples here.
 
 ---
 

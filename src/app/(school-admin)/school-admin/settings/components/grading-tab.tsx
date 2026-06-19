@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { getGradingRules, createGradingRule, deleteGradingRule } from '../actions'
+import { getGradingRules, createGradingRule, deleteGradingRule, restoreGradingRule } from '../actions'
 import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -9,11 +9,13 @@ import { Input } from '@/components/ui/input'
 import { Trash2, Plus } from 'lucide-react'
 import { getErrorMessage } from '@/lib/utils'
 import { InlineLoader } from '@/components/loaders/page-loaders'
+import { DeletedItemsPanel } from './deleted-items-panel'
 
 export function GradingRulesTab() {
     const { school } = useAuthStore()
     const [rules, setRules] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
+    const [deletedRefresh, setDeletedRefresh] = useState(0)
 
     const [minMarks, setMinMarks] = useState('')
     const [maxMarks, setMaxMarks] = useState('')
@@ -59,6 +61,7 @@ export function GradingRulesTab() {
         try {
             await deleteGradingRule(id)
             toast.success('Rule deleted')
+            setDeletedRefresh(k => k + 1)
             fetchData()
         } catch (e) {
             toast.error(getErrorMessage(e))
@@ -74,20 +77,20 @@ export function GradingRulesTab() {
                 <p className="text-sm text-muted-foreground mb-4">Define standard percent thresholds and corresponding letter grades / GPA points.</p>
                 <form onSubmit={handleAddRule} className="grid grid-cols-2 md:grid-cols-5 gap-3 items-end">
                     <div>
-                        <span className="text-xs text-muted-foreground mb-1 block">Min %</span>
-                        <Input type="number" placeholder="e.g. 90" value={minMarks} onChange={e => setMinMarks(e.target.value)} />
+                        <label htmlFor="grade-min" className="text-xs text-muted-foreground mb-1 block">Min %</label>
+                        <Input id="grade-min" type="number" placeholder="e.g. 90" value={minMarks} onChange={e => setMinMarks(e.target.value)} />
                     </div>
                     <div>
-                        <span className="text-xs text-muted-foreground mb-1 block">Max %</span>
-                        <Input type="number" placeholder="e.g. 100" value={maxMarks} onChange={e => setMaxMarks(e.target.value)} />
+                        <label htmlFor="grade-max" className="text-xs text-muted-foreground mb-1 block">Max %</label>
+                        <Input id="grade-max" type="number" placeholder="e.g. 100" value={maxMarks} onChange={e => setMaxMarks(e.target.value)} />
                     </div>
                     <div>
-                        <span className="text-xs text-muted-foreground mb-1 block">Grade Name</span>
-                        <Input placeholder="e.g. A+" value={gradeName} onChange={e => setGradeName(e.target.value)} />
+                        <label htmlFor="grade-name" className="text-xs text-muted-foreground mb-1 block">Grade Name</label>
+                        <Input id="grade-name" placeholder="e.g. A+" value={gradeName} onChange={e => setGradeName(e.target.value)} />
                     </div>
                     <div>
-                        <span className="text-xs text-muted-foreground mb-1 block">Grade Point</span>
-                        <Input type="number" step="0.1" placeholder="e.g. 4.0" value={gradePoint} onChange={e => setGradePoint(e.target.value)} />
+                        <label htmlFor="grade-point" className="text-xs text-muted-foreground mb-1 block">Grade Point</label>
+                        <Input id="grade-point" type="number" step="0.1" placeholder="e.g. 4.0" value={gradePoint} onChange={e => setGradePoint(e.target.value)} />
                     </div>
                     <Button type="submit" className="w-full"><Plus className="w-4 h-4 mr-2" /> Add</Button>
                 </form>
@@ -119,6 +122,14 @@ export function GradingRulesTab() {
                     </div>
                 )}
             </div>
+
+            <DeletedItemsPanel
+                entity="grading_rules"
+                title="Deleted grading rules"
+                restoreAction={restoreGradingRule}
+                refreshKey={deletedRefresh}
+                onRestored={fetchData}
+            />
         </div>
     )
 }

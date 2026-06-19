@@ -1,9 +1,11 @@
 # EduNexus — Development Plan
 
-> **Version:** 1.1.0  
-> **Last Updated:** 2026-03-31  
+> **Version:** 1.2.0  
+> **Last Updated:** 2026-06-19  
 > **Methodology:** Phased iterative development with mandatory testing gates  
 > **Audience:** Developers, Project Managers, AI Assistants
+>
+> **Status note (authoritative state in [PROGRESS.md](./PROGRESS.md)):** Phases 1 & 2 are **COMPLETE** (exit gates signed off 2026-06-16). Post-Phase-2 hardening (Parts 1–5 of [QA_AUDIT_AND_HARDENING_PLAN.md](./QA_AUDIT_AND_HARDENING_PLAN.md)) is **done**; Part 6 (payment gateway, SMS/WhatsApp, mobile/PWA) is deferred but seam-ready. This plan is the roadmap reference; milestone markers below are historical.
 
 ---
 
@@ -225,9 +227,9 @@ Onboard first 5 real schools with core operations fully functional.
 
 ---
 
-### Milestone 1.10 — Phase 1 Testing & Stabilization 🔄 In Progress
+### Milestone 1.10 — Phase 1 Testing & Stabilization ✅ Completed
 
-> TypeScript: 0 errors ✅. Unit tests: passing ✅. E2E (Playwright): **blocked** — auth-flow login redirect timeout needs dedicated seed user setup.
+> Phase 1 exit gate signed off 2026-06-16. TypeScript 0 errors, ESLint 0 errors, full Vitest suite green, RLS tenant-isolation suite + E2E flow coverage passing. See PROGRESS.md for the current test totals.
 
 ---
 
@@ -236,9 +238,9 @@ Onboard first 5 real schools with core operations fully functional.
 ### Goal
 Fully operational ERP with exam management, POS, analytics, and parent portal.
 
-### Milestone 2.1 — Examination Module 🔄 In Progress
+### Milestone 2.1 — Examination Module ✅ Completed
 
-> Backend (schema, RLS, RPCs, server actions) ✅. UI complete (exam list, create, marks entry, reports, publish/lock) ✅. TypeScript errors fixed 2026-03-31 ✅. Remaining: PDF report card template.
+> Schema, RLS, RPCs, server actions, and full UI (exam list, create, marks entry, reports, publish/lock) complete; report-card PDF + batch export via Edge Function; E2E coverage on a real seeded exam.
 
 ---
 

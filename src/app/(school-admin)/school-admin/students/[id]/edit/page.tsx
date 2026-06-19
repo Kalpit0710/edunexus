@@ -129,20 +129,21 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
                         </CardHeader>
                         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>First Name <span className="text-red-500">*</span></Label>
-                                <Input value={formData.first_name || ''} onChange={e => updateForm('first_name', e.target.value)} />
+                                <Label htmlFor="edit-first_name">First Name <span className="text-red-500">*</span></Label>
+                                <Input id="edit-first_name" value={formData.first_name || ''} onChange={e => updateForm('first_name', e.target.value)} />
                             </div>
                             <div className="space-y-2">
-                                <Label>Middle Name</Label>
-                                <Input value={formData.middle_name || ''} onChange={e => updateForm('middle_name', e.target.value)} />
+                                <Label htmlFor="edit-middle_name">Middle Name</Label>
+                                <Input id="edit-middle_name" value={formData.middle_name || ''} onChange={e => updateForm('middle_name', e.target.value)} />
                             </div>
                             <div className="space-y-2">
-                                <Label>Last Name</Label>
-                                <Input value={formData.last_name || ''} onChange={e => updateForm('last_name', e.target.value)} />
+                                <Label htmlFor="edit-last_name">Last Name</Label>
+                                <Input id="edit-last_name" value={formData.last_name || ''} onChange={e => updateForm('last_name', e.target.value)} />
                             </div>
                             <div className="space-y-2">
-                                <Label>Gender <span className="text-red-500">*</span></Label>
+                                <Label htmlFor="edit-gender">Gender <span className="text-red-500">*</span></Label>
                                 <select
+                                    id="edit-gender"
                                     className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm"
                                     value={formData.gender || ''}
                                     onChange={e => updateForm('gender', e.target.value)}
@@ -154,17 +155,17 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
                                 </select>
                             </div>
                             <div className="space-y-2">
-                                <Label>Date of Birth <span className="text-red-500">*</span></Label>
-                                <Input type="date" value={formData.date_of_birth || ''} onChange={e => updateForm('date_of_birth', e.target.value)} />
+                                <Label htmlFor="edit-date_of_birth">Date of Birth <span className="text-red-500">*</span></Label>
+                                <Input id="edit-date_of_birth" type="date" value={formData.date_of_birth || ''} onChange={e => updateForm('date_of_birth', e.target.value)} />
                             </div>
                             <div className="space-y-2 md:col-span-2 mt-2">
-                                <Label>Update Photo</Label>
+                                <Label htmlFor="edit-photo">Update Photo</Label>
                                 <div className="flex items-center gap-4 mt-2">
                                     {formData.photo_url && !photoFile && (
                                         // eslint-disable-next-line @next/next/no-img-element -- dynamic uploaded-photo preview
                                         <img src={formData.photo_url} alt="Student's current profile photo" className="w-12 h-12 rounded-full object-cover border shadow-sm" />
                                     )}
-                                    <Input type="file" accept="image/*" onChange={e => setPhotoFile(e.target.files?.[0] || null)} className="max-w-xs" />
+                                    <Input id="edit-photo" type="file" accept="image/*" onChange={e => setPhotoFile(e.target.files?.[0] || null)} className="max-w-xs" />
                                 </div>
                             </div>
                         </CardContent>
@@ -176,8 +177,9 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
                         </CardHeader>
                         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Class <span className="text-red-500">*</span></Label>
+                                <Label htmlFor="edit-class_id">Class <span className="text-red-500">*</span></Label>
                                 <select
+                                    id="edit-class_id"
                                     className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm"
                                     value={formData.class_id || ''}
                                     onChange={e => {
@@ -190,8 +192,9 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
                                 </select>
                             </div>
                             <div className="space-y-2">
-                                <Label>Section</Label>
+                                <Label htmlFor="edit-section_id">Section</Label>
                                 <select
+                                    id="edit-section_id"
                                     className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-50"
                                     value={formData.section_id || ''}
                                     onChange={e => updateForm('section_id', e.target.value)}
@@ -202,16 +205,16 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
                                 </select>
                             </div>
                             <div className="space-y-2">
-                                <Label>Admission No. <span className="text-red-500">*</span></Label>
-                                <Input value={formData.admission_number || ''} onChange={e => updateForm('admission_number', e.target.value)} />
+                                <Label htmlFor="edit-admission_number">Admission No. <span className="text-red-500">*</span></Label>
+                                <Input id="edit-admission_number" value={formData.admission_number || ''} onChange={e => updateForm('admission_number', e.target.value)} />
                             </div>
                             <div className="space-y-2">
-                                <Label>Roll Number</Label>
-                                <Input value={formData.roll_number || ''} onChange={e => updateForm('roll_number', e.target.value)} />
+                                <Label htmlFor="edit-roll_number">Roll Number</Label>
+                                <Input id="edit-roll_number" value={formData.roll_number || ''} onChange={e => updateForm('roll_number', e.target.value)} />
                             </div>
                             <div className="space-y-2">
-                                <Label>Date of Joining <span className="text-red-500">*</span></Label>
-                                <Input type="date" value={formData.date_of_joining || ''} onChange={e => updateForm('date_of_joining', e.target.value)} />
+                                <Label htmlFor="edit-date_of_joining">Date of Joining <span className="text-red-500">*</span></Label>
+                                <Input id="edit-date_of_joining" type="date" value={formData.date_of_joining || ''} onChange={e => updateForm('date_of_joining', e.target.value)} />
                             </div>
                         </CardContent>
                     </Card>
@@ -222,20 +225,20 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
                         </CardHeader>
                         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Parent / Guardian Name</Label>
-                                <Input value={formData.parent_name || ''} onChange={e => updateForm('parent_name', e.target.value)} />
+                                <Label htmlFor="edit-parent_name">Parent / Guardian Name</Label>
+                                <Input id="edit-parent_name" value={formData.parent_name || ''} onChange={e => updateForm('parent_name', e.target.value)} />
                             </div>
                             <div className="space-y-2">
-                                <Label>Residential Address</Label>
-                                <Input value={formData.address || ''} onChange={e => updateForm('address', e.target.value)} />
+                                <Label htmlFor="edit-address">Residential Address</Label>
+                                <Input id="edit-address" value={formData.address || ''} onChange={e => updateForm('address', e.target.value)} />
                             </div>
                             <div className="space-y-2">
-                                <Label>Contact Number</Label>
-                                <Input value={formData.parent_contact || ''} onChange={e => updateForm('parent_contact', e.target.value)} />
+                                <Label htmlFor="edit-parent_contact">Contact Number</Label>
+                                <Input id="edit-parent_contact" value={formData.parent_contact || ''} onChange={e => updateForm('parent_contact', e.target.value)} />
                             </div>
                             <div className="space-y-2">
-                                <Label>Email Address</Label>
-                                <Input type="email" value={formData.parent_email || ''} onChange={e => updateForm('parent_email', e.target.value)} />
+                                <Label htmlFor="edit-parent_email">Email Address</Label>
+                                <Input id="edit-parent_email" type="email" value={formData.parent_email || ''} onChange={e => updateForm('parent_email', e.target.value)} />
                             </div>
                         </CardContent>
                     </Card>

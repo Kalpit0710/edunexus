@@ -1,7 +1,8 @@
 # Phase 2 — Advanced Academic + POS
 
 > **Duration:** 2 months (after Phase 1 exit criteria met)  
-> **Goal:** Fully operational ERP — every major school workflow covered
+> **Goal:** Fully operational ERP — every major school workflow covered  
+> **Status:** ✅ Complete — exit gate signed off 2026-06-16 (see [PROGRESS.md](../PROGRESS.md))
 
 ---
 

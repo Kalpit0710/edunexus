@@ -236,8 +236,9 @@ export default function NewExamPage() {
                     {step === 1 && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2 md:col-span-2">
-                                <Label>Exam Name <span className="text-destructive">*</span></Label>
+                                <Label htmlFor="exam-name">Exam Name <span className="text-destructive">*</span></Label>
                                 <Input
+                                    id="exam-name"
                                     placeholder="e.g. Mid-Term Examination 2026"
                                     value={formData.name}
                                     onChange={e => updateForm('name', e.target.value)}
@@ -245,8 +246,9 @@ export default function NewExamPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Class <span className="text-destructive">*</span></Label>
+                                <Label htmlFor="exam-class">Class <span className="text-destructive">*</span></Label>
                                 <select
+                                    id="exam-class"
                                     className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm"
                                     value={formData.classId}
                                     onChange={e => {
@@ -261,8 +263,9 @@ export default function NewExamPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Academic Year (Optional)</Label>
+                                <Label htmlFor="exam-academic-year">Academic Year (Optional)</Label>
                                 <select
+                                    id="exam-academic-year"
                                     className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm"
                                     value={formData.academicYearId}
                                     onChange={e => updateForm('academicYearId', e.target.value)}
@@ -273,8 +276,9 @@ export default function NewExamPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Start Date (Optional)</Label>
+                                <Label htmlFor="exam-start-date">Start Date (Optional)</Label>
                                 <Input
+                                    id="exam-start-date"
                                     type="date"
                                     value={formData.startDate}
                                     onChange={e => updateForm('startDate', e.target.value)}
@@ -282,8 +286,9 @@ export default function NewExamPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label>End Date (Optional)</Label>
+                                <Label htmlFor="exam-end-date">End Date (Optional)</Label>
                                 <Input
+                                    id="exam-end-date"
                                     type="date"
                                     value={formData.endDate}
                                     onChange={e => updateForm('endDate', e.target.value)}
@@ -319,8 +324,9 @@ export default function NewExamPage() {
 
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pr-8">
                                                 <div className="space-y-2 md:col-span-1">
-                                                    <Label>Subject <span className="text-destructive">*</span></Label>
+                                                    <Label htmlFor={`subject-${index}`}>Subject <span className="text-destructive">*</span></Label>
                                                     <select
+                                                        id={`subject-${index}`}
                                                         className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
                                                         value={sub.subjectId}
                                                         onChange={e => updateSubjectRow(index, 'subjectId', e.target.value)}
@@ -331,8 +337,9 @@ export default function NewExamPage() {
                                                 </div>
 
                                                 <div className="space-y-2">
-                                                    <Label>Exam Date</Label>
+                                                    <Label htmlFor={`exam-date-${index}`}>Exam Date</Label>
                                                     <Input
+                                                        id={`exam-date-${index}`}
                                                         type="date"
                                                         className="h-9"
                                                         value={sub.examDate || ''}
@@ -341,8 +348,9 @@ export default function NewExamPage() {
                                                 </div>
 
                                                 <div className="space-y-2">
-                                                    <Label>Start Time</Label>
+                                                    <Label htmlFor={`start-time-${index}`}>Start Time</Label>
                                                     <Input
+                                                        id={`start-time-${index}`}
                                                         type="time"
                                                         className="h-9"
                                                         value={sub.startTime || ''}
@@ -351,8 +359,9 @@ export default function NewExamPage() {
                                                 </div>
 
                                                 <div className="space-y-2">
-                                                    <Label>Duration (mins)</Label>
+                                                    <Label htmlFor={`duration-${index}`}>Duration (mins)</Label>
                                                     <Input
+                                                        id={`duration-${index}`}
                                                         type="number"
                                                         min="1"
                                                         className="h-9"
@@ -362,8 +371,9 @@ export default function NewExamPage() {
                                                 </div>
 
                                                 <div className="space-y-2">
-                                                    <Label>Max Marks <span className="text-destructive">*</span></Label>
+                                                    <Label htmlFor={`max-marks-${index}`}>Max Marks <span className="text-destructive">*</span></Label>
                                                     <Input
+                                                        id={`max-marks-${index}`}
                                                         type="number"
                                                         min="1"
                                                         className="h-9"
@@ -373,8 +383,9 @@ export default function NewExamPage() {
                                                 </div>
 
                                                 <div className="space-y-2">
-                                                    <Label>Pass Marks</Label>
+                                                    <Label htmlFor={`pass-marks-${index}`}>Pass Marks</Label>
                                                     <Input
+                                                        id={`pass-marks-${index}`}
                                                         type="number"
                                                         min="0"
                                                         className="h-9"

@@ -43,6 +43,7 @@ The highest-risk items: silent data loss and unrecoverable deletes.
   - **NOT schools** — there is no user-facing school delete; the super-admin `.delete()` calls are rollback cleanup inside `createSchool`. Schools use `setSchoolSuspended` (soft via `is_active`).
 - **Implemented:** [Migration `20260618000002`](../supabase/migrations/20260618000002_soft_delete_config_entities.sql) adds `deleted_at` to all 6 tables, swaps the hard `UNIQUE(...)` constraints for **partial unique indexes** (`WHERE deleted_at IS NULL`, so a deleted name is reusable), and updates RLS so soft-deleted rows are hidden from every session-client read (both the staff-read **and** the FOR-ALL manage policy USING clauses; manage WITH CHECK keeps working for live-row writes). `academic_years` (which had RLS on but **no policies** — default-deny) gained the standard staff-read + admin-manage policies. The delete actions now soft-delete and new `restore*` actions clear `deleted_at`; both run via the **service-role client, explicitly scoped to the caller's school** (resolved via `requireActor`) and write an audit row. Added `getDeletedConfigEntities()` to back a future restore/trash UI.
 - **Acceptance:** Deleting hides the row everywhere but it remains restorable; a deleted name can be recreated; tenant isolation holds. **4 integration tests** (`tests/integration/soft-delete-config.test.ts`) passing. *(Gates green: type-check 0, lint 0 errors, 193 tests pass.)*
+- **Restore/trash UI (follow-up · ✅ DONE 2026-06-19):** Added a reusable [`DeletedItemsPanel`](../src/app/(school-admin)/school-admin/settings/components/deleted-items-panel.tsx) (auto-hides when the trash is empty) wired into all five settings config tabs (classes, sections, subjects, academic years, grading rules) — each delete bumps a `refreshKey` and a successful **Restore** re-fetches the live list. Fee structures gained a parallel trash section on the fees page backed by a new `getDeletedFeeStructures(schoolId, academicYearId?)` action (tenant-scoped admin client, composed `class · category · ₹amount` label). All restores route through the existing tenant-scoped `restore*` server actions.
 
 ### Chunk 1.3 — Audit log (who/what/when) · **✅ DONE**
 - **Problem:** No school-level activity trail — a trust/compliance gap vs. every competitor.
@@ -144,6 +145,7 @@ Tighten server-action input validation (you already use Zod — coverage is just
 - **Fix:** Add labels/aria; descriptive alt; add `axe-core`/Lighthouse CI step (the testing strategy already promises Lighthouse CI).
 - **Acceptance:** Key flows pass axe with no critical violations.
 - **Implemented:** Added `aria-label` to **every icon-only button that lacked an accessible name** across the app — back buttons (inventory new/stock/pos/reports/edit, exams marks/publish/reports, fees pending/history, exams new, students new/[id]/[id]·edit) and delete/remove buttons (settings tabs ×5, fees structure, students list edit/delete, teacher assignment, exam subject row, onboarding grading rule). `title`-bearing buttons already exposed names and were left as-is. Associated all labels↔inputs via `htmlFor`/`id` in the inventory **new** and **edit** forms. Improved the student-photo `alt`. Added **`vitest-axe`** and two axe assertions (inventory create + edit forms) proving **no violations** — the first automated a11y coverage. NOTE: label/`htmlFor` association on the *remaining* forms (settings, students/new, teachers/new, exams/new, fees) is follow-up work tracked for a later pass.
+- **Label/`htmlFor` follow-up (✅ DONE 2026-06-19):** Associated every labelled field with its control across the remaining forms — settings **grading** tab (`<span>` → real `<label htmlFor>`) and **academic** tab (start-month select + term name/start/end inputs), **students/new** (all 4 steps, including selects + file + textarea), **students/[id]/edit** (personal/academic/parent sections), **teachers/[id]** assignment Selects (`SelectTrigger id` ↔ label), **fees/collect** payment details, and **exams/new** (step-1 fields + indexed step-2 subject rows via `htmlFor={`field-${index}`}`).
 
 ### Chunk 5.2 — `any` burn-down against generated DB types · ✅ DONE (root cause fixed 2026-06-18)
 - **Problem:** 311 `no-explicit-any` + several `@ts-expect-error` on `.update()` calls mask schema drift.
@@ -152,6 +154,7 @@ Tighten server-action input validation (you already use Zod — coverage is just
 - **Root cause found + fixed:** The write-side `@ts-expect-error`/`as any` were **not** lazy masks — they suppressed a genuine project-wide `never`-typing failure caused by **`@supabase/ssr@0.5.2`** (its `createServerClient<Database>`/`createBrowserClient<Database>` typings were too old; the base `@supabase/supabase-js` typed client compiled fine in isolation). The generated `src/types/database.types.ts` was **also severely stale** — missing ~12 tables (`exams`, `exam_subjects`, `marks`, `plan_prices`, `inventory_*`, `fee_payments`, `audit_logs`, …); the old loose typing hid this. Fix: upgraded `@supabase/ssr` `^0.5.2 → ^0.12.0` and `@supabase/supabase-js` `^2.47 → ^2.108` (peer), then regenerated types via `pnpm db:types` (CLI was authed to the live EduNexus project) — now 26 tables + RPC functions.
 - **Implemented (this PR):** With the upgrade + regen, all **21 write-side `@ts-expect-error` directives became unused and were removed** (settings, onboarding, teachers, students, students/new) and their payloads typed against the generated `Insert`/`Update` types. Read-side `as any` burned down where the client is now typed: `app-initializer.tsx` (15), `login/page.tsx` (3, + a surfaced real schema-drift fix — `subscription_plan/status` are DB `string` but app unions, now an explicit typed cast not `any`), the shared `student-parent-sync.ts` helper (`db: any` → `SupabaseClient<Database>`, dropping 5 `as any` at call sites), two student read helpers, and `email.ts`. The **only** remaining `@ts-expect-error` is a **non-write** dynamic-index on local React state in `onboarding/page.tsx` — so **"no `@ts-expect-error` on writes" is met**.
 - **Result:** `no-explicit-any` **358 → 321**; `@ts-expect-error` **22 → 1**; type-check 0 errors; lint 0 errors; full suite **217 passing**; `pnpm build` green (incl. SSR middleware). Remaining `any` (teacher-dashboard nested relation selects, reports/fees data-shape casts, `parent/actions.ts` `db: any`, `bulkCreateStudents(studentsData: any[])`, Next typed-routes `href as any`, and the dead fee-reminders cron whose `fee_installments` table doesn't exist) is incremental follow-up.
+- **`parent/actions.ts` follow-up (✅ DONE 2026-06-19):** Typed the `ParentAccessContext.db` field and `getParentAccessContext`'s `db` local against the generated admin client (`Awaited<ReturnType<typeof createAdminClient>>`) instead of `any`, so every parent query is now type-checked. The single exception — `getLatestAnnouncements`, which queries an `announcements` table not present in the generated types ("may not exist yet; fail closed") — keeps one **localized** `(context.db as any)` cast. Net: `no-explicit-any` 323 → 322.
 - **⚠️ Process note (kept):** `get_errors` (IDE language server) did **not** surface the `never` errors — only `pnpm type-check` (tsc) did. Always validate Supabase read/write changes with `pnpm type-check`.
 
 ### Chunk 5.3 — De-duplicate `getSupabase()` helper · ✅ DONE
@@ -164,16 +167,31 @@ Tighten server-action input validation (you already use Zod — coverage is just
 
 ## Part 6 — Deferred Competitive Features  · Priority **LAST (not now)**
 
-> Explicitly deferred per current priorities. Listed for roadmap completeness only.
+> Explicitly deferred per current priorities. Online payment gateway and SMS/WhatsApp are planned **before deployment**; the codebase is now **seam-ready** for them (see readiness below). The mobile app / PWA remains fully deferred (no readiness work done).
+
+### Part 6 readiness (✅ seams added 2026-06-19 — no live providers/SDKs)
+
+The architecture is prepared so each Part 6 feature is a **drop-in**, not a refactor. No Razorpay/Stripe/Twilio SDKs or credentials are added yet.
+
+**Notifications (SMS / WhatsApp) — `src/lib/notifications/index.ts`:**
+- A channel-agnostic `notify({ channel, to, event, ... })` dispatcher with a `NotificationChannelProvider` contract and a `channel` registry. `email` is wired (delegates to the existing `sendEmail` Resend integration); `sms` and `whatsapp` are registered as **not-configured** placeholders that resolve `{ success: false, skipped: true }` instead of throwing.
+- `isChannelConfigured(channel)` lets callers fan out safely. The shared event vocabulary is `NotificationEvent` (= `EmailEvent`).
+- **To add a provider later:** implement `NotificationChannelProvider` for the channel (env-gated `isConfigured()`, real `send()` + a `notification_logs` insert) and swap it into the `providers` map — **no call sites change**. The `notification_logs` table already has a `type` column; a real text provider also needs a small migration adding a generic `recipient` column (so a phone isn't stored in `recipient_email`).
+
+**Online payment gateway — `src/lib/payments/index.ts` + `src/app/api/payments/webhook/route.ts`:**
+- A `PaymentProvider` contract (`createOrder` / `verifyWebhook`) with typed `PaymentOrderRequest` / `VerifiedPayment` (amounts in minor units to avoid float drift), plus an **empty** provider registry and `getActivePaymentProvider()` / `isOnlinePaymentEnabled()`.
+- A webhook route that responds **501** until a provider is registered, and (once wired) verifies the signature **before** trusting any amount.
+- **Schema is already gateway-ready:** `fee_payments.payment_mode` includes `'online'` and `reference_number` holds the gateway payment id — a verified capture records an `online` `fee_payments` row via the **service-role client scoped to the verified `school_id`** (the webhook has no user session, so it cannot use `requireActor`).
+- **To add a provider later:** implement `PaymentProvider`, register it, add the checkout server action + the persist step in the webhook (the TODO is marked in the route).
 
 ### Chunk 6.1 — Online payment gateway
-- Razorpay/Stripe on top of existing POS; webhooks → `fee_payments`; reconciliation.
+- Razorpay/Stripe on top of existing POS; webhooks → `fee_payments`; reconciliation. **Seam ready** (above).
 
 ### Chunk 6.2 — Mobile app / PWA
-- PWA install + offline attendance marking first; native shell later (Phase 4).
+- PWA install + offline attendance marking first; native shell later (Phase 4). *(No readiness work — fully deferred.)*
 
 ### Chunk 6.3 — SMS / WhatsApp notifications
-- Add SMS/WhatsApp channel alongside existing Resend email; start with absence + fee-due alerts.
+- Add SMS/WhatsApp channel alongside existing Resend email; start with absence + fee-due alerts. **Seam ready** (above).
 
 ---
 
