@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import type { Database } from '@/types/database.types'
 import { ROLES } from '@/lib/constants'
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
@@ -157,6 +158,19 @@ function studentPreviewResponse(
 }
 
 export async function POST(request: Request) {
+  // Rate limit by client IP: 10 attempts / minute. No-op when Upstash is unset.
+  const rl = await checkRateLimit(getClientIp(request), {
+    name: 'parent-register',
+    limit: 10,
+    windowSeconds: 60,
+  })
+  if (!rl.success) {
+    return NextResponse.json(
+      { success: false, message: 'Too many attempts. Please try again in a minute.' },
+      { status: 429 },
+    )
+  }
+
   let body: unknown
 
   try {

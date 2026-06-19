@@ -92,7 +92,13 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
                 parent_email: formData.parent_email,
                 address: formData.address,
                 blood_group: formData.blood_group,
+                allergies: formData.allergies,
                 medical_conditions: formData.medical_conditions,
+                medications: formData.medications,
+                emergency_contact_name: formData.emergency_contact_name,
+                emergency_contact_phone: formData.emergency_contact_phone,
+                doctor_name: formData.doctor_name,
+                doctor_phone: formData.doctor_phone,
                 photo_url: photoUrl
             }
             await updateStudent(id, payload)
@@ -239,6 +245,46 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
                             <div className="space-y-2">
                                 <Label htmlFor="edit-parent_email">Email Address</Label>
                                 <Input id="edit-parent_email" type="email" value={formData.parent_email || ''} onChange={e => updateForm('parent_email', e.target.value)} />
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Health &amp; Safety</CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-blood_group">Blood Group</Label>
+                                <Input id="edit-blood_group" value={formData.blood_group || ''} onChange={e => updateForm('blood_group', e.target.value)} placeholder="e.g. O+" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-allergies">Allergies</Label>
+                                <Input id="edit-allergies" value={formData.allergies || ''} onChange={e => updateForm('allergies', e.target.value)} placeholder="e.g. Peanuts, Penicillin" />
+                            </div>
+                            <div className="space-y-2 md:col-span-2">
+                                <Label htmlFor="edit-medical_conditions">Medical Conditions</Label>
+                                <Input id="edit-medical_conditions" value={formData.medical_conditions || ''} onChange={e => updateForm('medical_conditions', e.target.value)} placeholder="e.g. Asthma" />
+                            </div>
+                            <div className="space-y-2 md:col-span-2">
+                                <Label htmlFor="edit-medications">Regular Medications</Label>
+                                <Input id="edit-medications" value={formData.medications || ''} onChange={e => updateForm('medications', e.target.value)} placeholder="e.g. Inhaler (as needed)" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-emergency_contact_name">Emergency Contact Name</Label>
+                                <Input id="edit-emergency_contact_name" value={formData.emergency_contact_name || ''} onChange={e => updateForm('emergency_contact_name', e.target.value)} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-emergency_contact_phone">Emergency Contact Phone</Label>
+                                <Input id="edit-emergency_contact_phone" value={formData.emergency_contact_phone || ''} onChange={e => updateForm('emergency_contact_phone', e.target.value)} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-doctor_name">Doctor Name</Label>
+                                <Input id="edit-doctor_name" value={formData.doctor_name || ''} onChange={e => updateForm('doctor_name', e.target.value)} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-doctor_phone">Doctor Phone</Label>
+                                <Input id="edit-doctor_phone" value={formData.doctor_phone || ''} onChange={e => updateForm('doctor_phone', e.target.value)} />
                             </div>
                         </CardContent>
                     </Card>

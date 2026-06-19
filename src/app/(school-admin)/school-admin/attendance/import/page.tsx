@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { saveAttendance, type AttendanceStatus } from '../actions'
 import { getClasses, getSections } from '../../settings/actions'
 import { getStudentsForAttendance } from '../actions'
+import { schoolToday } from '@/lib/date-utils'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -43,7 +44,7 @@ export default function AttendanceImportPage() {
     const [sections, setSections] = useState<any[]>([])
     const [selClass, setSelClass] = useState('')
     const [selSection, setSelSection] = useState('')
-    const [date, setDate] = useState(new Date().toISOString().split('T')[0] ?? '')
+    const [date, setDate] = useState(schoolToday())
 
     const [parsed, setParsed] = useState<ParsedRow[]>([])
     const [isParsed, setIsParsed] = useState(false)

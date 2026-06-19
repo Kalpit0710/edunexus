@@ -47,8 +47,7 @@ export default function OnboardingWizardPage() {
 
     const updateGradingRule = (index: number, field: string, value: string | number) => {
         const newRules = [...gradingRules]
-        // @ts-expect-error
-        newRules[index][field] = value
+        ;(newRules[index] as Record<string, string | number>)[field] = value
         setGradingRules(newRules)
     }
 

@@ -542,3 +542,237 @@ export async function getLatestAnnouncements(
         return []
     }
 }
+
+// ─── Homework / Diary (F1.2) ─────────────────────────────────────────────────
+
+export interface ChildHomeworkRow {
+    id: string
+    title: string
+    description: string | null
+    homeworkDate: string
+    dueDate: string | null
+    subjectName: string | null
+    postedBy: string | null
+}
+
+/** Homework for a parent's linked child (their class, plus section-scoped entries). */
+export async function getChildHomework(
+    schoolId: string,
+    childId: string,
+    limit = 50,
+): Promise<ChildHomeworkRow[]> {
+    const context = await getParentAccessContext(schoolId)
+    if (!context) return []
+
+    // Verify the child is linked to this parent and resolve their class/section.
+    const { data: link } = await context.db
+        .from('parents')
+        .select('id, students!inner ( id, class_id, section_id, school_id )')
+        .eq('auth_user_id', context.authUserId)
+        .eq('student_id', childId)
+        .maybeSingle()
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const student = (link as any)?.students
+    if (!student || student.school_id !== schoolId || !student.class_id) return []
+
+    let query = context.db
+        .from('homework')
+        .select('id, title, description, homework_date, due_date, created_by_name, subjects ( name )')
+        .eq('school_id', schoolId)
+        .eq('class_id', student.class_id)
+        .is('deleted_at', null)
+        .order('homework_date', { ascending: false })
+        .limit(limit)
+
+    // Section-scoped entries (section_id = child's section) + whole-class (null).
+    query = student.section_id
+        ? query.or(`section_id.is.null,section_id.eq.${student.section_id}`)
+        : query.is('section_id', null)
+
+    const { data, error } = await query
+    if (error || !data) return []
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (data as any[]).map((h) => ({
+        id: h.id,
+        title: h.title,
+        description: h.description,
+        homeworkDate: h.homework_date,
+        dueDate: h.due_date,
+        subjectName: h.subjects?.name ?? null,
+        postedBy: h.created_by_name ?? null,
+    }))
+}
+
+// ─── Timetable (F1.1) ────────────────────────────────────────────────────────
+
+export interface ChildTimetablePeriod {
+    id: string
+    name: string
+    startTime: string | null
+    endTime: string | null
+    isBreak: boolean
+}
+
+export interface ChildTimetableEntry {
+    dayOfWeek: number
+    periodId: string
+    subjectName: string | null
+    teacherName: string | null
+    room: string | null
+}
+
+export interface ChildTimetable {
+    periods: ChildTimetablePeriod[]
+    entries: ChildTimetableEntry[]
+}
+
+/** Weekly timetable for a parent's linked child (their section). */
+export async function getChildTimetable(schoolId: string, childId: string): Promise<ChildTimetable> {
+    const empty: ChildTimetable = { periods: [], entries: [] }
+    const context = await getParentAccessContext(schoolId)
+    if (!context) return empty
+
+    // Verify linkage and resolve the child's section.
+    const { data: link } = await context.db
+        .from('parents')
+        .select('id, students!inner ( id, section_id, school_id )')
+        .eq('auth_user_id', context.authUserId)
+        .eq('student_id', childId)
+        .maybeSingle()
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const student = (link as any)?.students
+    if (!student || student.school_id !== schoolId || !student.section_id) return empty
+
+    const [{ data: periods }, { data: entries }] = await Promise.all([
+        context.db
+            .from('timetable_periods')
+            .select('id, name, start_time, end_time, is_break')
+            .eq('school_id', schoolId)
+            .order('display_order', { ascending: true }),
+        context.db
+            .from('timetable_entries')
+            .select('day_of_week, period_id, room, subjects ( name ), teachers ( employee_id, user_profiles ( full_name ) )')
+            .eq('school_id', schoolId)
+            .eq('section_id', student.section_id),
+    ])
+
+    return {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        periods: ((periods ?? []) as any[]).map((p) => ({
+            id: p.id,
+            name: p.name,
+            startTime: p.start_time,
+            endTime: p.end_time,
+            isBreak: p.is_break,
+        })),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        entries: ((entries ?? []) as any[]).map((e) => ({
+            dayOfWeek: e.day_of_week,
+            periodId: e.period_id,
+            subjectName: e.subjects?.name ?? null,
+            teacherName: e.teachers?.user_profiles?.full_name ?? null,
+            room: e.room,
+        })),
+    }
+}
+
+// ─── Academic calendar (F1.5) ────────────────────────────────────────────────
+
+export interface CalendarEntryRow {
+    id: string
+    title: string
+    category: string
+    startDate: string
+    endDate: string | null
+    description: string | null
+}
+
+/** School-wide academic calendar (holidays/events/exams) for the parent portal. */
+export async function getSchoolCalendar(schoolId: string): Promise<CalendarEntryRow[]> {
+    const context = await getParentAccessContext(schoolId)
+    if (!context) return []
+
+    const { data, error } = await context.db
+        .from('holidays')
+        .select('id, title, category, start_date, end_date, description')
+        .eq('school_id', schoolId)
+        .is('deleted_at', null)
+        .order('start_date', { ascending: true })
+
+    if (error || !data) return []
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (data as any[]).map((h) => ({
+        id: h.id,
+        title: h.title,
+        category: h.category,
+        startDate: h.start_date,
+        endDate: h.end_date,
+        description: h.description,
+    }))
+}
+
+// ─── Transport (F1.9) ────────────────────────────────────────────────────────
+
+export interface ChildTransport {
+    busNumber: string
+    routeName: string | null
+    registrationNumber: string | null
+    driverName: string | null
+    driverPhone: string | null
+    attendantName: string | null
+    attendantPhone: string | null
+    stopName: string | null
+    pickupTime: string | null
+    dropTime: string | null
+    pickupPoint: string | null
+    feeAmount: number
+}
+
+/** The child's bus + driver details (safety) for the parent portal. */
+export async function getChildTransport(schoolId: string, childId: string): Promise<ChildTransport | null> {
+    const context = await getParentAccessContext(schoolId)
+    if (!context) return null
+
+    // Verify linkage.
+    const { data: link } = await context.db
+        .from('parents')
+        .select('id')
+        .eq('auth_user_id', context.authUserId)
+        .eq('student_id', childId)
+        .maybeSingle()
+    if (!link) return null
+
+    const { data, error } = await context.db
+        .from('student_transport')
+        .select('pickup_point, fee_amount, buses ( bus_number, route_name, registration_number, driver_name, driver_phone, attendant_name, attendant_phone ), bus_stops ( name, pickup_time, drop_time )')
+        .eq('school_id', schoolId)
+        .eq('student_id', childId)
+        .maybeSingle()
+
+    if (error || !data) return null
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const row = data as any
+    const bus = row.buses
+    if (!bus) return null
+    const stop = row.bus_stops
+
+    return {
+        busNumber: bus.bus_number,
+        routeName: bus.route_name ?? null,
+        registrationNumber: bus.registration_number ?? null,
+        driverName: bus.driver_name ?? null,
+        driverPhone: bus.driver_phone ?? null,
+        attendantName: bus.attendant_name ?? null,
+        attendantPhone: bus.attendant_phone ?? null,
+        stopName: stop?.name ?? null,
+        pickupTime: stop?.pickup_time ?? null,
+        dropTime: stop?.drop_time ?? null,
+        pickupPoint: row.pickup_point ?? null,
+        feeAmount: Number(row.fee_amount ?? 0),
+    }
+}

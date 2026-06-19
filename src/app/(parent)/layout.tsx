@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, CalendarCheck, BookOpen, IndianRupee, Megaphone, ChevronDown } from 'lucide-react'
+import { Home, CalendarCheck, BookOpen, BookText, CalendarRange, IndianRupee, Megaphone, ChevronDown } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth.store'
 import { useEffect, useState } from 'react'
 import { getLinkedChildren, type ParentChildData } from './parent/actions'
@@ -18,6 +18,8 @@ import { cn } from '@/lib/utils'
 const NAV_ITEMS = [
   { href: '/parent/dashboard', icon: Home, label: 'Home' },
   { href: '/parent/attendance', icon: CalendarCheck, label: 'Attendance' },
+  { href: '/parent/timetable', icon: CalendarRange, label: 'Timetable' },
+  { href: '/parent/homework', icon: BookText, label: 'Homework' },
   { href: '/parent/results', icon: BookOpen, label: 'Results' },
   { href: '/parent/fees', icon: IndianRupee, label: 'Fees' },
   { href: '/parent/announcements', icon: Megaphone, label: 'More' },
@@ -92,7 +94,7 @@ export default function ParentLayout({ children }: { children: React.ReactNode }
 
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/[0.06] bg-[#0a0a0a]/95 backdrop-blur">
-        <div className="grid grid-cols-5 h-16">
+        <div className="grid grid-cols-7 h-16">
           {NAV_ITEMS.map(item => {
             const isActive = pathname === item.href || pathname.startsWith(item.href)
             return (

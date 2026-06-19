@@ -60,6 +60,19 @@ Every layer is independent. Bypassing one layer does not compromise the system.
 - 5 failed attempts → 15-minute account lockout (Supabase built-in rate limiting)
 - Super Admin receives alert after 10 failed attempts across any school
 
+### Application-layer Rate Limiting (2026-06)
+- Public, unauthenticated endpoints are rate-limited via **Upstash Redis** (`src/lib/rate-limit.ts`, sliding window).
+- Wired on `POST /api/auth/parent-register` (10 attempts/min/IP → HTTP 429).
+- **Fail-open:** if Upstash env vars are absent (e.g. local dev) the limiter allows all traffic — it is a hardening layer, not a hard dependency.
+
+### Subscription Lockout (2026-06)
+- Middleware (`src/lib/supabase/middleware.ts`) blocks any non-super-admin user whose school is `suspended` or whose `trial` has expired, redirecting to `/subscription-inactive`.
+- Decision logic is the pure, unit-tested `evaluateSubscriptionAccess` (`src/lib/subscription-access.ts`); it **fails open** on any read miss so legitimate users are never wrongly locked out.
+
+### Error Monitoring (2026-06)
+- **Sentry** captures client/server/edge errors (`sentry.*.config.ts`, `src/instrumentation.ts`, `src/app/global-error.tsx`).
+- Privacy-safe defaults: `sendDefaultPii: false`, no session replay, enabled only in production with a DSN configured.
+
 ---
 
 ## Authorization — RBAC Matrix

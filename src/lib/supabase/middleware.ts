@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import type { Database } from '@/types/database.types'
+import { evaluateSubscriptionAccess } from '@/lib/subscription-access'
 
 /** Role → dashboard route mapping */
 const ROLE_ROUTES: Record<string, string> = {
@@ -29,6 +30,7 @@ const PUBLIC_ROUTES = [
   '/reset-password',
   '/auth/callback',
   '/api/auth/parent-register',
+  '/api/health',
 ]
 
 export async function updateSession(request: NextRequest) {
@@ -91,6 +93,36 @@ export async function updateSession(request: NextRequest) {
       const url = request.nextUrl.clone()
       url.pathname = ROLE_ROUTES[role] ?? '/login'
       return NextResponse.redirect(url)
+    }
+
+    // Subscription lockout (B0.1): block a school whose subscription is
+    // suspended or whose trial has expired. Super-admins are exempt (no school).
+    // The `/subscription-inactive` page is excluded to avoid a redirect loop.
+    if (role !== 'super_admin' && pathname !== '/subscription-inactive') {
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('school_id, schools(subscription_status, trial_ends_at)')
+        .eq('auth_user_id', user.id)
+        .maybeSingle()
+
+      const schoolRel = (profile as { schools?: unknown } | null)?.schools
+      const school = (Array.isArray(schoolRel) ? schoolRel[0] : schoolRel) as
+        | { subscription_status?: string | null; trial_ends_at?: string | null }
+        | undefined
+
+      // Only act when we positively read a school row; fail-open otherwise so a
+      // transient read issue never locks legitimate users out.
+      if (school) {
+        const { allowed } = evaluateSubscriptionAccess(
+          school.subscription_status,
+          school.trial_ends_at,
+        )
+        if (!allowed) {
+          const url = request.nextUrl.clone()
+          url.pathname = '/subscription-inactive'
+          return NextResponse.redirect(url)
+        }
+      }
     }
   }
 

@@ -3,6 +3,7 @@
 import { useAuthStore } from '@/stores/auth.store'
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { getAllPayments, type FeePaymentRow } from '../actions'
+import { schoolToday } from '@/lib/date-utils'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,9 +33,8 @@ const MODE_COLORS: Record<string, string> = {
 export default function PaymentHistoryPage() {
     const { school } = useAuthStore()
 
-    const today = new Date().toISOString().split('T')[0]!
-    const firstOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-        .toISOString().split('T')[0]!
+    const today = schoolToday()
+    const firstOfMonth = today.slice(0, 8) + '01'
 
     const [fromDate, setFromDate] = useState(firstOfMonth)
     const [toDate, setToDate] = useState(today)

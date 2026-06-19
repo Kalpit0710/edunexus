@@ -9,6 +9,7 @@ import {
   type StudentAttendanceRow,
 } from './actions'
 import { getClasses, getSections } from '../settings/actions'
+import { schoolToday } from '@/lib/date-utils'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -45,7 +46,7 @@ export default function AttendancePage() {
   const [sections, setSections] = useState<any[]>([])
   const [selClass, setSelClass] = useState('')
   const [selSection, setSelSection] = useState('')
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0] ?? '')
+  const [date, setDate] = useState(schoolToday())
 
   const [students, setStudents] = useState<StudentAttendanceRow[]>([])
   const [statusMap, setStatusMap] = useState<Record<string, AttendanceStatus>>({})

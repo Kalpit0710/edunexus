@@ -2,6 +2,7 @@
 
 import { createClient as getSupabase } from '@/lib/supabase/server'
 import { computePendingAttendanceSections } from '@/lib/teacher-utils'
+import { schoolToday } from '@/lib/date-utils'
 
 export interface TeacherAssignment {
   sectionName: string
@@ -81,7 +82,7 @@ export async function getTeacherDashboardData(
   }))
 
   // Step 3: check pending attendance — run all section checks in parallel
-  const today = new Date().toISOString().split('T')[0]!
+  const today = schoolToday()
   const classTeacherSections = ((assignmentsData ?? []) as any[])
     .filter(a => a.is_class_teacher && a.section_id)
     .map(a => ({ sectionId: a.section_id as string, label: `${a.sections?.classes?.name ?? ''} ${a.sections?.name ?? ''}`.trim() }))

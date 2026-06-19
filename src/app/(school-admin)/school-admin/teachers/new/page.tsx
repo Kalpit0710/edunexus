@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/utils'
+import { schoolToday } from '@/lib/date-utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -53,7 +54,7 @@ export default function NewTeacherPage() {
     employee_id: '',
     qualification: '',
     specialization: '',
-    join_date: new Date().toISOString().split('T')[0] ?? '',
+    join_date: schoolToday(),
   })
 
   const update = (key: keyof FormData, value: string) =>

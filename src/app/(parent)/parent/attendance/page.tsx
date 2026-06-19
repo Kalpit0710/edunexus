@@ -8,6 +8,7 @@ import {
 } from '../actions'
 import { ChevronLeft, ChevronRight, CalendarCheck } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { localDateISO } from '@/lib/date-utils'
 
 const DAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
@@ -118,7 +119,7 @@ export default function AttendancePage() {
                 const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
                 const status = recordMap.get(dateStr)
                 const config = status ? STATUS_CONFIG[status as keyof typeof STATUS_CONFIG] : null
-                const isToday = dateStr === now.toISOString().split('T')[0]
+                const isToday = dateStr === localDateISO(now)
 
                 return (
                   <div

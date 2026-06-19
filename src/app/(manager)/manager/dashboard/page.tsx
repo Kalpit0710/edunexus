@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/utils'
+import { schoolToday } from '@/lib/date-utils'
 import { DataLoadError } from '@/components/shared/DataLoadError'
 import { getManagerDashboardStats, type ManagerDashboardStats } from './actions'
 import { Button } from '@/components/ui/button'
@@ -30,7 +31,7 @@ export default function ManagerDashboardPage() {
   const [stats, setStats] = useState<ManagerDashboardStats>(EMPTY_STATS)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const today = new Date().toISOString().split('T')[0]!
+  const today = schoolToday()
 
   const loadStats = useCallback(async () => {
     if (!school?.id) return

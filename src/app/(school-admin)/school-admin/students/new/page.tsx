@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/utils'
+import { schoolToday } from '@/lib/date-utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -49,7 +50,7 @@ export default function NewStudentPage() {
 
     const [formData, setFormData] = useState<StudentFormData>({
         first_name: '', middle_name: '', last_name: '', gender: '', date_of_birth: '',
-        class_id: '', section_id: '', admission_number: '', roll_number: '', date_of_joining: new Date().toISOString().split('T')[0] || '',
+        class_id: '', section_id: '', admission_number: '', roll_number: '', date_of_joining: schoolToday(),
         parent_name: '', parent_contact: '', parent_email: '', address: '',
         blood_group: '', medical_conditions: ''
     })

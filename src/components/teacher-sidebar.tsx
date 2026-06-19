@@ -6,12 +6,14 @@ import { useAuthStore } from '@/stores/auth.store'
 import { createClient } from '@/lib/supabase/client'
 import { getInitials } from '@/lib/utils'
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, LogOut, GraduationCap, CalendarCheck, BookOpen } from 'lucide-react'
+import { LayoutDashboard, LogOut, GraduationCap, CalendarCheck, BookOpen, BookText, CalendarRange } from 'lucide-react'
 import { toast } from 'sonner'
 
 const navItems = [
     { href: '/teacher/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/teacher/attendance', label: 'Attendance', icon: CalendarCheck },
+    { href: '/teacher/timetable', label: 'Timetable', icon: CalendarRange },
+    { href: '/teacher/homework', label: 'Homework', icon: BookText },
     { href: '/teacher/exams', label: 'Exams', icon: BookOpen },
 ]
 

@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database.types'
 import { createClient as getSupabase } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email'
+import { schoolToday } from '@/lib/date-utils'
 import { WelcomeEmail } from '@/emails/WelcomeEmail'
 import { requireActor } from '@/lib/auth/require-actor'
 import { logAudit } from '@/lib/audit'
@@ -212,7 +213,7 @@ export async function createTeacher(
         employee_id: payload.employee_id ?? null,
         qualification: payload.qualification ?? null,
         specialization: payload.specialization ?? null,
-        join_date: payload.join_date ?? new Date().toISOString().split('T')[0],
+        join_date: payload.join_date ?? schoolToday(),
         is_active: true,
       })
       .select('id')

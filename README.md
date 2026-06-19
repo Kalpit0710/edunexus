@@ -19,8 +19,10 @@ Built with **Next.js 15**, **React 19**, **TypeScript**, **Supabase (PostgreSQL 
 - 📦 **Bookstore & Inventory** — stock management and point-of-sale (Manager role)
 - 📊 **Reports & Analytics** — dashboards and insights
 - 🛡️ **Super Admin platform** — school provisioning, subscriptions, audited impersonation, plan pricing, global audit log
-- 💳 **Subscription tiers** — Basic / Standard / Premium plans gate which modules a school can access
+- 💳 **Subscription tiers** — Basic / Standard / Premium plans gate which modules a school can access, with **runtime enforcement** (suspended/expired-trial schools are locked out at the request layer)
 - 📧 **Transactional email** — fee reminders, receipts, exam notifications (React Email + Resend)
+- 🔭 **Production-ready ops** — Sentry error monitoring, `/api/health` probe, Upstash rate limiting, timezone-correct date handling, and a full school-level audit trail
+- 🔌 **Integration-ready** — drop-in seams for an online payment gateway and SMS/WhatsApp alerts (no provider wired yet)
 
 ---
 
@@ -35,6 +37,8 @@ Built with **Next.js 15**, **React 19**, **TypeScript**, **Supabase (PostgreSQL 
 | UI | Tailwind CSS · shadcn/ui (Radix) · lucide-react · Framer Motion |
 | Forms / Validation | React Hook Form · Zod |
 | Email | React Email · Resend |
+| Observability | Sentry (error monitoring) · `/api/health` probe |
+| Rate limiting | Upstash Redis (`@upstash/ratelimit`) |
 | Charts / Sheets | Recharts · SheetJS (xlsx) |
 | Testing | Vitest · Testing Library · Playwright |
 
@@ -79,15 +83,24 @@ pnpm install
 
 ### 2. Configure environment
 
-Create a `.env.local` file in the project root:
+Create a `.env.local` file in the project root (see [`.env.example`](.env.example) for the full list):
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=your-project-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+# School calendar timezone (IANA) — drives "today" for attendance/fees/reports
+NEXT_PUBLIC_DEFAULT_TIMEZONE=Asia/Kolkata
 # Optional: transactional email
 RESEND_API_KEY=your-resend-key
+# Optional: error monitoring (Sentry)
+NEXT_PUBLIC_SENTRY_DSN=your-sentry-dsn
+SENTRY_ORG=your-org
+SENTRY_PROJECT=your-project
+# Optional: rate limiting (Upstash Redis)
+UPSTASH_REDIS_REST_URL=your-upstash-url
+UPSTASH_REDIS_REST_TOKEN=your-upstash-token
 ```
 
 ### 3. Run the dev server
@@ -147,9 +160,12 @@ Documentation/            # Architecture, modules, phases, and design docs
 ## 🔒 Security & Architecture Notes
 
 - Tenant isolation is enforced with **Row-Level Security** — never disabled in migrations or runtime SQL.
-- Tables use **UUID** primary keys; critical entities avoid hard deletes.
+- Tables use **UUID** primary keys; critical entities avoid hard deletes (soft-delete + restore).
 - Service-role keys are **server-only** and never exposed to the client.
 - Business-critical flows favor atomic PostgreSQL functions / RPCs.
+- **Subscription enforcement** runs in middleware — suspended schools and expired trials are redirected to a lockout screen at request time.
+- **Rate limiting** (Upstash, fail-open) guards public auth endpoints; **Sentry** captures server/client/edge errors with PII scrubbing off by default.
+- Sensitive school-admin and super-admin writes are recorded in a per-school **audit log**.
 
 ---
 
@@ -174,6 +190,7 @@ Detailed design docs live in [`Documentation/`](Documentation/):
 - [UI/UX Guidelines](Documentation/UI_UX_GUIDELINES.md)
 - [Testing Strategy](Documentation/TESTING_STRATEGY.md)
 - [Development Plan](Documentation/DEVELOPMENT_PLAN.md) · [Progress](Documentation/PROGRESS.md)
+- [Product Backlog](Documentation/PRODUCT_BACKLOG.md) — current bugs & enhancement roadmap
 - [Module specs](Documentation/modules/) · [Phases](Documentation/phases/)
 
 ---

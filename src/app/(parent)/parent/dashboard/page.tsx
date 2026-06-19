@@ -251,6 +251,24 @@ export default function ParentDashboardPage() {
             </div>
           </div>
         </Link>
+        <Link href={'/parent/calendar' as any}>
+          <div className="flex items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4 hover:bg-white/[0.06] hover:border-white/[0.12] transition-all cursor-pointer">
+            <span className="text-2xl">📅</span>
+            <div>
+              <p className="text-sm font-semibold text-white">School Calendar</p>
+              <p className="text-xs text-zinc-500">Holidays & events</p>
+            </div>
+          </div>
+        </Link>
+        <Link href={'/parent/transport' as any}>
+          <div className="flex items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4 hover:bg-white/[0.06] hover:border-white/[0.12] transition-all cursor-pointer">
+            <span className="text-2xl">🚌</span>
+            <div>
+              <p className="text-sm font-semibold text-white">Transport</p>
+              <p className="text-xs text-zinc-500">Bus & driver details</p>
+            </div>
+          </div>
+        </Link>
         <Link href="/parent/announcements">
           <div className="flex items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4 hover:bg-white/[0.06] hover:border-white/[0.12] transition-all cursor-pointer">
             <span className="text-2xl">📢</span>

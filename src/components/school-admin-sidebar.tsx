@@ -20,6 +20,11 @@ import {
     History,
     BookOpen,
     Lock,
+    ArrowUpCircle,
+    CalendarRange,
+    CalendarDays,
+    BookMarked,
+    Bus,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { usePlan } from '@/hooks/use-plan'
@@ -29,12 +34,17 @@ const navItems: { href: string; label: string; icon: typeof LayoutDashboard; fea
     { href: '/school-admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, feature: 'dashboard' },
     { href: '/school-admin/students', label: 'Students', icon: Users, feature: 'students' },
     { href: '/school-admin/teachers', label: 'Teachers', icon: GraduationCap, feature: 'teachers' },
+    { href: '/school-admin/timetable', label: 'Timetable', icon: CalendarRange, feature: 'teachers' },
     { href: '/school-admin/attendance', label: 'Attendance', icon: CalendarCheck, feature: 'attendance' },
+    { href: '/school-admin/calendar', label: 'Calendar', icon: CalendarDays, feature: 'attendance' },
     { href: '/school-admin/exams', label: 'Exams', icon: BookOpen, feature: 'exams' },
     { href: '/school-admin/fees', label: 'Fees & Billing', icon: IndianRupee, feature: 'fees' },
     { href: '/school-admin/fees/pending', label: 'Pending Fees', icon: ClockAlert, feature: 'fees' },
     { href: '/school-admin/fees/history', label: 'Payment History', icon: History, feature: 'fees' },
+    { href: '/school-admin/library', label: 'Library', icon: BookMarked, feature: 'inventory' },
+    { href: '/school-admin/transport', label: 'Transport', icon: Bus, feature: 'students' },
     { href: '/school-admin/reports', label: 'Reports', icon: BarChart2, feature: 'reports' },
+    { href: '/school-admin/promotion', label: 'Promotion', icon: ArrowUpCircle, feature: 'students' },
     { href: '/school-admin/settings', label: 'Settings', icon: Settings, feature: 'settings' },
 ]
 

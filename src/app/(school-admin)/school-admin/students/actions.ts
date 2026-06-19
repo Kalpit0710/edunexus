@@ -117,6 +117,13 @@ function normalizeStudentWritePayload(payload: Record<string, unknown>): Databas
         section_id: (payload.section_id as string | null) ?? undefined,
         address: (payload.address as string | null) ?? undefined,
         blood_group: (payload.blood_group as string | null) ?? undefined,
+        allergies: (payload.allergies as string | null) ?? undefined,
+        medical_conditions: (payload.medical_conditions as string | null) ?? undefined,
+        medications: (payload.medications as string | null) ?? undefined,
+        emergency_contact_name: (payload.emergency_contact_name as string | null) ?? undefined,
+        emergency_contact_phone: (payload.emergency_contact_phone as string | null) ?? undefined,
+        doctor_name: (payload.doctor_name as string | null) ?? undefined,
+        doctor_phone: (payload.doctor_phone as string | null) ?? undefined,
         photo_url: (payload.photo_url as string | null) ?? undefined,
         is_active: (payload.is_active as boolean | undefined) ?? undefined,
     }
@@ -338,7 +345,13 @@ export async function updateStudent(id: string, payload: any) {
     return true
 }
 
-export async function bulkCreateStudents(schoolId: string, studentsData: any[]) {
+type BulkStudentRow = Record<string, unknown> & {
+    parent_name?: string | null
+    parent_email?: string | null
+    parent_contact?: string | null
+}
+
+export async function bulkCreateStudents(schoolId: string, studentsData: BulkStudentRow[]) {
     const supabase = await getSupabase()
     const actorProfile = await getActorProfile(supabase)
     assertSchoolAdmin(actorProfile)
