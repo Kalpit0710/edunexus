@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
-  { href: '/parent/dashboard', icon: Home, label: 'Home' },
+  { href: '/parent/today', icon: Home, label: 'Today' },
   { href: '/parent/attendance', icon: CalendarCheck, label: 'Attendance' },
   { href: '/parent/timetable', icon: CalendarRange, label: 'Timetable' },
   { href: '/parent/homework', icon: BookText, label: 'Homework' },

@@ -10,7 +10,7 @@ const ROLE_ROUTES: Record<string, string> = {
   teacher: '/teacher/dashboard',
   manager: '/manager/dashboard',
   cashier: '/manager/dashboard',
-  parent: '/parent/dashboard',
+  parent: '/parent/today',
 }
 
 /** Route prefix → roles permitted to access it */
@@ -31,6 +31,7 @@ const PUBLIC_ROUTES = [
   '/auth/callback',
   '/api/auth/parent-register',
   '/api/health',
+  '/api/cron/weekly-digest',
 ]
 
 export async function updateSession(request: NextRequest) {

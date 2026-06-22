@@ -102,13 +102,5 @@
     "typescript": "^5.7.3",
     "vitest": "^2.1.8",
     "vitest-axe": "^0.1.0"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "sharp",
-      "supabase",
-      "unrs-resolver"
-    ]
   }
 }

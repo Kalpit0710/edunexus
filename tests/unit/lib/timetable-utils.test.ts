@@ -5,6 +5,9 @@ import {
   validatePeriodTimes,
   weekdayLabel,
   detectTeacherConflicts,
+  periodsOverlap,
+  normalizeWorkingDays,
+  DEFAULT_WORKING_DAYS,
   type ConflictEntry,
 } from '@/lib/timetable-utils'
 
@@ -110,5 +113,49 @@ describe('detectTeacherConflicts', () => {
       { ...base, entryId: 'e2', sectionId: 's1', sectionLabel: '1-A' },
     ])
     expect(conflicts).toHaveLength(0)
+  })
+})
+
+describe('periodsOverlap', () => {
+  it('returns false when either side is unscheduled', () => {
+    expect(periodsOverlap(null, null, '09:00', '09:40')).toBe(false)
+    expect(periodsOverlap('09:00', '09:40', null, '10:00')).toBe(false)
+    expect(periodsOverlap('09:00', null, '09:10', '09:40')).toBe(false)
+  })
+
+  it('detects a genuine overlap', () => {
+    expect(periodsOverlap('09:00', '09:40', '09:30', '10:10')).toBe(true)
+    expect(periodsOverlap('09:30', '10:10', '09:00', '09:40')).toBe(true)
+  })
+
+  it('treats touching edges as non-overlapping', () => {
+    expect(periodsOverlap('09:00', '09:40', '09:40', '10:20')).toBe(false)
+    expect(periodsOverlap('09:40', '10:20', '09:00', '09:40')).toBe(false)
+  })
+
+  it('flags one period fully containing another', () => {
+    expect(periodsOverlap('09:00', '11:00', '09:30', '10:00')).toBe(true)
+  })
+
+  it('returns false for clearly separate periods', () => {
+    expect(periodsOverlap('09:00', '09:40', '10:00', '10:40')).toBe(false)
+  })
+})
+
+describe('normalizeWorkingDays', () => {
+  it('falls back to the default when empty or invalid', () => {
+    expect(normalizeWorkingDays(null)).toEqual(DEFAULT_WORKING_DAYS)
+    expect(normalizeWorkingDays(undefined)).toEqual(DEFAULT_WORKING_DAYS)
+    expect(normalizeWorkingDays([])).toEqual(DEFAULT_WORKING_DAYS)
+    expect(normalizeWorkingDays([0, 8, 99])).toEqual(DEFAULT_WORKING_DAYS)
+  })
+
+  it('dedupes, filters out-of-range values and sorts ascending', () => {
+    expect(normalizeWorkingDays([3, 1, 2, 2, 1])).toEqual([1, 2, 3])
+    expect(normalizeWorkingDays([7, 1, 9, 0, 5])).toEqual([1, 5, 7])
+  })
+
+  it('keeps a valid Mon–Fri week intact', () => {
+    expect(normalizeWorkingDays([1, 2, 3, 4, 5])).toEqual([1, 2, 3, 4, 5])
   })
 })

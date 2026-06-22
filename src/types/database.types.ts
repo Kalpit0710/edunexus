@@ -377,6 +377,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          report_card_type: string
           school_id: string
         }
         Insert: {
@@ -386,6 +387,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          report_card_type?: string
           school_id: string
         }
         Update: {
@@ -395,159 +397,12 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          report_card_type?: string
           school_id?: string
         }
         Relationships: [
           {
             foreignKeyName: "classes_school_id_fkey"
-            columns: ["school_id"]
-            isOneToOne: false
-            referencedRelation: "schools"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      exam_subjects: {
-        Row: {
-          created_at: string
-          duration_mins: number | null
-          exam_date: string | null
-          exam_id: string
-          id: string
-          max_marks: number
-          pass_marks: number
-          school_id: string
-          start_time: string | null
-          subject_id: string
-        }
-        Insert: {
-          created_at?: string
-          duration_mins?: number | null
-          exam_date?: string | null
-          exam_id: string
-          id?: string
-          max_marks: number
-          pass_marks?: number
-          school_id: string
-          start_time?: string | null
-          subject_id: string
-        }
-        Update: {
-          created_at?: string
-          duration_mins?: number | null
-          exam_date?: string | null
-          exam_id?: string
-          id?: string
-          max_marks?: number
-          pass_marks?: number
-          school_id?: string
-          start_time?: string | null
-          subject_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "exam_subjects_exam_id_fkey"
-            columns: ["exam_id"]
-            isOneToOne: false
-            referencedRelation: "exams"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "exam_subjects_school_id_fkey"
-            columns: ["school_id"]
-            isOneToOne: false
-            referencedRelation: "schools"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "exam_subjects_subject_id_fkey"
-            columns: ["subject_id"]
-            isOneToOne: false
-            referencedRelation: "subjects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      exams: {
-        Row: {
-          academic_year_id: string | null
-          class_id: string
-          created_at: string
-          created_by: string | null
-          end_date: string | null
-          id: string
-          name: string
-          published_at: string | null
-          published_by: string | null
-          result_visible: boolean
-          school_id: string
-          start_date: string | null
-          status: Database["public"]["Enums"]["exam_status"]
-          updated_at: string
-        }
-        Insert: {
-          academic_year_id?: string | null
-          class_id: string
-          created_at?: string
-          created_by?: string | null
-          end_date?: string | null
-          id?: string
-          name: string
-          published_at?: string | null
-          published_by?: string | null
-          result_visible?: boolean
-          school_id: string
-          start_date?: string | null
-          status?: Database["public"]["Enums"]["exam_status"]
-          updated_at?: string
-        }
-        Update: {
-          academic_year_id?: string | null
-          class_id?: string
-          created_at?: string
-          created_by?: string | null
-          end_date?: string | null
-          id?: string
-          name?: string
-          published_at?: string | null
-          published_by?: string | null
-          result_visible?: boolean
-          school_id?: string
-          start_date?: string | null
-          status?: Database["public"]["Enums"]["exam_status"]
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "exams_academic_year_id_fkey"
-            columns: ["academic_year_id"]
-            isOneToOne: false
-            referencedRelation: "academic_years"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "exams_class_id_fkey"
-            columns: ["class_id"]
-            isOneToOne: false
-            referencedRelation: "classes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "exams_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "user_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "exams_published_by_fkey"
-            columns: ["published_by"]
-            isOneToOne: false
-            referencedRelation: "user_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "exams_school_id_fkey"
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
@@ -1183,87 +1038,6 @@ export type Database = {
           },
         ]
       }
-      marks: {
-        Row: {
-          created_at: string
-          entered_at: string | null
-          entered_by: string | null
-          exam_id: string
-          exam_subject_id: string
-          grade: string | null
-          id: string
-          is_absent: boolean
-          marks_obtained: number | null
-          school_id: string
-          student_id: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          entered_at?: string | null
-          entered_by?: string | null
-          exam_id: string
-          exam_subject_id: string
-          grade?: string | null
-          id?: string
-          is_absent?: boolean
-          marks_obtained?: number | null
-          school_id: string
-          student_id: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          entered_at?: string | null
-          entered_by?: string | null
-          exam_id?: string
-          exam_subject_id?: string
-          grade?: string | null
-          id?: string
-          is_absent?: boolean
-          marks_obtained?: number | null
-          school_id?: string
-          student_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "marks_entered_by_fkey"
-            columns: ["entered_by"]
-            isOneToOne: false
-            referencedRelation: "user_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "marks_exam_id_fkey"
-            columns: ["exam_id"]
-            isOneToOne: false
-            referencedRelation: "exams"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "marks_exam_subject_id_fkey"
-            columns: ["exam_subject_id"]
-            isOneToOne: false
-            referencedRelation: "exam_subjects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "marks_school_id_fkey"
-            columns: ["school_id"]
-            isOneToOne: false
-            referencedRelation: "schools"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "marks_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "students"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       notification_logs: {
         Row: {
           created_at: string | null
@@ -1396,6 +1170,335 @@ export type Database = {
         }
         Relationships: []
       }
+      report_co_scholastic_marks: {
+        Row: {
+          area: string
+          created_at: string
+          entered_by: string | null
+          id: string
+          school_id: string
+          student_id: string
+          term1: string | null
+          term2: string | null
+          updated_at: string
+        }
+        Insert: {
+          area: string
+          created_at?: string
+          entered_by?: string | null
+          id?: string
+          school_id: string
+          student_id: string
+          term1?: string | null
+          term2?: string | null
+          updated_at?: string
+        }
+        Update: {
+          area?: string
+          created_at?: string
+          entered_by?: string | null
+          id?: string
+          school_id?: string
+          student_id?: string
+          term1?: string | null
+          term2?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_co_scholastic_marks_entered_by_fkey"
+            columns: ["entered_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_co_scholastic_marks_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_co_scholastic_marks_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_publications: {
+        Row: {
+          academic_year_id: string | null
+          class_id: string
+          created_at: string
+          id: string
+          locked_at: string | null
+          published_at: string | null
+          published_by: string | null
+          result_visible: boolean
+          school_id: string
+          status: Database["public"]["Enums"]["report_status"]
+          updated_at: string
+        }
+        Insert: {
+          academic_year_id?: string | null
+          class_id: string
+          created_at?: string
+          id?: string
+          locked_at?: string | null
+          published_at?: string | null
+          published_by?: string | null
+          result_visible?: boolean
+          school_id: string
+          status?: Database["public"]["Enums"]["report_status"]
+          updated_at?: string
+        }
+        Update: {
+          academic_year_id?: string | null
+          class_id?: string
+          created_at?: string
+          id?: string
+          locked_at?: string | null
+          published_at?: string | null
+          published_by?: string | null
+          result_visible?: boolean
+          school_id?: string
+          status?: Database["public"]["Enums"]["report_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_publications_academic_year_id_fkey"
+            columns: ["academic_year_id"]
+            isOneToOne: false
+            referencedRelation: "academic_years"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_publications_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_publications_published_by_fkey"
+            columns: ["published_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_publications_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_scholastic_marks: {
+        Row: {
+          class_id: string
+          created_at: string
+          entered_at: string
+          entered_by: string | null
+          id: string
+          school_id: string
+          student_id: string
+          subject_id: string
+          term1: Json
+          term2: Json
+          updated_at: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          entered_at?: string
+          entered_by?: string | null
+          id?: string
+          school_id: string
+          student_id: string
+          subject_id: string
+          term1?: Json
+          term2?: Json
+          updated_at?: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          entered_at?: string
+          entered_by?: string | null
+          id?: string
+          school_id?: string
+          student_id?: string
+          subject_id?: string
+          term1?: Json
+          term2?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_scholastic_marks_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_scholastic_marks_entered_by_fkey"
+            columns: ["entered_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_scholastic_marks_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_scholastic_marks_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_scholastic_marks_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_student_meta: {
+        Row: {
+          created_at: string
+          entered_by: string | null
+          id: string
+          remarks: string | null
+          result_status: string | null
+          school_id: string
+          student_id: string
+          term1_attendance: string | null
+          term2_attendance: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          entered_by?: string | null
+          id?: string
+          remarks?: string | null
+          result_status?: string | null
+          school_id: string
+          student_id: string
+          term1_attendance?: string | null
+          term2_attendance?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          entered_by?: string | null
+          id?: string
+          remarks?: string | null
+          result_status?: string | null
+          school_id?: string
+          student_id?: string
+          term1_attendance?: string | null
+          term2_attendance?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_student_meta_entered_by_fkey"
+            columns: ["entered_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_student_meta_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_student_meta_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: true
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_subject_configs: {
+        Row: {
+          class_id: string
+          components: Json
+          created_at: string
+          deleted_at: string | null
+          display_order: number
+          id: string
+          max_marks: Json
+          school_id: string
+          subject_id: string
+          updated_at: string
+        }
+        Insert: {
+          class_id: string
+          components?: Json
+          created_at?: string
+          deleted_at?: string | null
+          display_order?: number
+          id?: string
+          max_marks?: Json
+          school_id: string
+          subject_id: string
+          updated_at?: string
+        }
+        Update: {
+          class_id?: string
+          components?: Json
+          created_at?: string
+          deleted_at?: string | null
+          display_order?: number
+          id?: string
+          max_marks?: Json
+          school_id?: string
+          subject_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_subject_configs_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_subject_configs_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_subject_configs_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schools: {
         Row: {
           academic_year_start_month: number
@@ -1417,6 +1520,7 @@ export type Database = {
           trial_ends_at: string | null
           updated_at: string
           website: string | null
+          working_days: number[]
         }
         Insert: {
           academic_year_start_month?: number
@@ -1438,6 +1542,7 @@ export type Database = {
           trial_ends_at?: string | null
           updated_at?: string
           website?: string | null
+          working_days?: number[]
         }
         Update: {
           academic_year_start_month?: number
@@ -1459,6 +1564,7 @@ export type Database = {
           trial_ends_at?: string | null
           updated_at?: string
           website?: string | null
+          working_days?: number[]
         }
         Relationships: []
       }
@@ -2300,8 +2406,13 @@ export type Database = {
         Args: { p_mappings: Json; p_school_id: string; p_target_year: string }
         Returns: Json
       }
-      publish_exam_results: {
-        Args: { p_exam_id: string; p_notify_parents?: boolean }
+      publish_class_report: {
+        Args: {
+          p_academic_year_id: string
+          p_class_id: string
+          p_lock?: boolean
+          p_result_visible?: boolean
+        }
         Returns: Json
       }
       return_book: {
@@ -2345,11 +2456,13 @@ export type Database = {
         }
         Returns: number
       }
-      unlock_exam_results: { Args: { p_exam_id: string }; Returns: boolean }
+      unlock_class_report: {
+        Args: { p_academic_year_id: string; p_class_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       attendance_status: "present" | "absent" | "late" | "half_day" | "holiday"
-      exam_status: "draft" | "published" | "ongoing" | "completed" | "locked"
       fee_status: "pending" | "partial" | "paid" | "overdue" | "waived"
       gender: "male" | "female" | "other"
       inventory_category:
@@ -2360,6 +2473,7 @@ export type Database = {
         | "lab"
         | "other"
       payment_mode: "cash" | "cheque" | "upi" | "neft" | "card" | "online"
+      report_status: "draft" | "published" | "locked"
       stock_adjustment_type: "add" | "remove" | "adjustment" | "sale"
       user_role:
         | "super_admin"
@@ -2496,7 +2610,6 @@ export const Constants = {
   public: {
     Enums: {
       attendance_status: ["present", "absent", "late", "half_day", "holiday"],
-      exam_status: ["draft", "published", "ongoing", "completed", "locked"],
       fee_status: ["pending", "partial", "paid", "overdue", "waived"],
       gender: ["male", "female", "other"],
       inventory_category: [
@@ -2508,6 +2621,7 @@ export const Constants = {
         "other",
       ],
       payment_mode: ["cash", "cheque", "upi", "neft", "card", "online"],
+      report_status: ["draft", "published", "locked"],
       stock_adjustment_type: ["add", "remove", "adjustment", "sale"],
       user_role: [
         "super_admin",

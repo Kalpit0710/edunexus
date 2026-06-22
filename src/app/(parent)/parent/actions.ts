@@ -1,7 +1,11 @@
 'use server'
 
 import { createAdminClient, createClient } from '@/lib/supabase/server'
+import { schoolToday } from '@/lib/date-utils'
+import { pickTodayHomework, pickUpcomingDue } from '@/lib/digest-utils'
+import { normalizeWorkingDays } from '@/lib/timetable-utils'
 import type { FeePaymentRow } from '../../(school-admin)/school-admin/fees/actions'
+import { getPrintableReportCard } from '../../(school-admin)/school-admin/report-cards/actions'
 
 export interface ParentChildData {
     id: string
@@ -31,24 +35,6 @@ export interface ChildFeeStatus {
 export interface AttendanceDayRecord {
     date: string
     status: 'present' | 'absent' | 'late' | 'half_day' | 'holiday'
-}
-
-export interface ExamResultRow {
-    examId: string
-    examName: string
-    startDate: string | null
-    status: string
-    resultVisible: boolean
-    subjects: {
-        subjectName: string
-        marksObtained: number | null
-        maxMarks: number
-        grade: string | null
-        isAbsent: boolean
-    }[]
-    totalObtained: number
-    totalMax: number
-    percentage: number
 }
 
 export interface ChildAttendanceTrendPoint {
@@ -404,105 +390,24 @@ export async function getChildFeeStatus(
     }
 }
 
-// ─── Exam Results ────────────────────────────────────────────────────────────
+// ─── Report-Card Performance ─────────────────────────────────────────────────
 
-export async function getChildExamsAndResults(
-    studentId: string,
-    schoolId: string,
-): Promise<{ results: ExamResultRow[]; hasPendingFees: boolean }> {
-    try {
-        const context = await getParentAccessContext(schoolId)
-        if (!context || !(await isStudentLinkedToParent(context, studentId))) {
-            return { results: [], hasPendingFees: false }
-        }
-
-        // Check for pending fees
-        const feeStatus = await getChildFeeStatus(studentId, schoolId)
-        const hasPendingFees = feeStatus.balance > 0
-
-        const { data: exams } = await context.db
-            .from('exams')
-            .select('id, name, start_date, status, result_visible')
-            .eq('school_id', schoolId)
-            .order('start_date', { ascending: false })
-            .limit(20)
-
-        if (!exams || exams.length === 0) return { results: [], hasPendingFees }
-
-        const examIds = exams.map((e: any) => e.id)
-
-        const [subjectsRes, marksRes] = await Promise.all([
-            context.db.from('exam_subjects')
-                .select('id, exam_id, max_marks, subjects(name)')
-                .in('exam_id', examIds)
-                .limit(500),
-            context.db.from('marks')
-                .select('exam_id, exam_subject_id, marks_obtained, grade, is_absent')
-                .eq('student_id', studentId)
-                .in('exam_id', examIds)
-                .limit(500),
-        ])
-
-        const subjectsMap = new Map<string, any[]>()
-        for (const s of subjectsRes.data ?? []) {
-            const list = subjectsMap.get(s.exam_id) ?? []
-            list.push(s)
-            subjectsMap.set(s.exam_id, list)
-        }
-
-        const marksMap = new Map<string, any>()
-        for (const m of marksRes.data ?? []) {
-            marksMap.set(m.exam_subject_id, m)
-        }
-
-        const results: ExamResultRow[] = exams.map((exam: any) => {
-            const subjects = subjectsMap.get(exam.id) ?? []
-            const subjectRows = subjects.map((s: any) => {
-                const mark = marksMap.get(s.id)
-                return {
-                    subjectName: s.subjects?.name ?? 'Unknown',
-                    marksObtained: mark?.marks_obtained ?? null,
-                    maxMarks: Number(s.max_marks),
-                    grade: mark?.grade ?? null,
-                    isAbsent: mark?.is_absent ?? false,
-                }
-            })
-            const totalMax = subjectRows.reduce((sum, r) => sum + r.maxMarks, 0)
-            const totalObtained = subjectRows.reduce((sum, r) => sum + (r.marksObtained ?? 0), 0)
-            const percentage = totalMax > 0 ? Number(((totalObtained / totalMax) * 100).toFixed(1)) : 0
-
-            return {
-                examId: exam.id,
-                examName: exam.name,
-                startDate: exam.start_date,
-                status: exam.status,
-                resultVisible: exam.result_visible ?? false,
-                subjects: subjectRows,
-                totalObtained,
-                totalMax,
-                percentage,
-            }
-        })
-
-        return { results, hasPendingFees }
-    } catch {
-        return { results: [], hasPendingFees: false }
-    }
-}
-
+/**
+ * Subject-wise performance for the child's published report card.
+ * Returns an empty list until the class report is published with results
+ * visible (authorisation is enforced inside `getPrintableReportCard`).
+ */
 export async function getChildPerformanceTrend(
     studentId: string,
-    schoolId: string,
+    _schoolId: string,
 ): Promise<ChildPerformanceTrendPoint[]> {
-    const { results } = await getChildExamsAndResults(studentId, schoolId)
-    return results
-        .slice(0, 6)
-        .reverse()
-        .map((row) => ({
-            examName: row.examName,
-            percentage: row.percentage,
-            examDate: row.startDate,
-        }))
+    const card = await getPrintableReportCard(studentId)
+    if (!card) return []
+    return card.subjects.map((s) => ({
+        examName: s.subjectName,
+        percentage: s.percentage,
+        examDate: null,
+    }))
 }
 
 // ─── Announcements ───────────────────────────────────────────────────────────
@@ -626,11 +531,12 @@ export interface ChildTimetableEntry {
 export interface ChildTimetable {
     periods: ChildTimetablePeriod[]
     entries: ChildTimetableEntry[]
+    workingDays: number[]
 }
 
 /** Weekly timetable for a parent's linked child (their section). */
 export async function getChildTimetable(schoolId: string, childId: string): Promise<ChildTimetable> {
-    const empty: ChildTimetable = { periods: [], entries: [] }
+    const empty: ChildTimetable = { periods: [], entries: [], workingDays: normalizeWorkingDays(null) }
     const context = await getParentAccessContext(schoolId)
     if (!context) return empty
 
@@ -646,7 +552,7 @@ export async function getChildTimetable(schoolId: string, childId: string): Prom
     const student = (link as any)?.students
     if (!student || student.school_id !== schoolId || !student.section_id) return empty
 
-    const [{ data: periods }, { data: entries }] = await Promise.all([
+    const [{ data: periods }, { data: entries }, { data: school }] = await Promise.all([
         context.db
             .from('timetable_periods')
             .select('id, name, start_time, end_time, is_break')
@@ -657,9 +563,12 @@ export async function getChildTimetable(schoolId: string, childId: string): Prom
             .select('day_of_week, period_id, room, subjects ( name ), teachers ( employee_id, user_profiles ( full_name ) )')
             .eq('school_id', schoolId)
             .eq('section_id', student.section_id),
+        context.db.from('schools').select('working_days').eq('id', schoolId).maybeSingle(),
     ])
 
     return {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        workingDays: normalizeWorkingDays((school as any)?.working_days),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         periods: ((periods ?? []) as any[]).map((p) => ({
             id: p.id,
@@ -774,5 +683,82 @@ export async function getChildTransport(schoolId: string, childId: string): Prom
         dropTime: stop?.drop_time ?? null,
         pickupPoint: row.pickup_point ?? null,
         feeAmount: Number(row.fee_amount ?? 0),
+    }
+}
+
+// ─── Today feed (E2.2) ────────────────────────────────────────────────────────
+
+export type TodayAttendanceStatus =
+    | 'present'
+    | 'absent'
+    | 'late'
+    | 'half_day'
+    | 'not_marked'
+
+export interface ParentTodayFeed {
+    date: string
+    child: ParentChildData
+    attendanceStatus: TodayAttendanceStatus
+    feeBalance: number
+    feeTotal: number
+    todayHomework: ChildHomeworkRow[]
+    upcomingHomework: ChildHomeworkRow[]
+    latestAnnouncement: AnnouncementRow | null
+}
+
+/**
+ * One-glance "Today" summary for a parent's linked child — today's attendance,
+ * homework posted today, anything due soon, the outstanding fee balance and the
+ * latest notice. Aggregates existing per-section queries so the parent doesn't
+ * have to open five tabs.
+ */
+export async function getParentTodayFeed(
+    schoolId: string,
+    childId: string,
+): Promise<ParentTodayFeed | null> {
+    try {
+        const context = await getParentAccessContext(schoolId)
+        if (!context || !(await isStudentLinkedToParent(context, childId))) return null
+
+        const children = await getLinkedChildrenInternal(context)
+        const child = children.find((c) => c.id === childId)
+        if (!child) return null
+
+        const today = schoolToday()
+
+        const [attendanceRes, homework, feeStatus, announcements] = await Promise.all([
+            context.db
+                .from('attendance_records')
+                .select('status')
+                .eq('student_id', childId)
+                .eq('school_id', schoolId)
+                .eq('date', today)
+                .maybeSingle(),
+            getChildHomework(schoolId, childId, 50),
+            getChildFeeStatus(childId, schoolId),
+            getLatestAnnouncements(schoolId, child.classId),
+        ])
+
+        const rawStatus = (attendanceRes.data as { status?: string } | null)?.status
+        const attendanceStatus: TodayAttendanceStatus =
+            rawStatus === 'present' ||
+            rawStatus === 'absent' ||
+            rawStatus === 'late' ||
+            rawStatus === 'half_day'
+                ? rawStatus
+                : 'not_marked'
+
+        return {
+            date: today,
+            child,
+            attendanceStatus,
+            feeBalance: feeStatus.balance,
+            feeTotal: feeStatus.totalFee,
+            todayHomework: pickTodayHomework(homework, today),
+            upcomingHomework: pickUpcomingDue(homework, today).slice(0, 5),
+            latestAnnouncement: announcements[0] ?? null,
+        }
+    } catch {
+        return null
     }
 }

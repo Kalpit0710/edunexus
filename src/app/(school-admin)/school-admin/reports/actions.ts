@@ -1,6 +1,15 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import {
+    calcStandardSubjectResult,
+    calcLowerSubjectResult,
+    DEFAULT_STANDARD_MAX,
+    type StandardMaxMarks,
+    type LowerComponent,
+    type MarksMap,
+    type SubjectResult,
+} from '@/lib/report-card-utils'
 
 export interface ClassAttendanceSummary {
     className: string
@@ -251,164 +260,122 @@ export async function getFeeMomentumSummary(
     }
 }
 
+const PASS_PERCENTAGE = 33
+
 export async function getExamAnalyticsSummary(
     schoolId: string,
 ): Promise<ExamAnalyticsSummary> {
     const supabase = await createClient()
 
-    const { data: examsData } = await supabase
-        .from('exams')
-        .select('id, name, class_id, created_at')
-        .eq('school_id', schoolId)
-        .order('created_at', { ascending: false })
-        .limit(30)
-
-    const exams = (examsData ?? []) as Array<{
-        id: string
-        name: string
-        class_id: string
-        created_at: string
-    }>
-
-    if (!exams.length) {
-        return {
-            passRateTrend: [],
-            subjectDifficulty: [],
-            classComparison: [],
-        }
-    }
-
-    const examIds = exams.map((exam) => exam.id)
-    const classIds = Array.from(new Set(exams.map((exam) => exam.class_id)))
-
-    const [{ data: classRows }, { data: examSubjectsData }, { data: marksData }] = await Promise.all([
+    const [{ data: classData }, { data: subjectData }, { data: configData }, { data: marksData }] = await Promise.all([
         supabase
             .from('classes')
-            .select('id, name')
+            .select('id, name, report_card_type')
             .eq('school_id', schoolId)
-            .in('id', classIds)
             .limit(200),
         supabase
-            .from('exam_subjects')
-            .select('id, exam_id, subject_id, pass_marks, max_marks, subjects(name)')
+            .from('subjects')
+            .select('id, name')
             .eq('school_id', schoolId)
-            .in('exam_id', examIds)
-            .limit(1000),
+            .limit(2000),
         supabase
-            .from('marks')
-            .select('exam_id, exam_subject_id, marks_obtained, is_absent')
+            .from('report_subject_configs')
+            .select('class_id, subject_id, max_marks, components')
             .eq('school_id', schoolId)
-            .in('exam_id', examIds)
+            .is('deleted_at', null)
+            .limit(5000),
+        supabase
+            .from('report_scholastic_marks')
+            .select('class_id, student_id, subject_id, term1, term2')
+            .eq('school_id', schoolId)
             .limit(50000),
     ])
 
-    const classRowsList = (classRows ?? []) as any[]
-    const examSubjectsRows = (examSubjectsData ?? []) as any[]
-    const marksRows = (marksData ?? []) as any[]
+    const classes = (classData ?? []) as Array<{ id: string; name: string; report_card_type: string | null }>
+    const subjects = (subjectData ?? []) as Array<{ id: string; name: string }>
+    const configs = (configData ?? []) as Array<{ class_id: string; subject_id: string; max_marks: unknown; components: unknown }>
+    const marks = (marksData ?? []) as Array<{ class_id: string; student_id: string; subject_id: string; term1: unknown; term2: unknown }>
 
-    const classNameById = new Map<string, string>(classRowsList.map((row: any) => [row.id, row.name]))
-
-    const examSubjectById = new Map<string, any>()
-    for (const examSubject of examSubjectsRows) {
-        examSubjectById.set(examSubject.id, examSubject)
+    if (!marks.length) {
+        return { passRateTrend: [], subjectDifficulty: [], classComparison: [] }
     }
 
-    const passRateTrend = exams.map((exam) => {
-        const examMarks = marksRows.filter((row: any) => row.exam_id === exam.id && !row.is_absent)
-        const totalEntries = examMarks.length
-        let passCount = 0
+    const classById = new Map(classes.map((c) => [c.id, c]))
+    const subjectNameById = new Map(subjects.map((s) => [s.id, s.name]))
+    const configByKey = new Map(configs.map((c) => [`${c.class_id}:${c.subject_id}`, c]))
 
-        for (const mark of examMarks) {
-            const examSubject = examSubjectById.get(mark.exam_subject_id)
-            if (examSubject && Number(mark.marks_obtained ?? 0) >= Number(examSubject.pass_marks ?? 0)) {
-                passCount += 1
-            }
+    function computeSubject(row: { class_id: string; subject_id: string; term1: unknown; term2: unknown }): SubjectResult | null {
+        const cls = classById.get(row.class_id)
+        const config = configByKey.get(`${row.class_id}:${row.subject_id}`)
+        const term1 = (row.term1 ?? {}) as MarksMap
+        const term2 = (row.term2 ?? {}) as MarksMap
+        if (cls?.report_card_type === 'lower') {
+            const components = (config?.components ?? []) as LowerComponent[]
+            if (!components.length) return null
+            return calcLowerSubjectResult(term1, term2, components)
         }
-
-        const passRate = totalEntries ? Math.round((passCount / totalEntries) * 100) : 0
-        return {
-            examName: exam.name,
-            passRate,
-            totalEntries,
-        }
-    }).slice(0, 8).reverse()
-
-    const subjectAccumulator = new Map<string, {
-        subjectName: string
-        passCount: number
-        totalCount: number
-        percentageSum: number
-    }>()
-
-    for (const mark of marksRows) {
-        if (mark.is_absent) continue
-        const examSubject = examSubjectById.get(mark.exam_subject_id)
-        if (!examSubject) continue
-
-        const subjectId = String(examSubject.subject_id)
-        const subjectName = examSubject.subjects?.name ?? 'Subject'
-        const current = subjectAccumulator.get(subjectId) ?? {
-            subjectName,
-            passCount: 0,
-            totalCount: 0,
-            percentageSum: 0,
-        }
-
-        const marks = Number(mark.marks_obtained ?? 0)
-        const maxMarks = Number(examSubject.max_marks ?? 0)
-        const passMarks = Number(examSubject.pass_marks ?? 0)
-
-        current.totalCount += 1
-        current.percentageSum += maxMarks > 0 ? (marks / maxMarks) * 100 : 0
-        if (marks >= passMarks) {
-            current.passCount += 1
-        }
-
-        subjectAccumulator.set(subjectId, current)
+        const max = (config?.max_marks ?? DEFAULT_STANDARD_MAX) as StandardMaxMarks
+        return calcStandardSubjectResult(term1, term2, max)
     }
 
-    const subjectDifficulty = Array.from(subjectAccumulator.values())
-        .map((entry) => ({
-            subjectName: entry.subjectName,
-            passRate: entry.totalCount ? Math.round((entry.passCount / entry.totalCount) * 100) : 0,
-            averagePercentage: entry.totalCount ? Math.round(entry.percentageSum / entry.totalCount) : 0,
+    const subjectAcc = new Map<string, { subjectName: string; passCount: number; totalCount: number; percentageSum: number }>()
+    const studentAcc = new Map<string, { classId: string; results: SubjectResult[] }>()
+
+    for (const row of marks) {
+        const result = computeSubject(row)
+        if (!result) continue
+
+        const subjectName = subjectNameById.get(row.subject_id) ?? 'Subject'
+        const sAcc = subjectAcc.get(row.subject_id) ?? { subjectName, passCount: 0, totalCount: 0, percentageSum: 0 }
+        sAcc.totalCount += 1
+        sAcc.percentageSum += result.percentage
+        if (result.percentage >= PASS_PERCENTAGE) sAcc.passCount += 1
+        subjectAcc.set(row.subject_id, sAcc)
+
+        const stAcc = studentAcc.get(row.student_id) ?? { classId: row.class_id, results: [] }
+        stAcc.results.push(result)
+        studentAcc.set(row.student_id, stAcc)
+    }
+
+    const subjectDifficulty = Array.from(subjectAcc.values())
+        .map((e) => ({
+            subjectName: e.subjectName,
+            passRate: e.totalCount ? Math.round((e.passCount / e.totalCount) * 100) : 0,
+            averagePercentage: e.totalCount ? Math.round(e.percentageSum / e.totalCount) : 0,
         }))
         .sort((a, b) => a.passRate - b.passRate)
         .slice(0, 8)
 
-    const classAccumulator = new Map<string, { className: string; percentageSum: number; totalCount: number }>()
-    const examById = new Map<string, { class_id: string }>(exams.map((exam) => [exam.id, { class_id: exam.class_id }]))
-
-    for (const mark of marksRows) {
-        if (mark.is_absent) continue
-        const exam = examById.get(mark.exam_id)
-        const examSubject = examSubjectById.get(mark.exam_subject_id)
-        if (!exam || !examSubject) continue
-
-        const classId = exam.class_id
-        const className = classNameById.get(classId) ?? 'Unknown Class'
-        const maxMarks = Number(examSubject.max_marks ?? 0)
-        const marks = Number(mark.marks_obtained ?? 0)
-        const percentage = maxMarks > 0 ? (marks / maxMarks) * 100 : 0
-
-        const current = classAccumulator.get(classId) ?? { className, percentageSum: 0, totalCount: 0 }
-        current.percentageSum += percentage
-        current.totalCount += 1
-        classAccumulator.set(classId, current)
+    const classAcc = new Map<string, { className: string; percentageSum: number; studentCount: number; passCount: number }>()
+    for (const st of studentAcc.values()) {
+        const totalObtained = st.results.reduce((s, r) => s + r.grandTotal, 0)
+        const totalMax = st.results.reduce((s, r) => s + r.maxGrandTotal, 0)
+        const overall = totalMax > 0 ? (totalObtained / totalMax) * 100 : 0
+        const className = classById.get(st.classId)?.name ?? 'Unknown Class'
+        const acc = classAcc.get(st.classId) ?? { className, percentageSum: 0, studentCount: 0, passCount: 0 }
+        acc.percentageSum += overall
+        acc.studentCount += 1
+        if (overall >= PASS_PERCENTAGE) acc.passCount += 1
+        classAcc.set(st.classId, acc)
     }
 
-    const classComparison = Array.from(classAccumulator.values())
-        .map((entry) => ({
-            className: entry.className,
-            averagePercentage: entry.totalCount ? Math.round(entry.percentageSum / entry.totalCount) : 0,
-            totalEntries: entry.totalCount,
+    const classComparison = Array.from(classAcc.values())
+        .map((e) => ({
+            className: e.className,
+            averagePercentage: e.studentCount ? Math.round(e.percentageSum / e.studentCount) : 0,
+            totalEntries: e.studentCount,
         }))
         .sort((a, b) => b.averagePercentage - a.averagePercentage)
         .slice(0, 8)
 
-    return {
-        passRateTrend,
-        subjectDifficulty,
-        classComparison,
-    }
+    const passRateTrend = Array.from(classAcc.values())
+        .map((e) => ({
+            examName: e.className,
+            passRate: e.studentCount ? Math.round((e.passCount / e.studentCount) * 100) : 0,
+            totalEntries: e.studentCount,
+        }))
+        .sort((a, b) => a.examName.localeCompare(b.examName))
+        .slice(0, 8)
+
+    return { passRateTrend, subjectDifficulty, classComparison }
 }

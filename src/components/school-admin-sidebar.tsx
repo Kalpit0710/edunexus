@@ -37,7 +37,7 @@ const navItems: { href: string; label: string; icon: typeof LayoutDashboard; fea
     { href: '/school-admin/timetable', label: 'Timetable', icon: CalendarRange, feature: 'teachers' },
     { href: '/school-admin/attendance', label: 'Attendance', icon: CalendarCheck, feature: 'attendance' },
     { href: '/school-admin/calendar', label: 'Calendar', icon: CalendarDays, feature: 'attendance' },
-    { href: '/school-admin/exams', label: 'Exams', icon: BookOpen, feature: 'exams' },
+    { href: '/school-admin/report-cards', label: 'Report Cards', icon: BookOpen, feature: 'exams' },
     { href: '/school-admin/fees', label: 'Fees & Billing', icon: IndianRupee, feature: 'fees' },
     { href: '/school-admin/fees/pending', label: 'Pending Fees', icon: ClockAlert, feature: 'fees' },
     { href: '/school-admin/fees/history', label: 'Payment History', icon: History, feature: 'fees' },

@@ -53,13 +53,13 @@ test.describe('School Admin role', () => {
   test('can navigate to Students page', async ({ page }) => {
     await page.goto('/school-admin/students')
     await expect(page).toHaveURL(/\/school-admin\/students/)
-    await expect(page.getByText(/student directory/i)).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Student Directory' })).toBeVisible()
   })
 
   test('can navigate to Teachers page', async ({ page }) => {
     await page.goto('/school-admin/teachers')
     await expect(page).toHaveURL(/\/school-admin\/teachers/)
-    await expect(page.getByText(/teacher directory/i)).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Teacher Directory' })).toBeVisible()
   })
 
   test('can navigate to Attendance page', async ({ page }) => {

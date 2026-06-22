@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { usePlan } from '@/hooks/use-plan'
 import { type Feature } from '@/lib/plan-features'
+import { WeeklyDigestCard } from './weekly-digest-card'
 
 export default function SchoolAdminDashboardPage() {
   const { school } = useAuthStore()
@@ -207,6 +208,9 @@ export default function SchoolAdminDashboardPage() {
           </ResponsiveContainer>
         )}
       </div>
+
+      {/* Weekly digest (E2.4) */}
+      {school?.id && !stats.needsOnboarding && <WeeklyDigestCard schoolId={school.id} />}
 
       {/* Quick actions */}
       <div>

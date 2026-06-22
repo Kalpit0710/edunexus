@@ -58,6 +58,33 @@ export function validatePeriodTimes(
   return null
 }
 
+/**
+ * Do two time ranges overlap? "HH:MM" strings compare lexicographically, so we
+ * can compare them directly. A range with a missing side can't be checked, so
+ * it's treated as non-overlapping (unscheduled rows are allowed to coexist).
+ */
+export function periodsOverlap(
+  aStart: string | null | undefined,
+  aEnd: string | null | undefined,
+  bStart: string | null | undefined,
+  bEnd: string | null | undefined,
+): boolean {
+  if (!aStart || !aEnd || !bStart || !bEnd) return false
+  // Touching edges (one ends exactly when the next starts) is NOT an overlap.
+  return aStart < bEnd && bStart < aEnd
+}
+
+/**
+ * Clean a stored/working-days array: keep only valid ISO weekdays (1–7), drop
+ * duplicates, sort ascending, and fall back to the default week when empty.
+ */
+export function normalizeWorkingDays(days: number[] | null | undefined): number[] {
+  const valid = Array.from(new Set((days ?? []).filter((d) => d >= 1 && d <= 7))).sort(
+    (a, b) => a - b,
+  )
+  return valid.length > 0 ? valid : [...DEFAULT_WORKING_DAYS]
+}
+
 export interface ConflictEntry {
   entryId: string
   sectionId: string

@@ -2,6 +2,13 @@
 
 > **Phase:** Phase 2 | **Priority:** P0
 
+> ⚠️ **Superseded (2026-06-22):** The exam/marks model described below was **replaced** by the CBSE-style **Report Card module**. The `exams` / `exam_subjects` / `marks` tables and their RPCs no longer exist. The canonical implementation now lives in:
+> - DB: `supabase/migrations/20260622000002_report_cards.sql` (`report_subject_configs`, `report_scholastic_marks`, `report_co_scholastic_marks`, `report_student_meta`, `report_publications`; `classes.report_card_type`; RPCs `publish_class_report` / `unlock_class_report`).
+> - Logic: `src/lib/report-card-utils.ts` (standard + lower tiers; grade scale via per-school `grading_rules`).
+> - UI: `school-admin/report-cards`, `teacher/report-cards`, `parent/results`, print route `report-card/[studentId]/print`.
+> - Shared editor: `src/components/modules/report-cards/StudentMarksEditor.tsx`.
+> See `Documentation/PROGRESS.md` (2026-06-22 — CBSE Report Card module) for the full changelog. The sections below are retained for historical context only.
+
 ## Overview
 Manages the full exam lifecycle: creation → marks entry → result generation → report cards → publishing to parents.
 

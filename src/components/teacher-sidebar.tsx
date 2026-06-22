@@ -14,7 +14,7 @@ const navItems = [
     { href: '/teacher/attendance', label: 'Attendance', icon: CalendarCheck },
     { href: '/teacher/timetable', label: 'Timetable', icon: CalendarRange },
     { href: '/teacher/homework', label: 'Homework', icon: BookText },
-    { href: '/teacher/exams', label: 'Exams', icon: BookOpen },
+    { href: '/teacher/report-cards', label: 'Report Cards', icon: BookOpen },
 ]
 
 export function TeacherSidebar() {

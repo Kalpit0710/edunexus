@@ -11,7 +11,7 @@ test.describe('Student Management (Phase 1.5)', () => {
   test('can navigate to the student directory', async ({ page }) => {
     await page.goto('/school-admin/students')
     await expect(page).toHaveURL(/\/school-admin\/students/)
-    await expect(page.getByText(/student directory/i)).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Student Directory' })).toBeVisible()
     await expect(page.getByPlaceholder(/search by name, adm no/i)).toBeVisible()
   })
 

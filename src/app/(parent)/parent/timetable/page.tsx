@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { DataLoadError } from '@/components/shared/DataLoadError'
 import { CalendarRange } from 'lucide-react'
 
-const WORKING = WEEKDAYS.filter((w) => DEFAULT_WORKING_DAYS.includes(w.value))
+const DEFAULT_WORKING = WEEKDAYS.filter((w) => DEFAULT_WORKING_DAYS.includes(w.value))
 
 export default function ParentTimetablePage() {
   const { user, school, activeChildId, setActiveChildId } = useAuthStore()
@@ -18,7 +18,7 @@ export default function ParentTimetablePage() {
   // Mobile day picker — default to today (clamped into the working week).
   const todayIso = ((new Date().getDay() + 6) % 7) + 1
   const [activeDay, setActiveDay] = useState(
-    WORKING.some((w) => w.value === todayIso) ? todayIso : (WORKING[0]?.value ?? 1),
+    DEFAULT_WORKING.some((w) => w.value === todayIso) ? todayIso : (DEFAULT_WORKING[0]?.value ?? 1),
   )
 
   const load = useCallback(async () => {
@@ -33,7 +33,7 @@ export default function ParentTimetablePage() {
         if (childId) setActiveChildId(childId)
       }
       if (!childId) {
-        setData({ periods: [], entries: [] })
+        setData({ periods: [], entries: [], workingDays: DEFAULT_WORKING_DAYS })
         return
       }
       setData(await getChildTimetable(school.id, childId))
@@ -50,6 +50,8 @@ export default function ParentTimetablePage() {
 
   const cellAt = (dayOfWeek: number, periodId: string) =>
     data?.entries.find((e) => e.dayOfWeek === dayOfWeek && e.periodId === periodId)
+
+  const WORKING = WEEKDAYS.filter((w) => (data?.workingDays ?? DEFAULT_WORKING_DAYS).includes(w.value))
 
   return (
     <div className="px-4 py-5 space-y-4">

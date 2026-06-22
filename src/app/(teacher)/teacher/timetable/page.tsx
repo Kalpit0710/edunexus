@@ -3,12 +3,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
 import { getMyTimetable, type MyTimetable } from './actions'
-import { WEEKDAYS, DEFAULT_WORKING_DAYS, formatPeriodRange } from '@/lib/timetable-utils'
+import { WEEKDAYS, formatPeriodRange } from '@/lib/timetable-utils'
 import { InlineLoader } from '@/components/loaders/page-loaders'
 import { DataLoadError } from '@/components/shared/DataLoadError'
 import { CalendarRange } from 'lucide-react'
-
-const WORKING = WEEKDAYS.filter((w) => DEFAULT_WORKING_DAYS.includes(w.value))
 
 export default function TeacherTimetablePage() {
   const { school } = useAuthStore()
@@ -37,6 +35,8 @@ export default function TeacherTimetablePage() {
   if (loading) return <InlineLoader label="Loading your timetable…" className="mt-20" />
   if (error) return <DataLoadError message={error} onRetry={load} />
   if (!data) return null
+
+  const WORKING = WEEKDAYS.filter((w) => data.workingDays.includes(w.value))
 
   const cellAt = (dayOfWeek: number, periodId: string) =>
     data.entries.find((e) => e.dayOfWeek === dayOfWeek && e.periodId === periodId)

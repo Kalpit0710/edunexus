@@ -68,7 +68,7 @@ export default function TeacherDashboardPage() {
 
   const quickActions = [
     { href: '/teacher/attendance', label: 'Mark Attendance', icon: CalendarCheck },
-    { href: '/teacher/exams', label: 'View Exams', icon: BookOpen },
+    { href: '/teacher/report-cards', label: 'Report Cards', icon: BookOpen },
   ]
 
   if (loading) return (

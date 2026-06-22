@@ -17,6 +17,7 @@ export type EmailEvent =
   | 'exam_published'
   | 'inventory_receipt'
   | 'general_announcement'
+  | 'weekly_digest'
 
 interface SendEmailParams {
   to: string | string[]

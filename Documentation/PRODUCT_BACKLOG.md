@@ -65,11 +65,11 @@
 
 ## 🟢 Tier 2 — "Wow / differentiate" (creative)
 
-- **E2.1 — AI report-card comments** · *P2, high demo value.* Teacher picks tone; auto-draft "Aarav has shown great improvement in reading…" from the marks. Big time-saver, sells itself.
-- **E2.2 — Parent "Today" feed** · *P2.* One screen: attendance ✓, today's homework/diary, fee due, latest notice. Primary parents want one glance, not five tabs. Builds on [parent portal](../src/app/(parent)/parent/).
+- **E2.1 — AI report-card comments** · *Deferred (descoped 2026-06-22 per owner).*
+- **E2.2 — Parent "Today" feed** · ✅ **DONE 2026-06-22.** One screen: today's attendance status, homework posted today (+ due-soon), fee balance + due alert, and the latest notice. New `/parent/today` server action ([getParentTodayFeed](../src/app/(parent)/parent/actions.ts)) aggregating existing per-section queries; new [today page](../src/app/(parent)/parent/today/page.tsx); bottom-nav "Home" tab and parent post-login route now land on the Today feed (full analytics dashboard still one tap away). Pure split/format helpers in [digest-utils.ts](../src/lib/digest-utils.ts) (unit-tested).
 - **E2.3 — WhatsApp alerts** · *P1 once Part 6 lands.* Absence + fee-due over WhatsApp (email is ignored in this market). Seam already built.
-- **E2.4 — Principal/owner weekly digest** · *P2.* Auto WhatsApp/PDF: collections, attendance %, defaulters — so the owner feels the product working without logging in.
-- **E2.5 — Multi-language UI (i18n)** · *P2.* Regional-language parent portal widens the addressable market.
+- **E2.4 — Principal/owner weekly digest** · ✅ **DONE 2026-06-22.** Collections, attendance %, pending fees and top-5 defaulters for the last 7 days. On-screen [Weekly Digest card](../src/app/(school-admin)/school-admin/dashboard/weekly-digest-card.tsx) on the admin dashboard with an "Email me" button, plus a [WeeklyDigestEmail](../src/emails/WeeklyDigestEmail.tsx) template sent via the notification seam ([digest-actions.ts](../src/app/(school-admin)/school-admin/dashboard/digest-actions.ts)). A `CRON_SECRET`-guarded [cron route](../src/app/api/cron/weekly-digest/route.ts) (`/api/cron/weekly-digest`) fans the digest out to every active school's admins when wired to a scheduler. WhatsApp/PDF delivery deferred to Part 6.
+- **E2.5 — Multi-language UI (i18n)** · *Deferred (descoped 2026-06-22 per owner).*
 
 ---
 

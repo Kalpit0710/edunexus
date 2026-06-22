@@ -82,6 +82,10 @@ async function ensureSchool() {
       theme_color: '#3B82F6',
       academic_year_start_month: 4,
       is_active: true,
+      // Premium unlocks every built module (reports, communication, inventory,
+      // parent portal) so the full feature surface is reachable in E2E.
+      subscription_plan: 'premium',
+      subscription_status: 'active',
     },
     { onConflict: 'id' }
   )

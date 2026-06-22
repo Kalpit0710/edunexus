@@ -256,15 +256,15 @@ describe.skipIf(!hasCreds)('RLS role authorization', () => {
     if (parentAuthId) await roleAdmin.auth.admin.deleteUser(parentAuthId)
   }, 60000)
 
-  it('forbids a parent from creating an exam (role RLS WITH CHECK)', async () => {
+  it('forbids a parent from creating a report subject config (role RLS WITH CHECK)', async () => {
     const { data, error } = await parentClient
-      .from('exams')
-      .insert({ school_id: roleSchoolId, name: `Hack Exam ${suffix}` })
+      .from('report_subject_configs')
+      .insert({ school_id: roleSchoolId, class_id: roleSchoolId, subject_id: roleSchoolId })
       .select('id')
     expect(error === null && (data?.length ?? 0) > 0).toBe(false)
 
     const { data: check } = await roleAdmin
-      .from('exams')
+      .from('report_subject_configs')
       .select('id')
       .eq('school_id', roleSchoolId)
     expect(check).toEqual([])

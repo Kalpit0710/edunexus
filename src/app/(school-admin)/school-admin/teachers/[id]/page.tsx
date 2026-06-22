@@ -334,15 +334,15 @@ export default function TeacherProfilePage() {
               <div className="space-y-1">
                 <Label htmlFor="assign-subject" className="text-xs">Subject (optional)</Label>
                 <Select
-                  value={selSubject}
-                  onValueChange={setSelSubject}
+                  value={selSubject || '__all__'}
+                  onValueChange={(v) => setSelSubject(v === '__all__' ? '' : v)}
                   disabled={!selClass}
                 >
                   <SelectTrigger id="assign-subject" className="h-8 text-sm">
                     <SelectValue placeholder="Any / All subjects" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Any / All subjects</SelectItem>
+                    <SelectItem value="__all__">Any / All subjects</SelectItem>
                     {filteredSubjects.map((s) => (
                       <SelectItem key={s.id} value={s.id}>
                         {s.name}

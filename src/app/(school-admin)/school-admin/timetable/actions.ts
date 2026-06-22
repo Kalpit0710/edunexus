@@ -1,7 +1,13 @@
 'use server'
 
 import { createClient as getSupabase } from '@/lib/supabase/server'
-import { detectTeacherConflicts, type ConflictEntry, type TeacherConflict } from '@/lib/timetable-utils'
+import {
+  detectTeacherConflicts,
+  periodsOverlap,
+  normalizeWorkingDays,
+  type ConflictEntry,
+  type TeacherConflict,
+} from '@/lib/timetable-utils'
 
 export interface PeriodRow {
   id: string
@@ -34,6 +40,13 @@ export interface SubjectOption {
   name: string
 }
 
+/** A teacher's section/subject assignment — drives the smart teacher picker. */
+export interface TeacherAssignment {
+  teacherId: string
+  sectionId: string
+  subjectId: string | null
+}
+
 export interface EntryCell {
   id: string
   dayOfWeek: number
@@ -49,6 +62,8 @@ export interface TimetableSetup {
   periods: PeriodRow[]
   classes: ClassWithSections[]
   teachers: TeacherOption[]
+  assignments: TeacherAssignment[]
+  workingDays: number[]
 }
 
 export interface SectionGrid {
@@ -87,24 +102,30 @@ export async function getTimetableSetup(schoolId: string): Promise<TimetableSetu
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
 
-  const [{ data: periods }, { data: classes }, { data: teachers }] = await Promise.all([
-    db
-      .from('timetable_periods')
-      .select('id, name, start_time, end_time, display_order, is_break')
-      .eq('school_id', schoolId)
-      .order('display_order', { ascending: true }),
-    db
-      .from('classes')
-      .select('id, name, display_order, is_active, sections ( id, name, is_active )')
-      .eq('school_id', schoolId)
-      .eq('is_active', true)
-      .order('display_order', { ascending: true }),
-    db
-      .from('teachers')
-      .select('id, employee_id, is_active, user_profiles ( full_name )')
-      .eq('school_id', schoolId)
-      .eq('is_active', true),
-  ])
+  const [{ data: periods }, { data: classes }, { data: teachers }, { data: school }, { data: assignments }] =
+    await Promise.all([
+      db
+        .from('timetable_periods')
+        .select('id, name, start_time, end_time, display_order, is_break')
+        .eq('school_id', schoolId)
+        .order('display_order', { ascending: true }),
+      db
+        .from('classes')
+        .select('id, name, display_order, is_active, sections ( id, name, is_active )')
+        .eq('school_id', schoolId)
+        .eq('is_active', true)
+        .order('display_order', { ascending: true }),
+      db
+        .from('teachers')
+        .select('id, employee_id, is_active, user_profiles ( full_name )')
+        .eq('school_id', schoolId)
+        .eq('is_active', true),
+      db.from('schools').select('working_days').eq('id', schoolId).maybeSingle(),
+      db
+        .from('teacher_section_assignments')
+        .select('teacher_id, section_id, subject_id')
+        .eq('school_id', schoolId),
+    ])
 
   return {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -129,6 +150,13 @@ export async function getTimetableSetup(schoolId: string): Promise<TimetableSetu
     teachers: ((teachers ?? []) as any[])
       .map((t) => ({ id: t.id, name: teacherName(t) }))
       .sort((a, b) => a.name.localeCompare(b.name)),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    assignments: ((assignments ?? []) as any[]).map((a) => ({
+      teacherId: a.teacher_id,
+      sectionId: a.section_id,
+      subjectId: a.subject_id,
+    })),
+    workingDays: normalizeWorkingDays(school?.working_days),
   }
 }
 
@@ -194,11 +222,38 @@ function assertPeriod(input: PeriodInput): void {
   }
 }
 
+/**
+ * Reject a period whose time range overlaps another period in the same school.
+ * Rows without times (unscheduled) and the period being edited are ignored.
+ */
+async function assertNoPeriodOverlap(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any,
+  input: PeriodInput,
+  excludeId?: string,
+): Promise<void> {
+  if (!input.startTime || !input.endTime) return
+  const { data } = await db
+    .from('timetable_periods')
+    .select('id, name, start_time, end_time')
+    .eq('school_id', input.schoolId)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const clash = ((data ?? []) as any[]).find(
+    (p) =>
+      p.id !== excludeId && periodsOverlap(input.startTime, input.endTime, p.start_time, p.end_time),
+  )
+  if (clash) {
+    throw new Error(`This time range overlaps "${clash.name}". Periods can't overlap.`)
+  }
+}
+
 export async function createPeriod(input: PeriodInput): Promise<void> {
   assertPeriod(input)
   const supabase = await getSupabase()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
+  await assertNoPeriodOverlap(db, input)
   const { error } = await db.from('timetable_periods').insert({
     school_id: input.schoolId,
     name: input.name.trim(),
@@ -215,6 +270,7 @@ export async function updatePeriod(id: string, input: PeriodInput): Promise<void
   const supabase = await getSupabase()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
+  await assertNoPeriodOverlap(db, input, id)
   const { error } = await db
     .from('timetable_periods')
     .update({
@@ -243,9 +299,12 @@ export async function deletePeriod(schoolId: string, id: string): Promise<void> 
 
 /**
  * Set (or clear) a single slot. Returns the section labels where the chosen
- * teacher is already booked at the same day+period (non-blocking warning).
+ * teacher / room are already booked at the same day+period (non-blocking
+ * warnings — the admin can override).
  */
-export async function upsertEntry(input: EntryInput): Promise<{ conflictSections: string[] }> {
+export async function upsertEntry(
+  input: EntryInput,
+): Promise<{ conflictSections: string[]; roomConflictSections: string[] }> {
   const supabase = await getSupabase()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
@@ -260,9 +319,10 @@ export async function upsertEntry(input: EntryInput): Promise<{ conflictSections
       .eq('day_of_week', input.dayOfWeek)
       .eq('period_id', input.periodId)
     if (error) throw new Error(error.message)
-    return { conflictSections: [] }
+    return { conflictSections: [], roomConflictSections: [] }
   }
 
+  const room = input.room?.trim() || null
   const { error } = await db.from('timetable_entries').upsert(
     {
       school_id: input.schoolId,
@@ -271,29 +331,71 @@ export async function upsertEntry(input: EntryInput): Promise<{ conflictSections
       period_id: input.periodId,
       subject_id: input.subjectId,
       teacher_id: input.teacherId,
-      room: input.room?.trim() || null,
+      room,
       updated_at: new Date().toISOString(),
     },
     { onConflict: 'school_id,section_id,day_of_week,period_id' },
   )
   if (error) throw new Error(error.message)
 
-  if (!input.teacherId) return { conflictSections: [] }
-
-  const { data: clashes } = await db
+  // Other sections sharing this exact day+period (for teacher/room clash checks).
+  const { data: others } = await db
     .from('timetable_entries')
-    .select('section_id, sections ( name, classes ( name ) )')
+    .select('teacher_id, room, sections ( name, classes ( name ) )')
     .eq('school_id', input.schoolId)
     .eq('day_of_week', input.dayOfWeek)
     .eq('period_id', input.periodId)
-    .eq('teacher_id', input.teacherId)
     .neq('section_id', input.sectionId)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const conflictSections = ((clashes ?? []) as any[]).map(
-    (c) => `${c.sections?.classes?.name ?? ''} ${c.sections?.name ?? ''}`.trim(),
-  )
-  return { conflictSections }
+  const rows = (others ?? []) as any[]
+  const label = (r: { sections?: { name?: string; classes?: { name?: string } } }) =>
+    `${r.sections?.classes?.name ?? ''} ${r.sections?.name ?? ''}`.trim()
+
+  const conflictSections = input.teacherId
+    ? rows.filter((r) => r.teacher_id === input.teacherId).map(label)
+    : []
+  const roomConflictSections = room
+    ? rows.filter((r) => (r.room ?? '').toLowerCase() === room.toLowerCase()).map(label)
+    : []
+
+  return { conflictSections, roomConflictSections }
+}
+
+/**
+ * Who/what is already booked in a given day+period across *other* sections.
+ * Powers the live availability hints inside the cell editor.
+ */
+export async function getSlotOccupancy(
+  schoolId: string,
+  dayOfWeek: number,
+  periodId: string,
+  excludeSectionId: string,
+): Promise<{ teacherIds: string[]; rooms: string[]; labelByTeacher: Record<string, string> }> {
+  const supabase = await getSupabase()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any
+  const { data } = await db
+    .from('timetable_entries')
+    .select('teacher_id, room, sections ( name, classes ( name ) )')
+    .eq('school_id', schoolId)
+    .eq('day_of_week', dayOfWeek)
+    .eq('period_id', periodId)
+    .neq('section_id', excludeSectionId)
+
+  const teacherIds = new Set<string>()
+  const rooms = new Set<string>()
+  const labelByTeacher: Record<string, string> = {}
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const r of (data ?? []) as any[]) {
+    const label = `${r.sections?.classes?.name ?? ''} ${r.sections?.name ?? ''}`.trim()
+    if (r.teacher_id) {
+      teacherIds.add(r.teacher_id)
+      labelByTeacher[r.teacher_id] = label
+    }
+    if (r.room) rooms.add(String(r.room).toLowerCase())
+  }
+  return { teacherIds: [...teacherIds], rooms: [...rooms], labelByTeacher }
 }
 
 // ─── School-wide conflict report ─────────────────────────────
@@ -351,4 +453,130 @@ export async function getTeacherGrid(schoolId: string, teacherId: string): Promi
     subjectName: e.subjects?.name ?? null,
     room: e.room,
   }))
+}
+
+// ─── Working days (school setting) ───────────────────────────
+
+export async function setWorkingDays(schoolId: string, days: number[]): Promise<number[]> {
+  const clean = normalizeWorkingDays(days)
+  const supabase = await getSupabase()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any
+  const { error } = await db
+    .from('schools')
+    .update({ working_days: clean, updated_at: new Date().toISOString() })
+    .eq('id', schoolId)
+  if (error) throw new Error(error.message)
+  return clean
+}
+
+// ─── Bulk grid helpers (copy / clear / duplicate) ────────────
+
+/** Replace every slot on `toDay` with a copy of `fromDay` for one section. */
+export async function copyDay(
+  schoolId: string,
+  sectionId: string,
+  fromDay: number,
+  toDay: number,
+): Promise<void> {
+  if (fromDay === toDay) throw new Error('Pick two different days.')
+  const supabase = await getSupabase()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any
+
+  const { data: source } = await db
+    .from('timetable_entries')
+    .select('period_id, subject_id, teacher_id, room')
+    .eq('school_id', schoolId)
+    .eq('section_id', sectionId)
+    .eq('day_of_week', fromDay)
+
+  await db
+    .from('timetable_entries')
+    .delete()
+    .eq('school_id', schoolId)
+    .eq('section_id', sectionId)
+    .eq('day_of_week', toDay)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rows = ((source ?? []) as any[]).map((e) => ({
+    school_id: schoolId,
+    section_id: sectionId,
+    day_of_week: toDay,
+    period_id: e.period_id,
+    subject_id: e.subject_id,
+    teacher_id: e.teacher_id,
+    room: e.room,
+  }))
+  if (rows.length > 0) {
+    const { error } = await db.from('timetable_entries').insert(rows)
+    if (error) throw new Error(error.message)
+  }
+}
+
+/** Remove every slot on a given day for one section. */
+export async function clearDay(schoolId: string, sectionId: string, day: number): Promise<void> {
+  const supabase = await getSupabase()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any
+  const { error } = await db
+    .from('timetable_entries')
+    .delete()
+    .eq('school_id', schoolId)
+    .eq('section_id', sectionId)
+    .eq('day_of_week', day)
+  if (error) throw new Error(error.message)
+}
+
+/**
+ * Copy a whole section's weekly grid onto another section. Restricted to
+ * sections of the *same class* so the subjects line up.
+ */
+export async function duplicateSectionTimetable(
+  schoolId: string,
+  fromSectionId: string,
+  toSectionId: string,
+): Promise<void> {
+  if (fromSectionId === toSectionId) throw new Error('Pick a different target section.')
+  const supabase = await getSupabase()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any
+
+  const { data: sects } = await db
+    .from('sections')
+    .select('id, class_id')
+    .eq('school_id', schoolId)
+    .in('id', [fromSectionId, toSectionId])
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const list = (sects ?? []) as any[]
+  const from = list.find((s) => s.id === fromSectionId)
+  const to = list.find((s) => s.id === toSectionId)
+  if (!from || !to) throw new Error('Section not found.')
+  if (from.class_id !== to.class_id) {
+    throw new Error('Both sections must belong to the same class so subjects match.')
+  }
+
+  const { data: source } = await db
+    .from('timetable_entries')
+    .select('day_of_week, period_id, subject_id, teacher_id, room')
+    .eq('school_id', schoolId)
+    .eq('section_id', fromSectionId)
+
+  await db.from('timetable_entries').delete().eq('school_id', schoolId).eq('section_id', toSectionId)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rows = ((source ?? []) as any[]).map((e) => ({
+    school_id: schoolId,
+    section_id: toSectionId,
+    day_of_week: e.day_of_week,
+    period_id: e.period_id,
+    subject_id: e.subject_id,
+    teacher_id: e.teacher_id,
+    room: e.room,
+  }))
+  if (rows.length > 0) {
+    const { error } = await db.from('timetable_entries').insert(rows)
+    if (error) throw new Error(error.message)
+  }
 }

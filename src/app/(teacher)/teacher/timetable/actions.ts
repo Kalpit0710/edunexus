@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient as getSupabase } from '@/lib/supabase/server'
+import { normalizeWorkingDays } from '@/lib/timetable-utils'
 
 export interface TimetablePeriod {
   id: string
@@ -22,6 +23,7 @@ export interface MyTimetable {
   teacherFound: boolean
   periods: TimetablePeriod[]
   entries: MyTimetableEntry[]
+  workingDays: number[]
 }
 
 async function resolveTeacherId(
@@ -64,7 +66,12 @@ export async function getMyTimetable(schoolId: string): Promise<MyTimetable> {
   const supabase = await getSupabase()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
-  const empty: MyTimetable = { teacherFound: false, periods: [], entries: [] }
+  const empty: MyTimetable = {
+    teacherFound: false,
+    periods: [],
+    entries: [],
+    workingDays: normalizeWorkingDays(null),
+  }
 
   const { data: authData } = await supabase.auth.getUser()
   const authUser = authData?.user
@@ -73,7 +80,7 @@ export async function getMyTimetable(schoolId: string): Promise<MyTimetable> {
   const teacherId = await resolveTeacherId(db, schoolId, authUser.id, authUser.email ?? null)
   if (!teacherId) return empty
 
-  const [{ data: periods }, { data: entries }] = await Promise.all([
+  const [{ data: periods }, { data: entries }, { data: school }] = await Promise.all([
     db
       .from('timetable_periods')
       .select('id, name, start_time, end_time, is_break')
@@ -84,10 +91,12 @@ export async function getMyTimetable(schoolId: string): Promise<MyTimetable> {
       .select('day_of_week, period_id, room, subjects ( name ), sections ( name, classes ( name ) )')
       .eq('school_id', schoolId)
       .eq('teacher_id', teacherId),
+    db.from('schools').select('working_days').eq('id', schoolId).maybeSingle(),
   ])
 
   return {
     teacherFound: true,
+    workingDays: normalizeWorkingDays(school?.working_days),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     periods: ((periods ?? []) as any[]).map((p) => ({
       id: p.id,
