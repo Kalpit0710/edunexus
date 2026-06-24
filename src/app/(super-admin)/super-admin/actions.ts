@@ -254,7 +254,7 @@ export async function createSchool(payload: CreateSchoolPayload): Promise<string
     .single()
 
   if (schoolError || !school) {
-    throw new Error('School creation failed: ' + (schoolError?.message ?? 'unknown'))
+    throw new Error('We could not create the school. Please try again.')
   }
   const schoolId = (school as { id: string }).id
 
@@ -270,7 +270,12 @@ export async function createSchool(payload: CreateSchoolPayload): Promise<string
   if (authError || !authData.user) {
     // rollback school
     await admin.from('schools').delete().eq('id', schoolId)
-    throw new Error('Admin auth creation failed: ' + (authError?.message ?? 'unknown'))
+    const exists = (authError?.message ?? '').toLowerCase().includes('already')
+    throw new Error(
+      exists
+        ? 'An account with this admin email already exists. Please use a different email address.'
+        : 'We could not create the administrator account. Please try again.'
+    )
   }
 
   // 3. Create the admin's user_profile
@@ -287,7 +292,7 @@ export async function createSchool(payload: CreateSchoolPayload): Promise<string
     // rollback auth user + school
     await admin.auth.admin.deleteUser(authData.user.id)
     await admin.from('schools').delete().eq('id', schoolId)
-    throw new Error('Admin profile creation failed: ' + profileError.message)
+    throw new Error('We could not finish setting up the administrator. Please try again.')
   }
 
   await logAudit({
@@ -725,7 +730,7 @@ export async function startImpersonation(targetProfileId: string): Promise<strin
   const tokenHash = link?.properties?.hashed_token
   if (linkErr || !tokenHash) {
     cookieStore.delete(ORIGIN_COOKIE)
-    throw new Error('Failed to mint impersonation token: ' + (linkErr?.message ?? 'unknown'))
+    throw new Error('We could not start impersonation. Please try again.')
   }
 
   const { error: verifyErr } = await supabase.auth.verifyOtp({
@@ -734,7 +739,7 @@ export async function startImpersonation(targetProfileId: string): Promise<strin
   })
   if (verifyErr) {
     cookieStore.delete(ORIGIN_COOKIE)
-    throw new Error('Failed to start impersonation: ' + verifyErr.message)
+    throw new Error('We could not start impersonation. Please try again.')
   }
 
   // Client-readable banner marker.

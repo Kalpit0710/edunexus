@@ -1,6 +1,6 @@
 /* eslint-disable no-console -- intentional server-side mailer diagnostics */
 import { Resend } from 'resend'
-import { createClient as createServerClient } from './supabase/server'
+import { createAdminClient } from './supabase/server'
 import type * as React from 'react'
 import { getErrorMessage } from './utils'
 
@@ -8,6 +8,10 @@ const resendApiKey = process.env.RESEND_API_KEY
 
 // Initialize Resend only if key exists
 export const resend = resendApiKey ? new Resend(resendApiKey) : null
+
+// Sender identity. Use a verified-domain address (e.g. "EduNexus <noreply@edunexus.app>")
+// via EMAIL_FROM. Falls back to Resend's shared test sender for local development.
+export const EMAIL_FROM = process.env.EMAIL_FROM || 'EduNexus <onboarding@resend.dev>'
 
 export type EmailEvent =
   | 'welcome'
@@ -41,7 +45,7 @@ export async function sendEmail({
   event,
 }: SendEmailParams): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = await createServerClient()
+    const supabase = await createAdminClient()
     const toArray = Array.isArray(to) ? to : [to]
     const recipientEmail = toArray.join(', ')
     // Mask addresses in logs so recipient PII is not written to server output.
@@ -53,8 +57,7 @@ export async function sendEmail({
 
     if (resend) {
       const { error } = await resend.emails.send({
-        // Replace with a verified domain later. Resend provides 'onboarding@resend.dev' for testing
-        from: 'EduNexus <onboarding@resend.dev>',
+        from: EMAIL_FROM,
         to: toArray,
         subject,
         react,

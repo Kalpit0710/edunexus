@@ -15,6 +15,7 @@ import {
   type StudentOption,
 } from './actions'
 import { schoolToday, localDateISO } from '@/lib/date-utils'
+import { getErrorMessage } from '@/lib/utils'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -55,7 +56,7 @@ export default function LibraryPage() {
     try {
       setData(await getLibraryData(schoolId))
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load the library.')
+      setError(getErrorMessage(e))
     } finally {
       setLoading(false)
     }
@@ -228,7 +229,7 @@ function IssueDialog({
       toast.success('Book issued')
       onIssued()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not issue book')
+      toast.error(getErrorMessage(e))
     } finally {
       setSaving(false)
     }
@@ -317,7 +318,7 @@ function ReturnDialog({
       toast.success(lost ? 'Marked as lost' : 'Book returned')
       onReturned()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not record return')
+      toast.error(getErrorMessage(e))
     } finally {
       setSaving(false)
     }
@@ -401,7 +402,7 @@ function BooksTab({
       setDeleteTarget(null)
       onChanged()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Delete failed')
+      toast.error(getErrorMessage(e))
     } finally {
       setDeleting(false)
     }
@@ -519,7 +520,7 @@ function BookDialog({
       toast.success(book ? 'Book updated' : 'Book added')
       onSaved()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Save failed')
+      toast.error(getErrorMessage(e))
     } finally {
       setSaving(false)
     }

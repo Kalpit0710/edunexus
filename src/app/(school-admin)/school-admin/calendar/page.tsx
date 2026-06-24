@@ -12,6 +12,7 @@ import {
 } from './actions'
 import { HOLIDAY_CATEGORIES, categoryClasses, categoryLabel, formatDateRange } from '@/lib/calendar-utils'
 import { schoolToday } from '@/lib/date-utils'
+import { getErrorMessage } from '@/lib/utils'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -51,7 +52,7 @@ export default function AdminCalendarPage() {
     try {
       setHolidays(await getHolidays(schoolId))
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load the calendar.')
+      setError(getErrorMessage(e))
     } finally {
       setLoading(false)
     }
@@ -70,7 +71,7 @@ export default function AdminCalendarPage() {
       setDeleteTarget(null)
       load()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Delete failed')
+      toast.error(getErrorMessage(e))
     } finally {
       setDeleting(false)
     }
@@ -217,7 +218,7 @@ function HolidayDialog({
       toast.success(holiday ? 'Entry updated' : 'Entry added')
       onSaved()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Save failed')
+      toast.error(getErrorMessage(e))
     } finally {
       setSaving(false)
     }

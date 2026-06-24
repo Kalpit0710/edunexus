@@ -6,6 +6,7 @@ import { pickTodayHomework, pickUpcomingDue } from '@/lib/digest-utils'
 import { normalizeWorkingDays } from '@/lib/timetable-utils'
 import type { FeePaymentRow } from '../../(school-admin)/school-admin/fees/actions'
 import { getPrintableReportCard } from '../../(school-admin)/school-admin/report-cards/actions'
+import { computeStudentFeeBalance } from '@/lib/fees/balance'
 
 export interface ParentChildData {
     id: string
@@ -340,30 +341,19 @@ export async function getChildFeeStatus(
             .eq('school_id', schoolId)
             .single()
 
-        const classId = (studentData as any)?.class_id
+        const classId = (studentData as any)?.class_id ?? null
 
-        let totalFee = 0
-        if (classId) {
-            const { data: yearData } = await context.db
-                .from('academic_years')
-                .select('id')
-                .eq('school_id', schoolId)
-                .eq('is_current', true)
-                .single()
+        // Totals come from the shared guardrail helper so the parent fee view and
+        // the report-card fee lock can never disagree. `totalPaid` here is the sum
+        // of ALL payments (not the recent slice below).
+        const { totalFee, totalPaid, balance } = await computeStudentFeeBalance(
+            context.db,
+            schoolId,
+            studentId,
+            classId,
+        )
 
-            if (yearData) {
-                const { data: structs } = await context.db
-                    .from('fee_structures')
-                    .select('amount')
-                    .eq('school_id', schoolId)
-                    .eq('class_id', classId)
-                    .eq('academic_year_id', (yearData as any).id)
-                    .eq('is_active', true)
-
-                totalFee = (structs ?? []).reduce((s: number, r: any) => s + Number(r.amount), 0)
-            }
-        }
-
+        // A small, separate query purely for the "recent payments" UI list.
         const { data: payments } = await context.db
             .from('fee_payments')
             .select('*')
@@ -372,12 +362,10 @@ export async function getChildFeeStatus(
             .order('payment_date', { ascending: false })
             .limit(5)
 
-        const totalPaid = ((payments ?? []) as any[]).reduce((s: number, p: any) => s + Number(p.paid_amount), 0)
-
         return {
             totalFee,
             totalPaid,
-            balance: Math.max(0, totalFee - totalPaid),
+            balance,
             recentPayments: (payments ?? []) as FeePaymentRow[],
         }
     } catch {

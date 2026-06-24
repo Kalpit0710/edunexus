@@ -35,7 +35,7 @@ export async function completeOnboarding(schoolId: string, data: OnboardingData)
         if (data.profile.theme_color) payload.theme_color = data.profile.theme_color
 
         const { error } = await supabase.from('schools').update(payload).eq('id', schoolId);
-        if (error) throw new Error("Failed to update school profile: " + error.message);
+        if (error) throw new Error("We could not update the school profile. Please try again.");
     }
 
     // 2. Create Academic Year
@@ -47,7 +47,7 @@ export async function completeOnboarding(schoolId: string, data: OnboardingData)
             end_date: data.academicYear.end_date,
             is_current: true
         }]);
-        if (error) throw new Error("Failed to create academic year: " + error.message);
+        if (error) throw new Error("We could not create the academic year. Please try again.");
     }
 
     // 3. Create Classes and Sections

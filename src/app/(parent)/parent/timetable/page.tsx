@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
+import { getErrorMessage } from '@/lib/utils'
 import { getChildTimetable, getLinkedChildren, type ChildTimetable } from '../actions'
 import { WEEKDAYS, DEFAULT_WORKING_DAYS, formatPeriodRange, weekdayLabel } from '@/lib/timetable-utils'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -38,7 +39,7 @@ export default function ParentTimetablePage() {
       }
       setData(await getChildTimetable(school.id, childId))
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load the timetable.')
+      setError(getErrorMessage(e))
     } finally {
       setLoading(false)
     }

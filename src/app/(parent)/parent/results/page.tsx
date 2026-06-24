@@ -92,13 +92,13 @@ export default function ParentResultsPage() {
         </div>
       ) : error ? (
         <DataLoadError title="Couldn’t load report card" message={error} onRetry={() => loadResults()} retrying={loading} />
-      ) : !card ? (
+      ) : feeLocked ? null : !card ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-white/[0.07] bg-white/[0.03] py-12 text-center">
           <GraduationCap className="mb-2 h-8 w-8 text-zinc-600" />
           <p className="text-sm text-zinc-400">No published report card yet.</p>
           <p className="text-xs text-zinc-600">It will appear here once the school publishes results.</p>
         </div>
-      ) : feeLocked ? null : (
+      ) : (
         <div className="space-y-5">
           {/* Summary */}
           <div className="grid grid-cols-3 gap-3">

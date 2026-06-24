@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
+import { getErrorMessage } from '@/lib/utils'
 import { getChildTransport, getLinkedChildren, type ChildTransport } from '../actions'
 import { formatTime } from '@/lib/timetable-utils'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -28,7 +29,7 @@ export default function ParentTransportPage() {
       }
       setData(childId ? await getChildTransport(school.id, childId) : null)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load transport details.')
+      setError(getErrorMessage(e))
     } finally {
       setLoaded(true)
       setLoading(false)

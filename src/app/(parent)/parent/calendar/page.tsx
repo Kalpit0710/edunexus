@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
+import { getErrorMessage } from '@/lib/utils'
 import { getSchoolCalendar, type CalendarEntryRow } from '../actions'
 import { categoryClasses, categoryLabel, formatDateRange } from '@/lib/calendar-utils'
 import { schoolToday } from '@/lib/date-utils'
@@ -23,7 +24,7 @@ export default function ParentCalendarPage() {
     try {
       setRows(await getSchoolCalendar(school.id))
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load the calendar.')
+      setError(getErrorMessage(e))
     } finally {
       setLoading(false)
     }

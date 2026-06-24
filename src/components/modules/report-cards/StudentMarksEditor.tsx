@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useAuthStore } from '@/stores/auth.store'
+import { getErrorMessage } from '@/lib/utils'
 import { toast } from 'sonner'
 import {
   getStudentReportData,
@@ -21,6 +22,7 @@ import {
   calcOverallResult,
   resolveGrade,
   parseMarkInput,
+  validateComponentMark,
   type MarksMap,
   type SubjectResult,
 } from '@/lib/report-card-utils'
@@ -117,7 +119,7 @@ export function StudentMarksEditor({ studentId, backHref }: StudentMarksEditorPr
         resultStatus: d.meta.resultStatus ?? '',
       })
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load marks.')
+      setError(getErrorMessage(e))
     } finally {
       setLoading(false)
     }
@@ -167,6 +169,30 @@ export function StudentMarksEditor({ studentId, backHref }: StudentMarksEditorPr
       const classId = data!.student.classId
       if (!classId) throw new Error('Student has no class assigned.')
 
+      // Validate everything up-front so an invalid value can never leave a
+      // partially-saved report (saves run sequentially per subject).
+      for (const cfg of data!.configs) {
+        const sm = subjectMarks[cfg.subjectId]
+        if (!sm) continue
+        const check = (rec: Record<string, string>, key: string, max: number) => {
+          const err = validateComponentMark(parseMarkInput(rec[key] ?? ''), max)
+          if (err) throw new Error(`${cfg.subjectName} — ${key}: ${err}`)
+        }
+        if (isLower) {
+          for (const c of cfg.components) {
+            check(sm.term1, c.name, c.maxMarks)
+            check(sm.term2, c.name, c.maxMarks)
+          }
+        } else {
+          for (const f of STANDARD_TERM1_FIELDS) {
+            check(sm.term1, f.key, (cfg.maxMarks.term1 as unknown as Record<string, number>)[f.key] ?? 0)
+          }
+          for (const f of STANDARD_TERM2_FIELDS) {
+            check(sm.term2, f.key, (cfg.maxMarks.term2 as unknown as Record<string, number>)[f.key] ?? 0)
+          }
+        }
+      }
+
       for (const cfg of data!.configs) {
         const sm = subjectMarks[cfg.subjectId]
         if (!sm) continue
@@ -190,7 +216,7 @@ export function StudentMarksEditor({ studentId, backHref }: StudentMarksEditorPr
       })
       toast.success('Report saved')
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Save failed')
+      toast.error(getErrorMessage(e))
     } finally {
       setSaving(false)
     }
@@ -434,6 +460,7 @@ function TermGrid({
               <Input
                 type="number"
                 value={values[f.key] ?? ''}
+                min={0}
                 max={f.max}
                 onChange={(e) => onChange(f.key, e.target.value)}
                 disabled={disabled}

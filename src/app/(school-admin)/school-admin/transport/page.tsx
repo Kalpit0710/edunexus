@@ -17,6 +17,7 @@ import {
   type AssignmentRow,
 } from './actions'
 import { formatTime } from '@/lib/timetable-utils'
+import { getErrorMessage } from '@/lib/utils'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -53,7 +54,7 @@ export default function TransportPage() {
     try {
       setData(await getTransportData(schoolId))
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load transport.')
+      setError(getErrorMessage(e))
     } finally {
       setLoading(false)
     }
@@ -115,7 +116,7 @@ function BusesTab({ schoolId, buses, onChanged }: { schoolId: string; buses: Bus
       setDeleteTarget(null)
       onChanged()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Delete failed')
+      toast.error(getErrorMessage(e))
     } finally {
       setDeleting(false)
     }
@@ -282,7 +283,7 @@ function BusDialog({
       toast.success(bus ? 'Bus updated' : 'Bus added')
       onSaved()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Save failed')
+      toast.error(getErrorMessage(e))
     } finally {
       setSaving(false)
     }
@@ -403,7 +404,7 @@ function StopsDialog({
       toast.success('Stop added')
       refresh()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not add stop')
+      toast.error(getErrorMessage(e))
     } finally {
       setBusy(false)
     }
@@ -416,7 +417,7 @@ function StopsDialog({
       setStops((p) => p.filter((s) => s.id !== id))
       refresh()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not remove stop')
+      toast.error(getErrorMessage(e))
     } finally {
       setBusy(false)
     }
@@ -514,7 +515,7 @@ function AssignmentsTab({
       setUnassignTarget(null)
       onChanged()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed')
+      toast.error(getErrorMessage(e))
     } finally {
       setBusy(false)
     }
@@ -630,7 +631,7 @@ function AssignDialog({
       toast.success('Student assigned')
       onAssigned()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not assign')
+      toast.error(getErrorMessage(e))
     } finally {
       setSaving(false)
     }

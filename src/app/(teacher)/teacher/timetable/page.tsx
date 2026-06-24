@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
+import { getErrorMessage } from '@/lib/utils'
 import { getMyTimetable, type MyTimetable } from './actions'
 import { WEEKDAYS, formatPeriodRange } from '@/lib/timetable-utils'
 import { InlineLoader } from '@/components/loaders/page-loaders'
@@ -22,7 +23,7 @@ export default function TeacherTimetablePage() {
     try {
       setData(await getMyTimetable(schoolId))
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load your timetable.')
+      setError(getErrorMessage(e))
     } finally {
       setLoading(false)
     }

@@ -250,7 +250,7 @@ export async function uploadStudentPhoto(formData: FormData) {
         });
 
     if (error) {
-        throw new Error('Failed to upload. Ensure "student-photos" bucket exists. ' + error.message);
+        throw new Error('We could not upload the photo. Please try again.');
     }
 
     const { data: urlData } = supabase.storage

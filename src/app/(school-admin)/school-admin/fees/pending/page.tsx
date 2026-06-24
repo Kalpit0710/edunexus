@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
 import { Search, ArrowLeft, CircleDollarSign, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import * as xlsx from 'xlsx'
@@ -24,7 +25,7 @@ export default function PendingFeesPage() {
         setLoading(true)
         getPendingFees(school.id)
             .then(setRows)
-            .catch(e => toast.error(e.message))
+            .catch((e) => toast.error(getErrorMessage(e)))
             .finally(() => setLoading(false))
     }, [school?.id])
 

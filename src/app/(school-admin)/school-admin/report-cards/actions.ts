@@ -6,6 +6,7 @@ import {
 } from '@/lib/supabase/server'
 import { requireActor } from '@/lib/auth/require-actor'
 import { logAudit } from '@/lib/audit'
+import { computeStudentFeeBalance } from '@/lib/fees/balance'
 import {
   calcStandardSubjectResult,
   calcLowerSubjectResult,
@@ -13,6 +14,9 @@ import {
   resolveGrade,
   DEFAULT_STANDARD_MAX,
   CO_SCHOLASTIC_AREAS,
+  STANDARD_TERM1_FIELDS,
+  STANDARD_TERM2_FIELDS,
+  validateComponentMark,
   type ReportCardType,
   type StandardMaxMarks,
   type LowerComponent,
@@ -109,6 +113,42 @@ function normalizeComponents(raw: unknown): LowerComponent[] {
   return raw
     .filter((c) => c && typeof c.name === 'string')
     .map((c) => ({ name: String(c.name), maxMarks: Number(c.maxMarks) || 0 }))
+}
+
+/**
+ * Server-side guard for scholastic marks. The marks editor validates client-side,
+ * but server actions are callable directly, so the same rules (no negatives, no
+ * non-numbers, never above the configured component max) must be enforced here
+ * before anything is written.
+ */
+function assertScholasticMarksValid(
+  term1: MarksMap,
+  term2: MarksMap,
+  tier: ReportCardType,
+  maxMarks: StandardMaxMarks,
+  components: LowerComponent[],
+): void {
+  const check = (marks: MarksMap, key: string, max: number) => {
+    const raw = marks?.[key]
+    if (raw === null || raw === undefined || raw === ('' as unknown)) return
+    const value = typeof raw === 'number' ? raw : Number(raw)
+    const err = validateComponentMark(value, max)
+    if (err) throw new Error(`Invalid mark for "${key}": ${err}`)
+  }
+
+  if (tier === 'lower') {
+    for (const c of components) {
+      check(term1, c.name, c.maxMarks)
+      check(term2, c.name, c.maxMarks)
+    }
+  } else {
+    for (const f of STANDARD_TERM1_FIELDS) {
+      check(term1, f.key, Number((maxMarks.term1 as unknown as MarksMap)[f.key] ?? 0))
+    }
+    for (const f of STANDARD_TERM2_FIELDS) {
+      check(term2, f.key, Number((maxMarks.term2 as unknown as MarksMap)[f.key] ?? 0))
+    }
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -432,6 +472,27 @@ export async function saveScholasticMark(
   const db = supabase as any
   const enteredBy = await actorProfileId(db, schoolId)
 
+  // Validate against the subject's configured maxima before persisting.
+  const [{ data: cfg }, { data: cls }] = await Promise.all([
+    db
+      .from('report_subject_configs')
+      .select('max_marks, components')
+      .eq('school_id', schoolId)
+      .eq('class_id', classId)
+      .eq('subject_id', subjectId)
+      .is('deleted_at', null)
+      .maybeSingle(),
+    db.from('classes').select('report_card_type').eq('id', classId).maybeSingle(),
+  ])
+  const tier: ReportCardType = cls?.report_card_type === 'lower' ? 'lower' : 'standard'
+  assertScholasticMarksValid(
+    term1 ?? {},
+    term2 ?? {},
+    tier,
+    normalizeMaxMarks(cfg?.max_marks),
+    normalizeComponents(cfg?.components),
+  )
+
   const { error } = await db.from('report_scholastic_marks').upsert(
     {
       school_id: schoolId,
@@ -656,12 +717,18 @@ export async function getClassResultsOverview(
     }
   })
 
-  rows
-    .slice()
-    .sort((a, b) => b.percentage - a.percentage)
-    .forEach((row, idx) => {
-      row.rank = idx + 1
-    })
+  // Rank in descending order of percentage, returning the rows already sorted so
+  // the "ranks" table reads top-to-bottom. Ties share a rank (1, 1, 3 …).
+  rows.sort((a, b) => b.percentage - a.percentage)
+  let lastPercentage = Number.NaN
+  let lastRank = 0
+  rows.forEach((row, idx) => {
+    if (row.percentage !== lastPercentage) {
+      lastRank = idx + 1
+      lastPercentage = row.percentage
+    }
+    row.rank = lastRank
+  })
 
   return rows
 }
@@ -708,6 +775,10 @@ export interface PrintableReportCard {
   meta: StudentMeta
   overall: { totalObtained: number; totalMax: number; percentage: number; grade: string | null }
   publication: PublicationRow | null
+  /** Current academic-year label (e.g. "2025-26"); null when none is set. */
+  academicSession: string | null
+  /** Per-school grade band definitions, used to print an accurate grade legend. */
+  gradingRules: GradingRule[]
 }
 
 /**
@@ -780,6 +851,12 @@ export async function getPrintableReportCard(studentId: string): Promise<Printab
       (publication.status === 'published' || publication.status === 'locked') &&
       publication.resultVisible
     if (!visible) return null
+
+    // Fee guardrail — enforced on the server so it cannot be bypassed by
+    // navigating directly to the printable route. A parent with outstanding
+    // dues is treated as not authorised to view the report card.
+    const { balance } = await computeStudentFeeBalance(db, schoolId, studentId, classId)
+    if (balance > 0) return null
   }
 
   const reportCardType: ReportCardType =
@@ -832,7 +909,16 @@ export async function getPrintableReportCard(studentId: string): Promise<Printab
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const m of (marks ?? []) as any[]) markBySubject.set(m.subject_id, m)
 
-  const gradingRules = await fetchGradingRules(db, schoolId, classId ?? undefined)
+  const [gradingRules, { data: yearRow }] = await Promise.all([
+    fetchGradingRules(db, schoolId, classId ?? undefined),
+    db
+      .from('academic_years')
+      .select('name')
+      .eq('school_id', schoolId)
+      .eq('is_current', true)
+      .maybeSingle(),
+  ])
+  const academicSession: string | null = (yearRow?.name as string | undefined) ?? null
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const subjectRows: PrintableSubjectRow[] = ((subjects ?? []) as any[]).map((s) => {
@@ -913,5 +999,7 @@ export async function getPrintableReportCard(studentId: string): Promise<Printab
       grade: resolveGrade(overallRaw.percentage, gradingRules),
     },
     publication,
+    academicSession,
+    gradingRules,
   }
 }

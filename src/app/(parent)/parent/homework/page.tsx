@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
+import { getErrorMessage } from '@/lib/utils'
 import { getChildHomework, getLinkedChildren, type ChildHomeworkRow } from '../actions'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DataLoadError } from '@/components/shared/DataLoadError'
@@ -30,7 +31,7 @@ export default function ParentHomeworkPage() {
       }
       setItems(await getChildHomework(school.id, childId))
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load homework.')
+      setError(getErrorMessage(e))
     } finally {
       setLoading(false)
     }

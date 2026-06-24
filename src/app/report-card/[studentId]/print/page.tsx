@@ -84,6 +84,16 @@ export default function ReportCardPrintPage({ params }: { params: Promise<{ stud
     data.subjects.reduce((acc, s) => acc + Number(s[term] ?? 0), 0)
   const firstMax = data.subjects[0]?.maxMarks
 
+  // Grade legend reflects the school's configured grading rules when present,
+  // falling back to the default 8-point CBSE scale so the card is never blank.
+  const gradeLegend =
+    data.gradingRules && data.gradingRules.length > 0
+      ? [...data.gradingRules]
+          .sort((a, b) => b.min_marks - a.min_marks)
+          .map((r) => ({ range: `${r.min_marks} – ${r.max_marks}`, grade: r.grade_name }))
+      : GRADE_SCALE
+  const gradeHalf = Math.ceil(gradeLegend.length / 2)
+
   return (
     <div className="srms-screen">
       <style dangerouslySetInnerHTML={{ __html: isLower ? LOWER_CSS : STANDARD_CSS }} />
@@ -123,7 +133,7 @@ export default function ReportCardPrintPage({ params }: { params: Promise<{ stud
           <Field label="Class" value={cls} />
           <Field label="Roll No." value={data.student.rollNumber ?? '—'} />
           <Field label="Date of Birth" value={fmtDate(data.student.dateOfBirth)} />
-          <Field label="Academic Session" value="2025-26" />
+          <Field label="Academic Session" value={data.academicSession ?? '—'} />
         </div>
 
         {/* ── SCHOLASTIC AREA ── */}
@@ -278,7 +288,7 @@ export default function ReportCardPrintPage({ params }: { params: Promise<{ stud
 
         {/* ── CO-SCHOLASTIC AREA ── */}
         <div className="srms-section-label">Co-Scholastic Area</div>
-        <div className="srms-coscholastic-note">Assessed on a 3 Points Grading Scale (A, B, C).</div>
+        <div className="srms-coscholastic-note">Assessed on a 5 Points Grading Scale (A to E).</div>
         <table className="srms-table">
           <thead>
             <tr>
@@ -337,7 +347,7 @@ export default function ReportCardPrintPage({ params }: { params: Promise<{ stud
         {/* ── INSTRUCTIONS / GRADE SCALE ── */}
         <div className="srms-section-label">Instructions</div>
         <div className="srms-coscholastic-note">
-          Grading scale for scholastic areas: Grades are awarded on an 8-point grading scale as follows.
+          Grading scale for scholastic areas: Grades are awarded on the following scale.
         </div>
         <table className="srms-table srms-grade-table">
           <thead>
@@ -349,15 +359,15 @@ export default function ReportCardPrintPage({ params }: { params: Promise<{ stud
             </tr>
           </thead>
           <tbody>
-            {[0, 1, 2, 3].map((i) => {
-              const left = GRADE_SCALE[i]
-              const right = GRADE_SCALE[i + 4]
+            {Array.from({ length: gradeHalf }).map((_, i) => {
+              const left = gradeLegend[i]
+              const right = gradeLegend[i + gradeHalf]
               return (
                 <tr key={i}>
-                  <td>{left?.range}</td>
-                  <td className="srms-b">{left?.grade}</td>
-                  <td>{right?.range}</td>
-                  <td className="srms-b">{right?.grade}</td>
+                  <td>{left?.range ?? ''}</td>
+                  <td className="srms-b">{left?.grade ?? ''}</td>
+                  <td>{right?.range ?? ''}</td>
+                  <td className="srms-b">{right?.grade ?? ''}</td>
                 </tr>
               )
             })}

@@ -182,7 +182,14 @@ export async function createTeacher(
       full_name: payload.full_name,
     },
   })
-  if (authError) throw new Error('Auth user creation failed: ' + authError.message)
+  if (authError) {
+    const exists = authError.message.toLowerCase().includes('already')
+    throw new Error(
+      exists
+        ? 'An account with this email already exists. Please use a different email address.'
+        : 'We could not create the login account for this teacher. Please try again.'
+    )
+  }
 
   const authUserId = authData.user.id
 
@@ -202,7 +209,7 @@ export async function createTeacher(
       .select('id')
       .single()
 
-    if (profileError) throw new Error('Profile creation failed: ' + profileError.message)
+    if (profileError) throw new Error('We could not save the teacher profile. Please try again.')
 
     // 3. Create teacher record
     const { data: teacherData, error: teacherError } = await admin
@@ -219,7 +226,7 @@ export async function createTeacher(
       .select('id')
       .single()
 
-    if (teacherError) throw new Error('Teacher record creation failed: ' + teacherError.message)
+    if (teacherError) throw new Error('We could not save the teacher details. Please try again.')
 
     // Audit trail: staff onboarding is a critical record creation.
     await logAudit({

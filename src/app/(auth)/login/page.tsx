@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
+import { getErrorMessage } from '@/lib/utils'
 import type { Database } from '@/types/database.types'
 import type { SubscriptionPlan, SubscriptionStatus } from '@/lib/subscription'
 import { useAuthStore } from '@/stores/auth.store'
@@ -49,7 +50,7 @@ export default function LoginPage() {
         password: data.password,
       })
 
-      if (authError) { toast.error(authError.message); return }
+      if (authError) { toast.error(getErrorMessage(authError)); return }
       if (!authData.user) { toast.error('Login failed. No user returned.'); return }
 
       const { data: profileResp, error: profileError } = await supabase

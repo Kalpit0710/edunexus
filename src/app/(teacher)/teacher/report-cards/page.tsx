@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
 import {
   getReportSetup,
   getClassResultsOverview,
@@ -44,7 +45,7 @@ export default function TeacherReportCardsPage() {
       const firstClass = data.classes[0]
       if (firstClass) setClassId((prev) => prev || firstClass.id)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load report cards.')
+      setError(getErrorMessage(e))
     } finally {
       setLoading(false)
     }
@@ -145,7 +146,7 @@ function StudentsTable({
     try {
       setRows(await getClassResultsOverview(schoolId, classId, sectionId || undefined))
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not load students.')
+      toast.error(getErrorMessage(e))
     } finally {
       setLoading(false)
     }

@@ -50,7 +50,7 @@ export default function AttendanceReportPage() {
     if (!school?.id) return
     Promise.all([getClasses(school.id), getSections(school.id)])
       .then(([cls, sec]) => { setClasses(cls); setSections(sec) })
-      .catch((e: any) => toast.error(e.message))
+      .catch((e) => toast.error(getErrorMessage(e)))
   }, [school?.id])
 
   const filteredSections = sections.filter((s) => s.class_id === selClass)

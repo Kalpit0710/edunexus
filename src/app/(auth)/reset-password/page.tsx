@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
+import { getErrorMessage } from '@/lib/utils'
 
 const resetSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -46,7 +47,7 @@ export default function ResetPasswordPage() {
       })
 
       if (error) {
-        toast.error(error.message)
+        toast.error(getErrorMessage(error))
         return
       }
 

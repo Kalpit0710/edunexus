@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
+import { getErrorMessage } from '@/lib/utils'
 import {
   getTimetableSetup,
   getSectionGrid,
@@ -74,7 +75,7 @@ export default function AdminTimetablePage() {
       setSetup(s)
       setConflicts(c)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load the timetable.')
+      setError(getErrorMessage(e))
     } finally {
       setLoading(false)
     }
@@ -196,7 +197,7 @@ function WorkingDaysCard({
       toast.success('Working days updated')
       onSaved()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not save working days')
+      toast.error(getErrorMessage(e))
     } finally {
       setSaving(false)
     }
@@ -269,7 +270,7 @@ function PeriodsTab({
       setDeleteTarget(null)
       onChanged()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Delete failed')
+      toast.error(getErrorMessage(e))
     } finally {
       setDeleting(false)
     }
@@ -386,7 +387,7 @@ function PeriodDialog({
       toast.success(period ? 'Period updated' : 'Period added')
       onSaved()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Save failed')
+      toast.error(getErrorMessage(e))
     } finally {
       setSaving(false)
     }
@@ -708,7 +709,7 @@ function DayActions({
       done()
       onDone()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Action failed')
+      toast.error(getErrorMessage(e))
     } finally {
       setBusy(false)
     }
@@ -977,7 +978,7 @@ function CellDialog({
       }
       onSaved()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Save failed')
+      toast.error(getErrorMessage(e))
     } finally {
       setSaving(false)
     }

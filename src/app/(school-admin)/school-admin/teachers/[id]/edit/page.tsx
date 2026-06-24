@@ -43,7 +43,7 @@ export default function EditTeacherPage() {
             join_date: t.join_date,
           })
         })
-        .catch((e: any) => toast.error(e.message))
+        .catch((e) => toast.error(getErrorMessage(e)))
         .finally(() => setLoading(false))
     }
   }, [params.id])

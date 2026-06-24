@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/utils'
 import {
   getReportSetup,
   getClassSubjectConfigs,
@@ -80,7 +81,7 @@ export default function ReportCardsPage() {
       const firstClass = data.classes[0]
       if (firstClass) setClassId((prev) => prev || firstClass.id)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load report cards.')
+      setError(getErrorMessage(e))
     } finally {
       setLoading(false)
     }
@@ -214,7 +215,7 @@ function StudentsTab({
     try {
       setRows(await getClassResultsOverview(schoolId, classId, sectionId || undefined))
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not load students.')
+      toast.error(getErrorMessage(e))
     } finally {
       setLoading(false)
     }
@@ -299,7 +300,7 @@ function SubjectsTab({ schoolId, classMeta }: { schoolId: string; classMeta: Cla
     try {
       setConfigs(await getClassSubjectConfigs(schoolId, classMeta.id))
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not load subjects.')
+      toast.error(getErrorMessage(e))
     } finally {
       setLoading(false)
     }
@@ -366,7 +367,7 @@ function SubjectConfigCard({
       await saveSubjectConfig(schoolId, classId, config.subjectId, maxMarks, components)
       toast.success('Subject setup saved')
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Save failed')
+      toast.error(getErrorMessage(e))
     } finally {
       setSaving(false)
     }
@@ -488,7 +489,7 @@ function PublishTab({
       setPublication(pub)
       if (pub) setResultVisible(pub.resultVisible)
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not load status.')
+      toast.error(getErrorMessage(e))
     } finally {
       setLoading(false)
     }
@@ -505,7 +506,7 @@ function PublishTab({
       toast.success(lock ? 'Reports published & locked' : 'Reports published')
       await load()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Publish failed')
+      toast.error(getErrorMessage(e))
     } finally {
       setBusy(false)
     }
@@ -518,7 +519,7 @@ function PublishTab({
       toast.success('Reports unlocked — hidden from parents')
       await load()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Unlock failed')
+      toast.error(getErrorMessage(e))
     } finally {
       setBusy(false)
     }
