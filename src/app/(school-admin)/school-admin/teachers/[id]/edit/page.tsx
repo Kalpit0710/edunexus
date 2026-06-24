@@ -26,6 +26,7 @@ export default function EditTeacherPage() {
     employee_id: '',
     qualification: '',
     specialization: '',
+    signature_url: '',
     join_date: '',
   })
 
@@ -40,6 +41,7 @@ export default function EditTeacherPage() {
             employee_id: t.employee_id ?? '',
             qualification: t.qualification ?? '',
             specialization: t.specialization ?? '',
+            signature_url: t.signature_url ?? '',
             join_date: t.join_date,
           })
         })
@@ -155,6 +157,19 @@ export default function EditTeacherPage() {
               value={form.specialization}
               onChange={(e) => update('specialization', e.target.value)}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="signature_url">Signature Image URL</Label>
+            <Input
+              id="signature_url"
+              value={form.signature_url}
+              onChange={(e) => update('signature_url', e.target.value)}
+              placeholder="https://…/signature.png"
+            />
+            <p className="text-xs text-muted-foreground">
+              Printed on report cards for the section where this teacher is the class teacher.
+            </p>
           </div>
         </CardContent>
 

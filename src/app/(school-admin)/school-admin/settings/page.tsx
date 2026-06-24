@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { ContentAreaLoader } from '@/components/loaders/page-loaders'
 import { ClassesTab } from './components/classes-tab'
 import { SubjectsTab } from './components/subjects-tab'
@@ -41,7 +42,9 @@ export default function SettingsPage() {
         address: formData.address,
         phone: formData.phone,
         email: formData.email,
-        theme_color: formData.theme_color
+        theme_color: formData.theme_color,
+        principal_signature_url: formData.principal_signature_url || null,
+        lock_results_on_fee: !!formData.lock_results_on_fee,
       } as any)
       setSchool({ ...school, ...formData } as any)
       toast.success('School settings updated')
@@ -141,6 +144,33 @@ export default function SettingsPage() {
                       />
                     </div>
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="principal-signature">Principal Signature Image URL</Label>
+                  <Input
+                    id="principal-signature"
+                    value={formData.principal_signature_url || ''}
+                    onChange={(e) => setFormData({ ...formData, principal_signature_url: e.target.value })}
+                    placeholder="https://…/principal-signature.png"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Shown on printed report cards. Leave blank to print a signature line instead.
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="lock-fee">Lock report cards when fees are due</Label>
+                    <p className="text-xs text-muted-foreground">
+                      When on, parents with an outstanding balance can&apos;t view or print report cards.
+                    </p>
+                  </div>
+                  <Switch
+                    id="lock-fee"
+                    checked={!!formData.lock_results_on_fee}
+                    onCheckedChange={(v) => setFormData({ ...formData, lock_results_on_fee: v })}
+                  />
                 </div>
 
                 <Button type="submit" disabled={loading}>

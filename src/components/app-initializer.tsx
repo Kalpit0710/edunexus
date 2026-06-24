@@ -63,6 +63,8 @@ export function AppInitializer() {
                             theme_color: school.theme_color,
                             academic_year_start_month: school.academic_year_start_month,
                             is_active: school.is_active,
+                            lock_results_on_fee: school.lock_results_on_fee ?? false,
+                            principal_signature_url: school.principal_signature_url ?? null,
                             subscription_plan: (school.subscription_plan ?? 'basic') as SubscriptionPlan,
                             subscription_status: (school.subscription_status ?? 'active') as SubscriptionStatus,
                             trial_ends_at: school.trial_ends_at ?? null,

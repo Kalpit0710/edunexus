@@ -29,6 +29,7 @@ export interface TeacherRow {
   employee_id: string | null
   qualification: string | null
   specialization: string | null
+  signature_url: string | null
   join_date: string
   is_active: boolean
   created_at: string
@@ -60,6 +61,7 @@ export interface UpdateTeacherPayload {
   employee_id?: string
   qualification?: string
   specialization?: string
+  signature_url?: string
   join_date?: string
 }
 
@@ -297,6 +299,7 @@ export async function updateTeacher(
   if (payload.employee_id !== undefined) teacherUpdate.employee_id = payload.employee_id
   if (payload.qualification !== undefined) teacherUpdate.qualification = payload.qualification
   if (payload.specialization !== undefined) teacherUpdate.specialization = payload.specialization
+  if (payload.signature_url !== undefined) teacherUpdate.signature_url = payload.signature_url || null
   if (payload.join_date) teacherUpdate.join_date = payload.join_date
 
   if (Object.keys(teacherUpdate).length > 0) {

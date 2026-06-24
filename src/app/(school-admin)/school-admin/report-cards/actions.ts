@@ -769,11 +769,15 @@ export interface PrintableReportCard {
     className: string
     sectionName: string | null
     dateOfBirth: string | null
+    fatherName: string | null
+    motherName: string | null
   }
   subjects: PrintableSubjectRow[]
   coScholastic: CoScholasticMarkRow[]
   meta: StudentMeta
   overall: { totalObtained: number; totalMax: number; percentage: number; grade: string | null }
+  /** Signature image URLs printed on the card (null = blank signature line). */
+  signatures: { principalUrl: string | null; classTeacherUrl: string | null }
   publication: PublicationRow | null
   /** Current academic-year label (e.g. "2025-26"); null when none is set. */
   academicSession: string | null
@@ -809,8 +813,8 @@ export async function getPrintableReportCard(studentId: string): Promise<Printab
   const { data: student } = await db
     .from('students')
     .select(
-      'id, full_name, admission_number, roll_number, class_id, school_id, date_of_birth, ' +
-        'schools ( name, address, city, state, pincode, phone, email, logo_url ), ' +
+      'id, full_name, admission_number, roll_number, class_id, section_id, school_id, date_of_birth, ' +
+        'schools ( name, address, city, state, pincode, phone, email, logo_url, principal_signature_url, lock_results_on_fee ), ' +
         'classes ( name, report_card_type ), sections ( name )',
     )
     .eq('id', studentId)
@@ -853,11 +857,34 @@ export async function getPrintableReportCard(studentId: string): Promise<Printab
     if (!visible) return null
 
     // Fee guardrail — enforced on the server so it cannot be bypassed by
-    // navigating directly to the printable route. A parent with outstanding
-    // dues is treated as not authorised to view the report card.
-    const { balance } = await computeStudentFeeBalance(db, schoolId, studentId, classId)
-    if (balance > 0) return null
+    // navigating directly to the printable route. Only applied when the school
+    // has opted in (lock_results_on_fee); a parent with outstanding dues is then
+    // treated as not authorised to view the report card.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((student.schools as any)?.lock_results_on_fee) {
+      const { balance } = await computeStudentFeeBalance(db, schoolId, studentId, classId)
+      if (balance > 0) return null
+    }
   }
+
+  return buildPrintableReportCard(db, student, publication)
+}
+
+/**
+ * Assembles a printable report card from an already-fetched (and already
+ * authorised) student row. Shared by the single-student route and the bulk
+ * class export so both render identically.
+ */
+async function buildPrintableReportCard(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  student: any,
+  publication: PublicationRow | null,
+): Promise<PrintableReportCard> {
+  const schoolId: string = student.school_id
+  const classId: string | null = student.class_id
+  const studentId: string = student.id
 
   const reportCardType: ReportCardType =
     student.classes?.report_card_type === 'lower' ? 'lower' : 'standard'
@@ -909,16 +936,41 @@ export async function getPrintableReportCard(studentId: string): Promise<Printab
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const m of (marks ?? []) as any[]) markBySubject.set(m.subject_id, m)
 
-  const [gradingRules, { data: yearRow }] = await Promise.all([
-    fetchGradingRules(db, schoolId, classId ?? undefined),
-    db
-      .from('academic_years')
-      .select('name')
-      .eq('school_id', schoolId)
-      .eq('is_current', true)
-      .maybeSingle(),
-  ])
+  const sectionId: string | null = student.section_id ?? null
+  const [gradingRules, { data: yearRow }, { data: parentRows }, { data: classTeacherRow }] =
+    await Promise.all([
+      fetchGradingRules(db, schoolId, classId ?? undefined),
+      db
+        .from('academic_years')
+        .select('name')
+        .eq('school_id', schoolId)
+        .eq('is_current', true)
+        .maybeSingle(),
+      db
+        .from('parents')
+        .select('full_name, relation')
+        .eq('school_id', schoolId)
+        .eq('student_id', studentId),
+      sectionId
+        ? db
+            .from('teacher_section_assignments')
+            .select('teachers ( signature_url )')
+            .eq('school_id', schoolId)
+            .eq('section_id', sectionId)
+            .eq('is_class_teacher', true)
+            .limit(1)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+    ])
   const academicSession: string | null = (yearRow?.name as string | undefined) ?? null
+  const findParent = (rel: string): string | null =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ((parentRows ?? []) as any[]).find((p) => String(p.relation ?? '').toLowerCase() === rel)?.full_name ?? null
+  const fatherName = findParent('father')
+  const motherName = findParent('mother')
+  const classTeacherSignatureUrl: string | null =
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ((classTeacherRow as any)?.teachers?.signature_url as string | undefined) ?? null
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const subjectRows: PrintableSubjectRow[] = ((subjects ?? []) as any[]).map((s) => {
@@ -983,6 +1035,8 @@ export async function getPrintableReportCard(studentId: string): Promise<Printab
       className: student.classes?.name ?? '',
       sectionName: student.sections?.name ?? null,
       dateOfBirth: student.date_of_birth ?? null,
+      fatherName,
+      motherName,
     },
     subjects: subjectRows,
     coScholastic,
@@ -998,8 +1052,80 @@ export async function getPrintableReportCard(studentId: string): Promise<Printab
       percentage: overallRaw.percentage,
       grade: resolveGrade(overallRaw.percentage, gradingRules),
     },
+    signatures: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      principalUrl: ((student.schools as any)?.principal_signature_url as string | null) ?? null,
+      classTeacherUrl: classTeacherSignatureUrl,
+    },
     publication,
     academicSession,
     gradingRules,
   }
+}
+
+const PRINTABLE_STUDENT_SELECT =
+  'id, full_name, admission_number, roll_number, class_id, section_id, school_id, date_of_birth, ' +
+  'schools ( name, address, city, state, pincode, phone, email, logo_url, principal_signature_url, lock_results_on_fee ), ' +
+  'classes ( name, report_card_type ), sections ( name )'
+
+/**
+ * Bulk variant of {@link getPrintableReportCard}: returns printable cards for
+ * every active student in a class (optionally a single section). Staff-only —
+ * used by the "print whole class" route. Unlike the parent path it ignores the
+ * publication/fee gate, since staff may always print.
+ */
+export async function getClassPrintableReportCards(
+  classId: string,
+  sectionId?: string,
+): Promise<PrintableReportCard[]> {
+  const supabase = await createServerSupabaseClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('role, school_id')
+    .eq('auth_user_id', user.id)
+    .maybeSingle()
+  if (!profile) return []
+
+  const staffRoles = ['school_admin', 'teacher', 'manager', 'cashier']
+  if (!staffRoles.includes(profile.role) || !profile.school_id) return []
+  const schoolId = profile.school_id as string
+
+  const admin = await createAdminClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = admin as any
+
+  // Resolve the class publication once — it is identical for every student.
+  let publication: PublicationRow | null = null
+  const { data: pub } = await db
+    .from('report_publications')
+    .select('status, result_visible, published_at')
+    .eq('school_id', schoolId)
+    .eq('class_id', classId)
+    .order('published_at', { ascending: false, nullsFirst: false })
+    .limit(1)
+    .maybeSingle()
+  if (pub) {
+    publication = { status: pub.status, resultVisible: pub.result_visible, publishedAt: pub.published_at }
+  }
+
+  let query = db
+    .from('students')
+    .select(PRINTABLE_STUDENT_SELECT)
+    .eq('school_id', schoolId)
+    .eq('class_id', classId)
+    .eq('is_active', true)
+    .is('deleted_at', null)
+    .order('roll_number', { ascending: true })
+    .order('full_name', { ascending: true })
+  if (sectionId) query = query.eq('section_id', sectionId)
+
+  const { data: students } = await query
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rows = (students ?? []) as any[]
+  return Promise.all(rows.map((s) => buildPrintableReportCard(db, s, publication)))
 }

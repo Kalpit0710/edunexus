@@ -27,6 +27,8 @@ export interface School {
   theme_color?: string | null
   academic_year_start_month: number
   is_active: boolean
+  lock_results_on_fee?: boolean
+  principal_signature_url?: string | null
   subscription_plan?: SubscriptionPlan
   subscription_status?: SubscriptionStatus
   trial_ends_at?: string | null

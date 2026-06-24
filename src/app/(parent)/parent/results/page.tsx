@@ -44,7 +44,7 @@ export default function ParentResultsPage() {
         getPrintableReportCard(childData.id),
         getChildFeeStatus(childData.id, school.id),
       ])
-      setFeeLocked(fee.balance > 0)
+      setFeeLocked((school.lock_results_on_fee ?? false) && fee.balance > 0)
       setCard(reportCard)
     } catch (err) {
       setError(getErrorMessage(err))

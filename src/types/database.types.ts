@@ -1510,6 +1510,8 @@ export type Database = {
           id: string
           is_active: boolean
           logo_url: string | null
+          lock_results_on_fee: boolean
+          principal_signature_url: string | null
           name: string
           phone: string | null
           pincode: string | null
@@ -1532,6 +1534,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           logo_url?: string | null
+          lock_results_on_fee?: boolean
+          principal_signature_url?: string | null
           name: string
           phone?: string | null
           pincode?: string | null
@@ -1554,6 +1558,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           logo_url?: string | null
+          lock_results_on_fee?: boolean
+          principal_signature_url?: string | null
           name?: string
           phone?: string | null
           pincode?: string | null
@@ -1965,6 +1971,7 @@ export type Database = {
           join_date: string
           qualification: string | null
           school_id: string
+          signature_url: string | null
           specialization: string | null
           updated_at: string
           user_profile_id: string
@@ -1977,6 +1984,7 @@ export type Database = {
           join_date?: string
           qualification?: string | null
           school_id: string
+          signature_url?: string | null
           specialization?: string | null
           updated_at?: string
           user_profile_id: string
@@ -1989,6 +1997,7 @@ export type Database = {
           join_date?: string
           qualification?: string | null
           school_id?: string
+          signature_url?: string | null
           specialization?: string | null
           updated_at?: string
           user_profile_id?: string
