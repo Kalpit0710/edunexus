@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient as getSupabase } from '@/lib/supabase/server'
+import { requirePermission } from '@/lib/auth/permissions'
 import { sendEmail } from '@/lib/email'
 import { AttendanceAlertEmail } from '@/emails/AttendanceAlertEmail'
 
@@ -87,6 +88,7 @@ export async function saveAttendance(
   records: AttendanceRecord[]
 ): Promise<void> {
   const supabase = await getSupabase()
+  await requirePermission(supabase, 'attendance.mark')
   type ProfileIdLookup = { id: string }
 
   const { data: authData, error: authError } = await supabase.auth.getUser()

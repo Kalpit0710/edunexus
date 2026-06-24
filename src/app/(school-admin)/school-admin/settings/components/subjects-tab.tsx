@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { getClasses, getSubjects, createSubject, deleteSubject, restoreSubject } from '../actions'
+import { getClasses, getSubjects, createSubject, deleteSubject, restoreSubject, updateSubjectOrder } from '../actions'
 import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -75,6 +75,17 @@ export function SubjectsTab() {
         }
     }
 
+    async function handleOrderChange(id: string, value: string) {
+        const order = Number(value)
+        if (!Number.isFinite(order)) return
+        try {
+            await updateSubjectOrder(id, order)
+            fetchData()
+        } catch (e) {
+            toast.error(getErrorMessage(e))
+        }
+    }
+
     if (loading) return <InlineLoader label="Loading subjects..." />
 
     return (
@@ -122,9 +133,18 @@ export function SubjectsTab() {
                                         <div className="text-sm text-muted-foreground">{className}</div>
                                         {s.code && <div className="text-xs mt-1 bg-gray-100 px-2 py-0.5 rounded-md inline-block dark:bg-gray-800">{s.code}</div>}
                                     </div>
-                                    <Button variant="ghost" size="icon" aria-label="Delete subject" onClick={() => handleDeleteSubject(s.id)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950">
-                                        <Trash2 className="w-4 h-4" />
-                                    </Button>
+                                    <div className="flex items-center gap-2">
+                                        <Input
+                                            type="number"
+                                            defaultValue={s.display_order ?? 0}
+                                            title="Display order on report cards"
+                                            className="h-9 w-16"
+                                            onBlur={(e) => handleOrderChange(s.id, e.target.value)}
+                                        />
+                                        <Button variant="ghost" size="icon" aria-label="Delete subject" onClick={() => handleDeleteSubject(s.id)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950">
+                                            <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                    </div>
                                 </CardContent>
                             </Card>
                         )

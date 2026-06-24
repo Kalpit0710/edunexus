@@ -16,6 +16,8 @@ import { ClassesTab } from './components/classes-tab'
 import { SubjectsTab } from './components/subjects-tab'
 import { AcademicTab } from './components/academic-tab'
 import { GradingRulesTab } from './components/grading-tab'
+import { ReportCardTab } from './components/report-card-tab'
+import { AccessTab } from './components/access-tab'
 
 export default function SettingsPage() {
   const { school, setSchool } = useAuthStore()
@@ -45,6 +47,13 @@ export default function SettingsPage() {
         theme_color: formData.theme_color,
         principal_signature_url: formData.principal_signature_url || null,
         lock_results_on_fee: !!formData.lock_results_on_fee,
+        report_card_title: formData.report_card_title || 'Progress Report',
+        pass_percentage: Number(formData.pass_percentage) || 33,
+        result_statuses: formData.result_statuses,
+        co_scholastic_grades: formData.co_scholastic_grades,
+        currency_symbol: formData.currency_symbol || '₹',
+        locale: formData.locale || 'en-IN',
+        date_format: formData.date_format || 'dd MMM yyyy',
       } as any)
       setSchool({ ...school, ...formData } as any)
       toast.success('School settings updated')
@@ -71,6 +80,8 @@ export default function SettingsPage() {
           <TabsTrigger value="classes">Classes & Sections</TabsTrigger>
           <TabsTrigger value="subjects">Subjects</TabsTrigger>
           <TabsTrigger value="grading">Grading Rules</TabsTrigger>
+          <TabsTrigger value="report-card">Report Card</TabsTrigger>
+          <TabsTrigger value="access">Access Control</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general">
@@ -144,6 +155,77 @@ export default function SettingsPage() {
                       />
                     </div>
                   </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="report-title">Report Card Title</Label>
+                    <Input
+                      id="report-title"
+                      value={formData.report_card_title || ''}
+                      onChange={(e) => setFormData({ ...formData, report_card_title: e.target.value })}
+                      placeholder="Progress Report"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="pass-pct">Pass Percentage</Label>
+                    <Input
+                      id="pass-pct"
+                      type="number"
+                      value={formData.pass_percentage ?? 33}
+                      onChange={(e) => setFormData({ ...formData, pass_percentage: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="currency">Currency Symbol</Label>
+                    <Input
+                      id="currency"
+                      value={formData.currency_symbol || ''}
+                      onChange={(e) => setFormData({ ...formData, currency_symbol: e.target.value })}
+                      placeholder="₹"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="locale">Locale</Label>
+                    <Input
+                      id="locale"
+                      value={formData.locale || ''}
+                      onChange={(e) => setFormData({ ...formData, locale: e.target.value })}
+                      placeholder="en-IN"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="result-statuses">Result Status Options</Label>
+                  <Input
+                    id="result-statuses"
+                    value={(formData.result_statuses || []).join(', ')}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        result_statuses: e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean),
+                      })
+                    }
+                    placeholder="Passed, Failed, Promoted, Detained"
+                  />
+                  <p className="text-xs text-muted-foreground">Comma-separated options shown when entering a student&apos;s result.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="co-grades">Co-Scholastic Grade Scale</Label>
+                  <Input
+                    id="co-grades"
+                    value={(formData.co_scholastic_grades || []).join(', ')}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        co_scholastic_grades: e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean),
+                      })
+                    }
+                    placeholder="A, B, C, D, E"
+                  />
+                  <p className="text-xs text-muted-foreground">Comma-separated grades used for co-scholastic areas.</p>
                 </div>
 
                 <div className="space-y-2">
@@ -225,6 +307,30 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent>
               <GradingRulesTab />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="report-card">
+          <Card>
+            <CardHeader>
+              <CardTitle>Report Card</CardTitle>
+              <CardDescription>Grand total rule, component labels, and co-scholastic areas.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ReportCardTab />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="access">
+          <Card>
+            <CardHeader>
+              <CardTitle>Access Control</CardTitle>
+              <CardDescription>Turn modules on/off and fine-tune what each role can do.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AccessTab />
             </CardContent>
           </Card>
         </TabsContent>

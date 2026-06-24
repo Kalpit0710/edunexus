@@ -2,6 +2,7 @@
 
 import { createClient as createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server'
 import { requireActor } from '@/lib/auth/require-actor'
+import { requirePermission } from '@/lib/auth/permissions'
 import { sendEmail } from '@/lib/email'
 import { logAudit } from '@/lib/audit'
 import { validateCollectFeeInput } from '@/lib/fee-utils'
@@ -97,6 +98,8 @@ export async function createFeeCategory(
   description?: string,
 ): Promise<FeeCategoryRow> {
   const supabase = await createServerSupabaseClient()
+  await requirePermission(supabase, 'fees.configure')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
   const { data, error } = await db
     .from('fee_categories')
@@ -192,6 +195,8 @@ export async function createFeeStructure(
   dueDate?: string,
 ): Promise<void> {
   const supabase = await createServerSupabaseClient()
+  await requirePermission(supabase, 'fees.configure')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
   const { error } = await db.from('fee_structures').insert({
     school_id: schoolId,
@@ -206,6 +211,8 @@ export async function createFeeStructure(
 
 export async function updateFeeStructureAmount(structureId: string, amount: number): Promise<void> {
   const supabase = await createServerSupabaseClient()
+  await requirePermission(supabase, 'fees.configure')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
   const { error } = await db
     .from('fee_structures')
@@ -378,6 +385,8 @@ export async function collectFeePayment(
   if (validationError) throw new Error(validationError)
 
   const supabase = await createServerSupabaseClient()
+  await requirePermission(supabase, 'fees.collect')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
   const totalAmount = input.items.reduce((s, i) => s + i.amount, 0)
 

@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient as getSupabase } from '@/lib/supabase/server'
+import { requirePermission } from '@/lib/auth/permissions'
 import {
   detectTeacherConflicts,
   periodsOverlap,
@@ -253,6 +254,7 @@ export async function createPeriod(input: PeriodInput): Promise<void> {
   const supabase = await getSupabase()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
+  await requirePermission(supabase, 'timetable.manage')
   await assertNoPeriodOverlap(db, input)
   const { error } = await db.from('timetable_periods').insert({
     school_id: input.schoolId,
@@ -270,6 +272,7 @@ export async function updatePeriod(id: string, input: PeriodInput): Promise<void
   const supabase = await getSupabase()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
+  await requirePermission(supabase, 'timetable.manage')
   await assertNoPeriodOverlap(db, input, id)
   const { error } = await db
     .from('timetable_periods')
@@ -291,6 +294,7 @@ export async function deletePeriod(schoolId: string, id: string): Promise<void> 
   const supabase = await getSupabase()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
+  await requirePermission(supabase, 'timetable.manage')
   const { error } = await db.from('timetable_periods').delete().eq('id', id).eq('school_id', schoolId)
   if (error) throw new Error(error.message)
 }
@@ -308,6 +312,7 @@ export async function upsertEntry(
   const supabase = await getSupabase()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
+  await requirePermission(supabase, 'timetable.manage')
 
   const empty = !input.subjectId && !input.teacherId && !input.room?.trim()
   if (empty) {
@@ -462,6 +467,7 @@ export async function setWorkingDays(schoolId: string, days: number[]): Promise<
   const supabase = await getSupabase()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
+  await requirePermission(supabase, 'timetable.manage')
   const { error } = await db
     .from('schools')
     .update({ working_days: clean, updated_at: new Date().toISOString() })

@@ -29,6 +29,14 @@ export interface School {
   is_active: boolean
   lock_results_on_fee?: boolean
   principal_signature_url?: string | null
+  disabled_features?: string[]
+  report_card_title?: string
+  pass_percentage?: number
+  result_statuses?: string[]
+  co_scholastic_grades?: string[]
+  currency_symbol?: string
+  locale?: string
+  date_format?: string
   subscription_plan?: SubscriptionPlan
   subscription_status?: SubscriptionStatus
   trial_ends_at?: string | null

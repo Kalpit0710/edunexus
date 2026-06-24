@@ -7,6 +7,7 @@ import { sendEmail } from '@/lib/email'
 import { schoolToday } from '@/lib/date-utils'
 import { WelcomeEmail } from '@/emails/WelcomeEmail'
 import { requireActor } from '@/lib/auth/require-actor'
+import { requirePermission } from '@/lib/auth/permissions'
 import { logAudit } from '@/lib/audit'
 import { validateTeacherCreateFields } from '@/lib/teacher-utils'
 
@@ -156,6 +157,7 @@ export async function createTeacher(
 ): Promise<string> {
   const session = await getSupabase()
   const actor = await requireActor(session, ['school_admin'])
+  await requirePermission(session, 'teachers.manage')
   const admin = getAdminClient()
 
   // Validate input at the trust boundary (runtime) before creating any account.
@@ -280,6 +282,7 @@ export async function updateTeacher(
   payload: UpdateTeacherPayload
 ): Promise<void> {
   const supabase = await getSupabase()
+  await requirePermission(supabase, 'teachers.manage')
 
   // Update user_profile fields
   if (payload.full_name || payload.phone !== undefined) {
@@ -318,6 +321,7 @@ export async function toggleTeacherStatus(
 ): Promise<void> {
   const supabase = await getSupabase()
   const actor = await requireActor(supabase, ['school_admin'])
+  await requirePermission(supabase, 'teachers.manage')
   const [teacherRes, profileRes] = await Promise.all([
     supabase.from('teachers').update({ is_active: isActive }).eq('id', teacherId),
     supabase.from('user_profiles').update({ is_active: isActive }).eq('id', userProfileId),

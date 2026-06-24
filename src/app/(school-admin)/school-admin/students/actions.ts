@@ -2,6 +2,7 @@
 
 import type { Database } from '@/types/database.types'
 import { createAdminClient, createClient as getSupabase } from '@/lib/supabase/server'
+import { requirePermission } from '@/lib/auth/permissions'
 import { normalizeParentContact } from '@/lib/student-parent-link'
 import { syncPrimaryParentForStudent, unlinkParentsForStudent } from '@/lib/student-parent-sync'
 
@@ -261,6 +262,7 @@ export async function deleteStudent(studentId: string) {
     const supabase = await getSupabase()
     const actorProfile = await getActorProfile(supabase)
     assertSchoolAdmin(actorProfile)
+    await requirePermission(supabase, 'students.delete')
 
     const student = await getStudentIdentity(supabase, studentId)
 
@@ -304,6 +306,7 @@ export async function updateStudent(id: string, payload: any) {
     const supabase = await getSupabase()
     const actorProfile = await getActorProfile(supabase)
     assertSchoolAdmin(actorProfile)
+    await requirePermission(supabase, 'students.edit')
 
     const rawPayload = (payload ?? {}) as Record<string, unknown>
     const normalizedPayload = normalizeStudentWritePayload(rawPayload)

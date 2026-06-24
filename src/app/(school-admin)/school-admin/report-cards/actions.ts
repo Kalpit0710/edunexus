@@ -5,6 +5,7 @@ import {
   createAdminClient,
 } from '@/lib/supabase/server'
 import { requireActor } from '@/lib/auth/require-actor'
+import { requirePermission } from '@/lib/auth/permissions'
 import { logAudit } from '@/lib/audit'
 import { computeStudentFeeBalance } from '@/lib/fees/balance'
 import {
@@ -22,6 +23,7 @@ import {
   type LowerComponent,
   type MarksMap,
   type GradingRule,
+  type GrandTotalRule,
 } from '@/lib/report-card-utils'
 
 const WRITE_ROLES = ['school_admin', 'teacher', 'manager']
@@ -168,6 +170,21 @@ async function fetchGradingRules(db: any, schoolId: string, classId?: string): P
   }))
 }
 
+/** Active, ordered co-scholastic area names for a school (empty = use defaults). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function fetchCoScholasticAreaNames(db: any, schoolId: string): Promise<string[]> {
+  const { data } = await db
+    .from('co_scholastic_areas')
+    .select('name')
+    .eq('school_id', schoolId)
+    .eq('is_active', true)
+    .is('deleted_at', null)
+    .order('display_order', { ascending: true })
+    .order('name', { ascending: true })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return ((data ?? []) as any[]).map((r) => String(r.name))
+}
+
 // ── setup / selectors ─────────────────────────────────────────────────────────
 
 export async function getReportSetup(schoolId: string): Promise<ReportSetup> {
@@ -240,6 +257,7 @@ export async function getClassSubjectConfigs(
       .eq('class_id', classId)
       .eq('is_active', true)
       .is('deleted_at', null)
+      .order('display_order', { ascending: true })
       .order('name', { ascending: true }),
     db
       .from('report_subject_configs')
@@ -364,6 +382,14 @@ export interface StudentReportData {
   meta: StudentMeta
   gradingRules: GradingRule[]
   publication: PublicationRow | null
+  /** School-configured selectable result-status options. */
+  resultStatuses: string[]
+  /** School-configured selectable co-scholastic grades. */
+  coScholasticGrades: string[]
+  /** Per-school overrides for standard component labels (key → label). */
+  componentLabels: Record<string, string>
+  /** Standard-tier grand total rule (average | sum). */
+  grandTotalRule: GrandTotalRule
 }
 
 export async function getStudentReportData(
@@ -390,7 +416,7 @@ export async function getStudentReportData(
   const reportCardType: ReportCardType =
     student.classes?.report_card_type === 'lower' ? 'lower' : 'standard'
 
-  const [configs, scholasticRes, coScholasticRes, metaRes, gradingRules, publication] =
+  const [configs, scholasticRes, coScholasticRes, metaRes, gradingRules, publication, schoolRes] =
     await Promise.all([
       classId ? getClassSubjectConfigs(schoolId, classId) : Promise.resolve([]),
       db
@@ -411,6 +437,11 @@ export async function getStudentReportData(
         .maybeSingle(),
       classId ? fetchGradingRules(db, schoolId, classId) : fetchGradingRules(db, schoolId),
       classId ? getClassPublication(schoolId, classId) : Promise.resolve(null),
+      db
+        .from('schools')
+        .select('result_statuses, co_scholastic_grades, report_grand_total_rule, scholastic_component_labels')
+        .eq('id', schoolId)
+        .maybeSingle(),
     ])
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -420,7 +451,9 @@ export async function getStudentReportData(
     term2: (m.term2 ?? {}) as MarksMap,
   }))
 
-  const coScholastic: CoScholasticMarkRow[] = CO_SCHOLASTIC_AREAS.map((area) => {
+  const coAreaNames = await fetchCoScholasticAreaNames(db, schoolId)
+  const areaNames = coAreaNames.length ? coAreaNames : [...CO_SCHOLASTIC_AREAS]
+  const coScholastic: CoScholasticMarkRow[] = areaNames.map((area) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const found = ((coScholasticRes.data ?? []) as any[]).find((m) => m.area === area)
     return { area, term1: found?.term1 ?? null, term2: found?.term2 ?? null }
@@ -453,6 +486,23 @@ export async function getStudentReportData(
     meta,
     gradingRules,
     publication,
+    resultStatuses:
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ((schoolRes.data as any)?.result_statuses as string[] | undefined) ?? [
+        'Passed',
+        'Failed',
+        'Promoted',
+        'Detained',
+      ],
+    coScholasticGrades:
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ((schoolRes.data as any)?.co_scholastic_grades as string[] | undefined) ?? ['A', 'B', 'C', 'D', 'E'],
+    componentLabels:
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ((schoolRes.data as any)?.scholastic_component_labels ?? {}) as Record<string, string>,
+    grandTotalRule:
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ((schoolRes.data as any)?.report_grand_total_rule === 'sum' ? 'sum' : 'average') as GrandTotalRule,
   }
 }
 
@@ -468,6 +518,7 @@ export async function saveScholasticMark(
 ): Promise<void> {
   const supabase = await createServerSupabaseClient()
   await requireActor(supabase, WRITE_ROLES)
+  await requirePermission(supabase, 'exams.enter_marks')
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
   const enteredBy = await actorProfileId(db, schoolId)
@@ -595,6 +646,7 @@ export async function publishClassReport(
 ): Promise<void> {
   const supabase = await createServerSupabaseClient()
   const actor = await requireActor(supabase, ADMIN_ROLES)
+  await requirePermission(supabase, 'exams.publish')
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
 
@@ -665,7 +717,7 @@ export async function getClassResultsOverview(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
 
-  const [students, configs, gradingRules, { data: marksData }, { data: classRow }] =
+  const [students, configs, gradingRules, { data: marksData }, { data: classRow }, { data: schoolRow }] =
     await Promise.all([
       getClassStudents(schoolId, classId, sectionId),
       getClassSubjectConfigs(schoolId, classId),
@@ -676,10 +728,13 @@ export async function getClassResultsOverview(
         .eq('school_id', schoolId)
         .eq('class_id', classId),
       db.from('classes').select('report_card_type').eq('id', classId).maybeSingle(),
+      db.from('schools').select('report_grand_total_rule').eq('id', schoolId).maybeSingle(),
     ])
 
   const reportCardType: ReportCardType =
     classRow?.report_card_type === 'lower' ? 'lower' : 'standard'
+  const grandTotalRule: GrandTotalRule =
+    schoolRow?.report_grand_total_rule === 'sum' ? 'sum' : 'average'
 
   const configBySubject = new Map(configs.map((c) => [c.subjectId, c]))
 
@@ -701,7 +756,7 @@ export async function getClassResultsOverview(
       }
       return reportCardType === 'lower'
         ? calcLowerSubjectResult(m.term1 ?? {}, m.term2 ?? {}, cfg.components)
-        : calcStandardSubjectResult(m.term1 ?? {}, m.term2 ?? {}, cfg.maxMarks)
+        : calcStandardSubjectResult(m.term1 ?? {}, m.term2 ?? {}, cfg.maxMarks, grandTotalRule)
     })
     const overall = calcOverallResult(subjectResults)
     return {
@@ -778,6 +833,16 @@ export interface PrintableReportCard {
   overall: { totalObtained: number; totalMax: number; percentage: number; grade: string | null }
   /** Signature image URLs printed on the card (null = blank signature line). */
   signatures: { principalUrl: string | null; classTeacherUrl: string | null }
+  /** School-configured letterhead title (e.g. "Progress Report"). */
+  reportTitle: string
+  /** Minimum overall % the school treats as a pass. */
+  passPercentage: number
+  /** BCP-47 locale for date formatting on the card. */
+  locale: string
+  /** Currency symbol (for any monetary fields rendered on the card). */
+  currencySymbol: string
+  /** Per-school overrides for standard component labels (key → label). */
+  componentLabels: Record<string, string>
   publication: PublicationRow | null
   /** Current academic-year label (e.g. "2025-26"); null when none is set. */
   academicSession: string | null
@@ -814,7 +879,7 @@ export async function getPrintableReportCard(studentId: string): Promise<Printab
     .from('students')
     .select(
       'id, full_name, admission_number, roll_number, class_id, section_id, school_id, date_of_birth, ' +
-        'schools ( name, address, city, state, pincode, phone, email, logo_url, principal_signature_url, lock_results_on_fee ), ' +
+        'schools ( name, address, city, state, pincode, phone, email, logo_url, principal_signature_url, lock_results_on_fee, report_card_title, pass_percentage, currency_symbol, locale, report_grand_total_rule, scholastic_component_labels ), ' +
         'classes ( name, report_card_type ), sections ( name )',
     )
     .eq('id', studentId)
@@ -899,6 +964,7 @@ async function buildPrintableReportCard(
             .eq('class_id', classId)
             .eq('is_active', true)
             .is('deleted_at', null)
+            .order('display_order', { ascending: true })
             .order('name', { ascending: true })
         : Promise.resolve({ data: [] }),
       classId
@@ -972,6 +1038,12 @@ async function buildPrintableReportCard(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ((classTeacherRow as any)?.teachers?.signature_url as string | undefined) ?? null
 
+  const grandTotalRule: GrandTotalRule =
+    student.schools?.report_grand_total_rule === 'sum' ? 'sum' : 'average'
+  const componentLabels = (student.schools?.scholastic_component_labels ?? {}) as Record<string, string>
+  const coAreaNames = await fetchCoScholasticAreaNames(db, schoolId)
+  const areaNames = coAreaNames.length ? coAreaNames : [...CO_SCHOLASTIC_AREAS]
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const subjectRows: PrintableSubjectRow[] = ((subjects ?? []) as any[]).map((s) => {
     const cfg = cfgBySubject.get(s.id)
@@ -983,7 +1055,7 @@ async function buildPrintableReportCard(
     const result =
       reportCardType === 'lower'
         ? calcLowerSubjectResult(term1, term2, components)
-        : calcStandardSubjectResult(term1, term2, maxMarks)
+        : calcStandardSubjectResult(term1, term2, maxMarks, grandTotalRule)
     return {
       subjectName: s.name,
       subjectCode: s.code ?? null,
@@ -1010,7 +1082,7 @@ async function buildPrintableReportCard(
     })),
   )
 
-  const coScholastic: CoScholasticMarkRow[] = CO_SCHOLASTIC_AREAS.map((area) => {
+  const coScholastic: CoScholasticMarkRow[] = areaNames.map((area) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const found = ((coData ?? []) as any[]).find((m) => m.area === area)
     return { area, term1: found?.term1 ?? null, term2: found?.term2 ?? null }
@@ -1057,6 +1129,11 @@ async function buildPrintableReportCard(
       principalUrl: ((student.schools as any)?.principal_signature_url as string | null) ?? null,
       classTeacherUrl: classTeacherSignatureUrl,
     },
+    reportTitle: (student.schools?.report_card_title as string | undefined) || 'Progress Report',
+    passPercentage: Number(student.schools?.pass_percentage ?? 33),
+    locale: (student.schools?.locale as string | undefined) || 'en-IN',
+    currencySymbol: (student.schools?.currency_symbol as string | undefined) || '₹',
+    componentLabels,
     publication,
     academicSession,
     gradingRules,
@@ -1065,7 +1142,7 @@ async function buildPrintableReportCard(
 
 const PRINTABLE_STUDENT_SELECT =
   'id, full_name, admission_number, roll_number, class_id, section_id, school_id, date_of_birth, ' +
-  'schools ( name, address, city, state, pincode, phone, email, logo_url, principal_signature_url, lock_results_on_fee ), ' +
+  'schools ( name, address, city, state, pincode, phone, email, logo_url, principal_signature_url, lock_results_on_fee, report_card_title, pass_percentage, currency_symbol, locale, report_grand_total_rule, scholastic_component_labels ), ' +
   'classes ( name, report_card_type ), sections ( name )'
 
 /**
@@ -1128,4 +1205,63 @@ export async function getClassPrintableReportCards(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rows = (students ?? []) as any[]
   return Promise.all(rows.map((s) => buildPrintableReportCard(db, s, publication)))
+}
+
+// ── co-scholastic area configuration ───────────────────────────────────────────
+
+export interface CoScholasticAreaRow {
+  id: string
+  name: string
+  displayOrder: number
+}
+
+export async function getCoScholasticAreas(schoolId: string): Promise<CoScholasticAreaRow[]> {
+  const supabase = await createServerSupabaseClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any
+  const { data, error } = await db
+    .from('co_scholastic_areas')
+    .select('id, name, display_order')
+    .eq('school_id', schoolId)
+    .eq('is_active', true)
+    .is('deleted_at', null)
+    .order('display_order', { ascending: true })
+    .order('name', { ascending: true })
+  if (error) throw new Error(error.message)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return ((data ?? []) as any[]).map((r) => ({ id: r.id, name: r.name, displayOrder: r.display_order }))
+}
+
+export async function addCoScholasticArea(schoolId: string, name: string): Promise<void> {
+  const supabase = await createServerSupabaseClient()
+  await requireActor(supabase, ADMIN_ROLES)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any
+  const trimmed = name.trim()
+  if (!trimmed) throw new Error('Area name is required.')
+  const { data: last } = await db
+    .from('co_scholastic_areas')
+    .select('display_order')
+    .eq('school_id', schoolId)
+    .is('deleted_at', null)
+    .order('display_order', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  const nextOrder = (last?.display_order ?? -1) + 1
+  const { error } = await db
+    .from('co_scholastic_areas')
+    .insert({ school_id: schoolId, name: trimmed, display_order: nextOrder })
+  if (error) throw new Error(error.message)
+}
+
+export async function deleteCoScholasticArea(id: string): Promise<void> {
+  const supabase = await createServerSupabaseClient()
+  await requireActor(supabase, ADMIN_ROLES)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any
+  const { error } = await db
+    .from('co_scholastic_areas')
+    .update({ deleted_at: new Date().toISOString(), is_active: false })
+    .eq('id', id)
+  if (error) throw new Error(error.message)
 }

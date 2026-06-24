@@ -14,6 +14,8 @@
 
 export type ReportCardType = 'standard' | 'lower'
 export type TermKey = 'term1' | 'term2'
+/** Standard-tier grand total: average of the two terms, or their straight sum. */
+export type GrandTotalRule = 'average' | 'sum'
 
 export interface GradingRule {
   min_marks: number
@@ -112,12 +114,14 @@ export interface SubjectResult {
 
 /**
  * Standard tier: grand total is the average of the two terms
- * ((T1 ÷ 2) + (T2 ÷ 2)), matching the reference CBSE model.
+ * ((T1 ÷ 2) + (T2 ÷ 2)) by default, or their straight sum when the school
+ * configures `rule = 'sum'`.
  */
 export function calcStandardSubjectResult(
   term1Marks: MarksMap,
   term2Marks: MarksMap,
   max: StandardMaxMarks,
+  rule: GrandTotalRule = 'average',
 ): SubjectResult {
   const t1Keys = STANDARD_TERM1_FIELDS.map((f) => f.key)
   const t2Keys = STANDARD_TERM2_FIELDS.map((f) => f.key)
@@ -127,8 +131,10 @@ export function calcStandardSubjectResult(
   const maxTerm1 = sumComponents(max.term1 as unknown as MarksMap, t1Keys)
   const maxTerm2 = sumComponents(max.term2 as unknown as MarksMap, t2Keys)
 
-  const grandTotal = round2(term1Total / 2 + term2Total / 2)
-  const maxGrandTotal = round2(maxTerm1 / 2 + maxTerm2 / 2)
+  const grandTotal =
+    rule === 'sum' ? round2(term1Total + term2Total) : round2(term1Total / 2 + term2Total / 2)
+  const maxGrandTotal =
+    rule === 'sum' ? round2(maxTerm1 + maxTerm2) : round2(maxTerm1 / 2 + maxTerm2 / 2)
   const percentage = maxGrandTotal > 0 ? round2((grandTotal / maxGrandTotal) * 100) : 0
 
   return { term1Total, term2Total, grandTotal, maxGrandTotal, percentage }

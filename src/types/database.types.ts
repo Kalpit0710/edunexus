@@ -55,6 +55,79 @@ export type Database = {
           },
         ]
       }
+      co_scholastic_areas: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          display_order: number
+          id: string
+          is_active: boolean
+          name: string
+          school_id: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          school_id: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          school_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "co_scholastic_areas_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      role_permissions: {
+        Row: {
+          allowed: boolean
+          id: string
+          permission: string
+          role: string
+          school_id: string
+          updated_at: string
+        }
+        Insert: {
+          allowed?: boolean
+          id?: string
+          permission: string
+          role: string
+          school_id: string
+          updated_at?: string
+        }
+        Update: {
+          allowed?: boolean
+          id?: string
+          permission?: string
+          role?: string
+          school_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_permissions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attendance_records: {
         Row: {
           class_id: string
@@ -1505,16 +1578,26 @@ export type Database = {
           address: string | null
           city: string | null
           code: string
+          co_scholastic_grades: string[]
           created_at: string
+          currency_symbol: string
+          date_format: string
+          disabled_features: string[]
           email: string | null
           id: string
           is_active: boolean
+          locale: string
           logo_url: string | null
           lock_results_on_fee: boolean
           principal_signature_url: string | null
           name: string
+          pass_percentage: number
           phone: string | null
           pincode: string | null
+          report_card_title: string
+          report_grand_total_rule: string
+          result_statuses: string[]
+          scholastic_component_labels: Json
           state: string | null
           subscription_plan: string
           subscription_status: string
@@ -1529,16 +1612,26 @@ export type Database = {
           address?: string | null
           city?: string | null
           code: string
+          co_scholastic_grades?: string[]
           created_at?: string
+          currency_symbol?: string
+          date_format?: string
+          disabled_features?: string[]
           email?: string | null
           id?: string
           is_active?: boolean
+          locale?: string
           logo_url?: string | null
           lock_results_on_fee?: boolean
           principal_signature_url?: string | null
           name: string
+          pass_percentage?: number
           phone?: string | null
           pincode?: string | null
+          report_card_title?: string
+          report_grand_total_rule?: string
+          result_statuses?: string[]
+          scholastic_component_labels?: Json
           state?: string | null
           subscription_plan?: string
           subscription_status?: string
@@ -1553,16 +1646,26 @@ export type Database = {
           address?: string | null
           city?: string | null
           code?: string
+          co_scholastic_grades?: string[]
           created_at?: string
+          currency_symbol?: string
+          date_format?: string
+          disabled_features?: string[]
           email?: string | null
           id?: string
           is_active?: boolean
+          locale?: string
           logo_url?: string | null
           lock_results_on_fee?: boolean
           principal_signature_url?: string | null
           name?: string
+          pass_percentage?: number
           phone?: string | null
           pincode?: string | null
+          report_card_title?: string
+          report_grand_total_rule?: string
+          result_statuses?: string[]
+          scholastic_component_labels?: Json
           state?: string | null
           subscription_plan?: string
           subscription_status?: string
@@ -1851,6 +1954,7 @@ export type Database = {
           code: string | null
           created_at: string
           deleted_at: string | null
+          display_order: number
           id: string
           is_active: boolean
           name: string
@@ -1861,6 +1965,7 @@ export type Database = {
           code?: string | null
           created_at?: string
           deleted_at?: string | null
+          display_order?: number
           id?: string
           is_active?: boolean
           name: string
@@ -1871,6 +1976,7 @@ export type Database = {
           code?: string | null
           created_at?: string
           deleted_at?: string | null
+          display_order?: number
           id?: string
           is_active?: boolean
           name?: string

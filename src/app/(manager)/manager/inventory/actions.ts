@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient as createServerSupabaseClient } from '@/lib/supabase/server'
+import { requirePermission } from '@/lib/auth/permissions'
 import {
   calculateInventoryCartTotal,
   isLowStock,
@@ -108,6 +109,7 @@ export async function createInventoryItem(schoolId: string, input: InventoryItem
   const supabase = await createServerSupabaseClient()
   const db = supabase as any
   await requireActor(supabase, ['school_admin', 'manager', 'cashier'])
+  await requirePermission(supabase, 'inventory.manage')
 
   const actorProfileId = await getActorProfileId(db, schoolId, input.createdByProfileId)
 
@@ -158,6 +160,7 @@ export async function updateInventoryItem(
   const supabase = await createServerSupabaseClient()
   const db = supabase as any
   await requireActor(supabase, ['school_admin', 'manager', 'cashier'])
+  await requirePermission(supabase, 'inventory.manage')
 
   const { data, error } = await db
     .from('inventory_items')
@@ -179,6 +182,7 @@ export async function setInventoryItemActive(
   const supabase = await createServerSupabaseClient()
   const db = supabase as any
   await requireActor(supabase, ['school_admin', 'manager', 'cashier'])
+  await requirePermission(supabase, 'inventory.manage')
 
   const { error } = await db
     .from('inventory_items')
@@ -196,6 +200,7 @@ export async function adjustInventoryStock(
   const supabase = await createServerSupabaseClient()
   const db = supabase as any
   await requireActor(supabase, ['school_admin', 'manager', 'cashier'])
+  await requirePermission(supabase, 'inventory.manage')
 
   const { data: currentItem, error: currentError } = await db
     .from('inventory_items')
@@ -236,6 +241,7 @@ export async function createInventorySale(
   const supabase = await createServerSupabaseClient()
   const db = supabase as any
   await requireActor(supabase, ['school_admin', 'manager', 'cashier'])
+  await requirePermission(supabase, 'inventory.manage')
 
   const cartForValidation: InventoryCartItem[] = input.items.map(item => ({
     itemId: item.itemId,

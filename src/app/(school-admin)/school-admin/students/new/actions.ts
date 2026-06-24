@@ -2,6 +2,7 @@
 
 import type { Database } from '@/types/database.types'
 import { createAdminClient, createClient as getSupabase } from '@/lib/supabase/server'
+import { requirePermission } from '@/lib/auth/permissions'
 import { syncPrimaryParentForStudent } from '@/lib/student-parent-sync'
 import { normalizeParentContact } from '@/lib/student-parent-link'
 import { logAudit } from '@/lib/audit'
@@ -132,6 +133,8 @@ export async function createStudent(_schoolId: string, studentData: StudentCreat
     if (!actorProfile.school_id) {
         throw new Error('Your account is not linked to any school.')
     }
+
+    await requirePermission(supabase, 'students.create')
 
     // Validate input at the trust boundary (runtime, not just TS types).
     const validation = studentCreateSchema.safeParse(studentData)

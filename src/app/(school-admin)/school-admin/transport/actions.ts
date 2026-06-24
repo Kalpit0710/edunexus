@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient as getSupabase } from '@/lib/supabase/server'
+import { requirePermission } from '@/lib/auth/permissions'
 
 export interface StopRow {
   id: string
@@ -170,6 +171,7 @@ export async function createBus(input: BusInput): Promise<void> {
   const supabase = await getSupabase()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
+  await requirePermission(supabase, 'transport.manage')
   const { error } = await db.from('buses').insert({
     school_id: input.schoolId,
     bus_number: input.busNumber.trim(),
@@ -194,6 +196,7 @@ export async function updateBus(id: string, input: BusInput): Promise<void> {
   const supabase = await getSupabase()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
+  await requirePermission(supabase, 'transport.manage')
 
   // Don't allow shrinking capacity below the number already seated.
   const { count } = await db
@@ -230,6 +233,7 @@ export async function deleteBus(schoolId: string, id: string): Promise<void> {
   const supabase = await getSupabase()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
+  await requirePermission(supabase, 'transport.manage')
 
   const { count } = await db
     .from('student_transport')
@@ -255,6 +259,7 @@ export async function addStop(input: StopInput): Promise<void> {
   const supabase = await getSupabase()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
+  await requirePermission(supabase, 'transport.manage')
   const { error } = await db.from('bus_stops').insert({
     school_id: input.schoolId,
     bus_id: input.busId,
@@ -270,6 +275,7 @@ export async function deleteStop(schoolId: string, id: string): Promise<void> {
   const supabase = await getSupabase()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
+  await requirePermission(supabase, 'transport.manage')
   const { error } = await db.from('bus_stops').delete().eq('id', id).eq('school_id', schoolId)
   if (error) throw new Error(error.message)
 }
@@ -289,6 +295,7 @@ export async function assignStudent(input: {
   const supabase = await getSupabase()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
+  await requirePermission(supabase, 'transport.manage')
   const { error } = await db.rpc('assign_student_transport', {
     p_school_id: input.schoolId,
     p_student_id: input.studentId,
@@ -304,6 +311,7 @@ export async function unassignStudent(schoolId: string, assignmentId: string): P
   const supabase = await getSupabase()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
+  await requirePermission(supabase, 'transport.manage')
   const { error } = await db.from('student_transport').delete().eq('id', assignmentId).eq('school_id', schoolId)
   if (error) throw new Error(error.message)
 }

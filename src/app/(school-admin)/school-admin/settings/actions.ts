@@ -180,6 +180,7 @@ export async function getSubjects(schoolId: string) {
         .from('subjects')
         .select('*, class:classes(name)')
         .eq('school_id', schoolId)
+        .order('display_order', { ascending: true })
         .order('name', { ascending: true })
 
     if (error) throw new Error(error.message)
@@ -220,9 +221,29 @@ export async function restoreSection(sectionId: string) {
 
 export async function createSubject(schoolId: string, classId: string, name: string, code: string) {
     const supabase = await getSupabase()
+    // Append to the end of the class's subject order.
+    const { data: last } = await supabase
+        .from('subjects')
+        .select('display_order')
+        .eq('school_id', schoolId)
+        .eq('class_id', classId)
+        .is('deleted_at', null)
+        .order('display_order', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    const nextOrder = ((last as { display_order: number } | null)?.display_order ?? -1) + 1
     const { error } = await supabase
         .from('subjects')
-        .insert([{ school_id: schoolId, class_id: classId, name, code }])
+        .insert([{ school_id: schoolId, class_id: classId, name, code, display_order: nextOrder }])
+    if (error) throw new Error(error.message)
+}
+
+export async function updateSubjectOrder(subjectId: string, displayOrder: number) {
+    const supabase = await getSupabase()
+    const { error } = await supabase
+        .from('subjects')
+        .update({ display_order: displayOrder })
+        .eq('id', subjectId)
     if (error) throw new Error(error.message)
 }
 

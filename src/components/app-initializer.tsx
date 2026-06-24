@@ -9,9 +9,10 @@ import { useEffect } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
 import { createClient } from '@/lib/supabase/client'
 import type { SubscriptionPlan, SubscriptionStatus } from '@/lib/subscription'
+import { computeEffectivePermissions } from '@/lib/permissions'
 
 export function AppInitializer() {
-    const { user, setUser, setSchool, setLoading } = useAuthStore()
+    const { user, setUser, setSchool, setLoading, setPermissions } = useAuthStore()
 
     useEffect(() => {
         const supabase = createClient()
@@ -35,6 +36,26 @@ export function AppInitializer() {
                     .single()
 
                 if (!profile) return
+
+                // Load the caller's effective permissions (role defaults + school overrides).
+                if (profile.role === 'super_admin') {
+                    setPermissions(['*'])
+                } else if (profile.school_id) {
+                    const { data: overrideRows } = await supabase
+                        .from('role_permissions')
+                        .select('permission, allowed')
+                        .eq('school_id', profile.school_id)
+                        .eq('role', profile.role)
+                    setPermissions(
+                        computeEffectivePermissions(
+                            profile.role,
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            ((overrideRows ?? []) as any[]).map((r) => ({ permission: r.permission, allowed: r.allowed })),
+                        ),
+                    )
+                } else {
+                    setPermissions([])
+                }
 
                 setUser({
                     ...authUser,
@@ -65,6 +86,14 @@ export function AppInitializer() {
                             is_active: school.is_active,
                             lock_results_on_fee: school.lock_results_on_fee ?? false,
                             principal_signature_url: school.principal_signature_url ?? null,
+                            disabled_features: school.disabled_features ?? [],
+                            report_card_title: school.report_card_title ?? 'Progress Report',
+                            pass_percentage: school.pass_percentage ?? 33,
+                            result_statuses: school.result_statuses ?? ['Passed', 'Failed', 'Promoted', 'Detained'],
+                            co_scholastic_grades: school.co_scholastic_grades ?? ['A', 'B', 'C', 'D', 'E'],
+                            currency_symbol: school.currency_symbol ?? '₹',
+                            locale: school.locale ?? 'en-IN',
+                            date_format: school.date_format ?? 'dd MMM yyyy',
                             subscription_plan: (school.subscription_plan ?? 'basic') as SubscriptionPlan,
                             subscription_status: (school.subscription_status ?? 'active') as SubscriptionStatus,
                             trial_ends_at: school.trial_ends_at ?? null,

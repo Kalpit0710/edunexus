@@ -38,12 +38,40 @@ export async function getCurrentSchoolPlan(): Promise<SubscriptionPlan> {
 }
 
 /**
- * Server guard for a gated feature. Redirects to the upgrade screen (with the
- * blocked feature highlighted) when the current school's plan doesn't include it.
- * Use at the top of a server component / layout that wraps a gated module.
+ * Server guard for a gated feature. Redirects to the upgrade screen when the
+ * current school's plan doesn't include the feature, or to the dashboard when an
+ * admin has explicitly disabled it. Use at the top of a server component /
+ * layout that wraps a gated module.
  */
 export async function requireFeature(feature: Feature): Promise<void> {
-  const plan = await getCurrentSchoolPlan()
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return
+
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('school_id')
+    .eq('auth_user_id', user.id)
+    .single()
+  const schoolId = (profile as { school_id?: string } | null)?.school_id
+  if (!schoolId) return // fail-open: never wrongly lock out a legitimate user
+
+  const { data: school } = await supabase
+    .from('schools')
+    .select('subscription_plan, disabled_features')
+    .eq('id', schoolId)
+    .single()
+
+  const rawPlan = (school as { subscription_plan?: string } | null)?.subscription_plan
+  const plan: SubscriptionPlan = rawPlan && isSubscriptionPlan(rawPlan) ? rawPlan : 'basic'
+  const disabled = ((school as { disabled_features?: string[] } | null)?.disabled_features ?? []) as string[]
+
+  if (disabled.includes(feature)) {
+    redirect('/school-admin/dashboard')
+  }
   if (!planHasFeature(plan, feature)) {
     redirect(`/school-admin/upgrade?feature=${feature}`)
   }

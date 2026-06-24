@@ -4,9 +4,9 @@ import * as React from 'react'
 import type { PrintableReportCard } from '@/app/(school-admin)/school-admin/report-cards/actions'
 import type { MarksMap } from '@/lib/report-card-utils'
 
-function fmtDate(d: string | null): string {
+function fmtDate(d: string | null, locale: string): string {
   if (!d) return '—'
-  return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
+  return new Date(d).toLocaleDateString(locale || 'en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
 }
 
 function n(v: number | null | undefined): string {
@@ -111,7 +111,7 @@ export function ReportCardDocument({ data }: { data: PrintableReportCard }) {
               {[data.school.phone, data.school.email].filter(Boolean).join(' · ')}
             </div>
           )}
-          <div className="srms-badge">Progress Report</div>
+          <div className="srms-badge">{data.reportTitle}</div>
         </div>
       </div>
 
@@ -124,7 +124,7 @@ export function ReportCardDocument({ data }: { data: PrintableReportCard }) {
         <Field label="Mother's Name" value={data.student.motherName ?? '—'} />
         <Field label="Class" value={cls} />
         <Field label="Roll No." value={data.student.rollNumber ?? '—'} />
-        <Field label="Date of Birth" value={fmtDate(data.student.dateOfBirth)} />
+        <Field label="Date of Birth" value={fmtDate(data.student.dateOfBirth, data.locale)} />
         <Field label="Academic Session" value={data.academicSession ?? '—'} />
       </div>
 
@@ -204,11 +204,11 @@ export function ReportCardDocument({ data }: { data: PrintableReportCard }) {
             </tr>
             <tr>
               {T1_COLS.map((c) => (
-                <th key={`h1${c.key}`}>{splitLabel(c.label)}</th>
+                <th key={`h1${c.key}`}>{splitLabel(data.componentLabels[c.key] ?? c.label)}</th>
               ))}
               <th>Total</th>
               {T2_COLS.map((c) => (
-                <th key={`h2${c.key}`}>{splitLabel(c.label)}</th>
+                <th key={`h2${c.key}`}>{splitLabel(data.componentLabels[c.key] ?? c.label)}</th>
               ))}
               <th>Total</th>
             </tr>
@@ -316,7 +316,7 @@ export function ReportCardDocument({ data }: { data: PrintableReportCard }) {
             <td>{data.meta.term1Attendance ?? '—'}</td>
             <td rowSpan={2}>{data.meta.remarks ?? ''}</td>
             <td rowSpan={2} className="srms-b">
-              {data.meta.resultStatus ?? '—'}
+              {data.meta.resultStatus ?? (data.overall.percentage >= data.passPercentage ? 'Pass' : 'Fail')}
             </td>
           </tr>
           <tr className="srms-data-row">

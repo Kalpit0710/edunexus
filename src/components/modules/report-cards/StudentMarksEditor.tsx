@@ -151,7 +151,7 @@ export function StudentMarksEditor({ studentId, backHref }: StudentMarksEditorPr
     if (!cfg || !sm) return null
     return isLower
       ? calcLowerSubjectResult(toMap(sm.term1), toMap(sm.term2), cfg.components)
-      : calcStandardSubjectResult(toMap(sm.term1), toMap(sm.term2), cfg.maxMarks)
+      : calcStandardSubjectResult(toMap(sm.term1), toMap(sm.term2), cfg.maxMarks, data!.grandTotalRule)
   }
 
   const overall = calcOverallResult(
@@ -285,14 +285,14 @@ export function StudentMarksEditor({ studentId, backHref }: StudentMarksEditorPr
                 ? cfg.components.map((c) => ({ key: c.name, label: c.name, max: c.maxMarks }))
                 : STANDARD_TERM1_FIELDS.map((f) => ({
                     key: f.key,
-                    label: f.label,
+                    label: data.componentLabels[f.key] ?? f.label,
                     max: (cfg.maxMarks.term1 as unknown as Record<string, number>)[f.key],
                   }))
               const t2Fields = isLower
                 ? cfg.components.map((c) => ({ key: c.name, label: c.name, max: c.maxMarks }))
                 : STANDARD_TERM2_FIELDS.map((f) => ({
                     key: f.key,
-                    label: f.label,
+                    label: data.componentLabels[f.key] ?? f.label,
                     max: (cfg.maxMarks.term2 as unknown as Record<string, number>)[f.key],
                   }))
               return (
@@ -361,7 +361,7 @@ export function StudentMarksEditor({ studentId, backHref }: StudentMarksEditorPr
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">—</SelectItem>
-                    {CO_SCHOLASTIC_GRADES.map((g) => (
+                    {(data.coScholasticGrades ?? CO_SCHOLASTIC_GRADES).map((g) => (
                       <SelectItem key={g} value={g}>
                         {g}
                       </SelectItem>
@@ -408,7 +408,7 @@ export function StudentMarksEditor({ studentId, backHref }: StudentMarksEditorPr
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none__">—</SelectItem>
-                {RESULT_STATUSES.map((s) => (
+                {(data.resultStatuses ?? RESULT_STATUSES).map((s) => (
                   <SelectItem key={s} value={s}>
                     {s}
                   </SelectItem>

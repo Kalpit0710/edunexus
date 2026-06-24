@@ -11,10 +11,11 @@ import { planHasFeature, type Feature } from '@/lib/plan-features'
 export function usePlan() {
   const school = useAuthStore((s) => s.school)
   const plan: SubscriptionPlan = school?.subscription_plan ?? 'basic'
+  const disabled = school?.disabled_features ?? []
 
   return {
     plan,
     status: school?.subscription_status ?? 'active',
-    hasFeature: (feature: Feature) => planHasFeature(plan, feature),
+    hasFeature: (feature: Feature) => planHasFeature(plan, feature) && !disabled.includes(feature),
   }
 }
