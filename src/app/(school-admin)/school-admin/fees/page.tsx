@@ -17,6 +17,7 @@ import {
   type AcademicYearRow,
 } from './actions'
 import { getClasses } from '../settings/actions'
+import { usePermissions } from '@/hooks/use-permissions'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,6 +33,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 export default function FeesPage() {
   const { school } = useAuthStore()
+  const canCollect = usePermissions().can('fees.collect')
+  const canConfigure = usePermissions().can('fees.configure')
   const [categories, setCategories] = useState<FeeCategoryRow[]>([])
   const [structures, setStructures] = useState<FeeStructureRow[]>([])
   const [deletedStructures, setDeletedStructures] = useState<{ id: string; label: string; deletedAt: string }[]>([])
@@ -162,7 +165,7 @@ export default function FeesPage() {
           <p className="text-muted-foreground text-sm">Manage fee categories and class-wise fee structures</p>
         </div>
         <Link href={"/school-admin/fees/collect" as any}>
-          <Button>
+          <Button disabled={!canCollect}>
             <CircleDollarSign className="mr-2 h-4 w-4" />
             Collect Fee
           </Button>
@@ -193,7 +196,7 @@ export default function FeesPage() {
                 size="sm"
                 className="w-full"
                 onClick={handleAddCategory}
-                disabled={addingCat || !newCatName.trim()}
+                disabled={addingCat || !newCatName.trim() || !canConfigure}
               >
                 {addingCat ? (
                   <Spinner size="sm" className="mr-1 border-primary-foreground" />
@@ -296,7 +299,7 @@ export default function FeesPage() {
                 <Button
                   size="sm"
                   onClick={handleAddStructure}
-                  disabled={addingStruct || !newClassId || !newCatId || !newAmount}
+                  disabled={addingStruct || !newClassId || !newCatId || !newAmount || !canConfigure}
                 >
                   {addingStruct ? (
                     <Spinner size="sm" className="mr-1 border-primary-foreground" />

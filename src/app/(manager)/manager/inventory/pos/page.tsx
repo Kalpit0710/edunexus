@@ -13,12 +13,14 @@ import Link from 'next/link'
 import { getInventoryItems, createInventorySale, type InventorySaleInput } from '../actions'
 import { getStudents } from '@/app/(school-admin)/school-admin/students/actions'
 import { formatCurrency } from '@/lib/utils'
+import { usePermissions } from '@/hooks/use-permissions'
 import { type InventoryCartItem } from '@/lib/inventory-utils'
 
 type PaymentMode = InventorySaleInput['paymentMode']
 
 export default function POSPage() {
     const { school } = useAuthStore()
+    const canSell = usePermissions().can('inventory.manage')
 
     const [items, setItems] = useState<any[]>([])
     const [students, setStudents] = useState<any[]>([])
@@ -381,7 +383,7 @@ export default function POSPage() {
 
                         <Button
                             className="w-full h-14 text-lg font-bold shadow-lg hover:shadow-xl transition-all"
-                            disabled={cart.length === 0 || processing}
+                            disabled={cart.length === 0 || processing || !canSell}
                             onClick={handleCheckout}
                         >
                             {processing ? "Processing Payment..." : "Charge & Print Bill"}

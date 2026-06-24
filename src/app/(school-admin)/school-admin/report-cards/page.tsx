@@ -40,6 +40,7 @@ import {
 } from '@/components/ui/select'
 import { InlineLoader } from '@/components/loaders/page-loaders'
 import { DataLoadError } from '@/components/shared/DataLoadError'
+import { usePermissions } from '@/hooks/use-permissions'
 import {
   FileText,
   Pencil,
@@ -367,6 +368,7 @@ function SubjectConfigCard({
   const [maxMarks, setMaxMarks] = useState<StandardMaxMarks>(config.maxMarks)
   const [components, setComponents] = useState<LowerComponent[]>(config.components)
   const [saving, setSaving] = useState(false)
+  const canConfigure = usePermissions().can('exams.configure')
 
   function setStd(term: 'term1' | 'term2', key: string, value: string) {
     setMaxMarks((prev) => ({
@@ -394,7 +396,7 @@ function SubjectConfigCard({
           {config.subjectName}
           {config.subjectCode && <span className="ml-2 text-xs text-zinc-500">{config.subjectCode}</span>}
         </p>
-        <Button size="sm" loading={saving} loadingText="Saving…" onClick={save}>
+        <Button size="sm" loading={saving} loadingText="Saving…" onClick={save} disabled={!canConfigure}>
           <Save className="mr-1 h-3.5 w-3.5" /> Save
         </Button>
       </div>
@@ -494,6 +496,7 @@ function PublishTab({
   const [loading, setLoading] = useState(false)
   const [busy, setBusy] = useState(false)
   const [resultVisible, setResultVisible] = useState(true)
+  const canPublish = usePermissions().can('exams.publish')
 
   const load = useCallback(async () => {
     if (!schoolId || !classMeta.id) return
@@ -565,15 +568,15 @@ function PublishTab({
       </label>
 
       {status === 'locked' ? (
-        <Button variant="outline" loading={busy} loadingText="Working…" onClick={unlock}>
+        <Button variant="outline" loading={busy} loadingText="Working…" onClick={unlock} disabled={!canPublish}>
           <Unlock className="mr-1.5 h-4 w-4" /> Unlock (hide &amp; allow edits)
         </Button>
       ) : (
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" loading={busy} loadingText="Working…" onClick={() => publish(false)}>
+          <Button variant="outline" loading={busy} loadingText="Working…" onClick={() => publish(false)} disabled={!canPublish}>
             <Eye className="mr-1.5 h-4 w-4" /> Publish (keep editable)
           </Button>
-          <Button loading={busy} loadingText="Working…" onClick={() => publish(true)}>
+          <Button loading={busy} loadingText="Working…" onClick={() => publish(true)} disabled={!canPublish}>
             <Lock className="mr-1.5 h-4 w-4" /> Publish &amp; lock
           </Button>
         </div>

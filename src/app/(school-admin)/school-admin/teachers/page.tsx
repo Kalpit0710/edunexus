@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
+import { usePermissions } from '@/hooks/use-permissions'
 import { getTeachers, toggleTeacherStatus, type TeacherRow } from './actions'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/utils'
@@ -19,6 +20,7 @@ type StatusFilter = 'all' | 'active' | 'inactive'
 
 export default function TeachersPage() {
   const { school } = useAuthStore()
+  const { can } = usePermissions()
   const [teachers, setTeachers] = useState<TeacherRow[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -93,12 +95,14 @@ export default function TeachersPage() {
             Manage teachers, assign classes, and control portal access.
           </p>
         </div>
-        <Link href={'/school-admin/teachers/new' as any}>
-          <Button>
-            <UserPlus className="w-4 h-4 mr-2" />
-            Add Teacher
-          </Button>
-        </Link>
+        {can('teachers.manage') && (
+          <Link href={'/school-admin/teachers/new' as any}>
+            <Button>
+              <UserPlus className="w-4 h-4 mr-2" />
+              Add Teacher
+            </Button>
+          </Link>
+        )}
       </div>
 
       {/* Filters */}
@@ -215,30 +219,32 @@ export default function TeachersPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-primary"
+                            className={`h-8 w-8 text-muted-foreground hover:text-primary${can('teachers.manage') ? '' : ' hidden'}`}
                             title="Edit"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
                         </Link>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleToggleStatus(teacher)}
-                          disabled={togglingId === teacher.id}
-                          className={`h-8 w-8 disabled:opacity-50 ${
-                            teacher.is_active
-                              ? 'text-muted-foreground hover:text-red-500'
-                              : 'text-muted-foreground hover:text-green-600'
-                          }`}
-                          title={teacher.is_active ? 'Deactivate' : 'Activate'}
-                        >
-                          {togglingId === teacher.id ? (
-                            <Spinner size="sm" />
-                          ) : (
-                            <Power className="h-4 w-4" />
-                          )}
-                        </Button>
+                        {can('teachers.manage') && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleToggleStatus(teacher)}
+                            disabled={togglingId === teacher.id}
+                            className={`h-8 w-8 disabled:opacity-50 ${
+                              teacher.is_active
+                                ? 'text-muted-foreground hover:text-red-500'
+                                : 'text-muted-foreground hover:text-green-600'
+                            }`}
+                            title={teacher.is_active ? 'Deactivate' : 'Activate'}
+                          >
+                            {togglingId === teacher.id ? (
+                              <Spinner size="sm" />
+                            ) : (
+                              <Power className="h-4 w-4" />
+                            )}
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   ))}

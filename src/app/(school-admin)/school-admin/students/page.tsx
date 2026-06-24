@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
+import { usePermissions } from '@/hooks/use-permissions'
 import { getStudents, deleteStudent, bulkCreateStudents } from './actions'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/utils'
@@ -16,6 +17,7 @@ import * as xlsx from 'xlsx'
 
 export default function StudentsPage() {
   const { school } = useAuthStore()
+  const { can } = usePermissions()
   const [students, setStudents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -184,11 +186,13 @@ export default function StudentsPage() {
           <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={loading}>
             <Upload className="w-4 h-4 mr-2" /> Import
           </Button>
-          <Link href={"/school-admin/students/new" as any}>
-            <Button>
-              <UserPlus className="w-4 h-4 mr-2" /> Add Student
-            </Button>
-          </Link>
+          {can('students.create') && (
+            <Link href={"/school-admin/students/new" as any}>
+              <Button>
+                <UserPlus className="w-4 h-4 mr-2" /> Add Student
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
 
@@ -237,25 +241,29 @@ export default function StudentsPage() {
                       </td>
                       <td className="px-6 py-4 capitalize">{student.gender || '-'}</td>
                       <td className="px-6 py-4 text-right space-x-2">
-                        <Link href={`/school-admin/students/${student.id}/edit` as any}>
-                          <Button variant="ghost" size="icon" aria-label="Edit student" className="h-8 w-8 text-muted-foreground hover:text-primary">
-                            <Edit className="h-4 w-4" />
+                        {can('students.edit') && (
+                          <Link href={`/school-admin/students/${student.id}/edit` as any}>
+                            <Button variant="ghost" size="icon" aria-label="Edit student" className="h-8 w-8 text-muted-foreground hover:text-primary">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                        )}
+                        {can('students.delete') && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Delete student"
+                            onClick={() => handleDelete(student.id)}
+                            disabled={deletingId === student.id}
+                            className="h-8 w-8 text-muted-foreground hover:text-red-600 disabled:opacity-50"
+                          >
+                            {deletingId === student.id ? (
+                              <Spinner size="sm" className="border-red-500" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
                           </Button>
-                        </Link>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label="Delete student"
-                          onClick={() => handleDelete(student.id)}
-                          disabled={deletingId === student.id}
-                          className="h-8 w-8 text-muted-foreground hover:text-red-600 disabled:opacity-50"
-                        >
-                          {deletingId === student.id ? (
-                            <Spinner size="sm" className="border-red-500" />
-                          ) : (
-                            <Trash2 className="h-4 w-4" />
-                          )}
-                        </Button>
+                        )}
                       </td>
                     </tr>
                   ))}

@@ -40,6 +40,7 @@ import {
 } from '@/components/ui/select'
 import { InlineLoader } from '@/components/loaders/page-loaders'
 import { DataLoadError } from '@/components/shared/DataLoadError'
+import { usePermissions } from '@/hooks/use-permissions'
 import { ArrowLeft, Save, Printer, Lock } from 'lucide-react'
 
 type SubjectMarks = Record<string, { term1: Record<string, string>; term2: Record<string, string> }>
@@ -53,6 +54,8 @@ export interface StudentMarksEditorProps {
 export function StudentMarksEditor({ studentId, backHref }: StudentMarksEditorProps) {
   const { school } = useAuthStore()
   const schoolId = school?.id ?? ''
+  const { can } = usePermissions()
+  const canEdit = can('exams.enter_marks')
 
   const [data, setData] = useState<StudentReportData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -259,7 +262,7 @@ export function StudentMarksEditor({ studentId, backHref }: StudentMarksEditorPr
               <Printer className="mr-1.5 h-4 w-4" /> Print
             </Button>
           </Link>
-          <Button onClick={saveAll} loading={saving} loadingText="Saving…" disabled={locked}>
+          <Button onClick={saveAll} loading={saving} loadingText="Saving…" disabled={locked || !canEdit}>
             <Save className="mr-1.5 h-4 w-4" /> Save report
           </Button>
         </div>

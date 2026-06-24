@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
+import { usePermissions } from '@/hooks/use-permissions'
 import { getInventoryItems } from './actions'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/utils'
@@ -26,6 +27,7 @@ const categories: { label: string, value: InventoryCategory }[] = [
 
 export default function InventoryPage() {
     const { school } = useAuthStore()
+    const canManage = usePermissions().can('inventory.manage')
     const [items, setItems] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
 
@@ -87,11 +89,13 @@ export default function InventoryPage() {
                             <ShoppingCart className="w-4 h-4 mr-2" /> POS Sale
                         </Button>
                     </Link>
-                    <Link href={"/manager/inventory/new" as any}>
-                        <Button className="shadow-soft hover:scale-105 transition-transform">
-                            <Plus className="w-4 h-4 mr-2" /> Add Item
-                        </Button>
-                    </Link>
+                    {canManage && (
+                        <Link href={"/manager/inventory/new" as any}>
+                            <Button className="shadow-soft hover:scale-105 transition-transform">
+                                <Plus className="w-4 h-4 mr-2" /> Add Item
+                            </Button>
+                        </Link>
+                    )}
                 </div>
             </div>
 
@@ -142,7 +146,7 @@ export default function InventoryPage() {
                             <p className="text-sm text-muted-foreground mb-4">
                                 {items.length === 0 ? 'Add your first inventory item to get started.' : 'Try adjusting your search filters.'}
                             </p>
-                            {items.length === 0 && (
+                            {items.length === 0 && canManage && (
                                 <Link href={"/manager/inventory/new" as any}>
                                     <Button variant="outline"><Plus className="w-4 h-4 mr-2" /> Add Item</Button>
                                 </Link>
