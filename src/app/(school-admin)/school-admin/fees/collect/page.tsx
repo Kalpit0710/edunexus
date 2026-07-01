@@ -231,20 +231,59 @@ function CollectFeePageContent() {
   }
 
   return (
-    <div className={`p-6 max-w-2xl mx-auto w-full ${student ? 'space-y-6' : 'flex min-h-[calc(100vh-6rem)] flex-col justify-center space-y-6'}`}>
-      <div>
-        <Button variant="ghost" size="sm" className="gap-1 -ml-2 mb-2 w-fit text-muted-foreground" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4" /> Back
-        </Button>
-        <h1 className="text-2xl font-bold">Collect Fee</h1>
-        <p className="text-muted-foreground text-sm">Search student → select items → record payment</p>
-      </div>
+    <div className={`relative w-full ${student ? 'p-6 max-w-2xl mx-auto space-y-6' : 'flex min-h-[calc(100vh-6rem)] items-center justify-center p-6'}`}>
+      {!student && (
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          {/* Flowey abstract background */}
+          <div className="absolute top-[-10%] right-[-5%] h-[500px] w-[500px] rounded-full bg-blue-600/10 blur-[120px] mix-blend-screen" />
+          <div className="absolute bottom-[-10%] left-[-10%] h-[600px] w-[600px] rounded-full bg-emerald-500/10 blur-[120px] mix-blend-screen" />
+          <div className="absolute top-[20%] left-[20%] h-[400px] w-[400px] rounded-full bg-purple-500/5 blur-[100px] mix-blend-screen" />
+          {/* Subtle grid */}
+          <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`, backgroundSize: '48px 48px' }} />
+        </div>
+      )}
+
+      <div className={`relative z-10 w-full max-w-2xl ${student ? '' : 'space-y-8'}`}>
+        {student ? (
+          <div>
+            <Button variant="ghost" size="sm" className="gap-1 -ml-2 mb-2 w-fit text-muted-foreground" onClick={() => {
+              setStudent(null)
+              setStructures([])
+              setSelectedItems({})
+              setDiscount('0')
+              setPaymentMode('cash')
+              setReference('')
+              setRemarks('')
+              setPaidAmount('')
+              setSearchInput('')
+            }}>
+              <ArrowLeft className="h-4 w-4" /> Back
+            </Button>
+            <h1 className="text-2xl font-bold">Collect Fee</h1>
+            <p className="text-muted-foreground text-sm">Search student → select items → record payment</p>
+          </div>
+        ) : (
+          <div className="text-center relative">
+            <Button variant="ghost" size="sm" className="absolute -top-6 -left-4 gap-1 text-muted-foreground" onClick={() => router.back()}>
+              <ArrowLeft className="h-4 w-4" /> Back
+            </Button>
+            <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-tr from-blue-600/20 to-purple-600/20 shadow-inner ring-1 ring-white/10 relative overflow-hidden backdrop-blur-xl">
+              <div className="absolute inset-0 bg-blue-500/10 blur-xl" />
+              <Banknote className="h-10 w-10 text-blue-400 relative z-10" />
+            </div>
+            <h1 className="text-4xl font-extrabold tracking-tight text-white mb-3">Record a Payment</h1>
+            <p className="text-zinc-400/80 text-lg max-w-md mx-auto">
+              Find a student to review their dues, collect a payment, and instantly generate a receipt.
+            </p>
+          </div>
+        )}
 
       {/* ── Step 1: Student Search ── */}
-      <Card>
-        <CardHeader><CardTitle className="text-base flex items-center gap-2"><UserSearch className="w-5 h-5 text-muted-foreground" /> Find Student</CardTitle></CardHeader>
-        <CardContent>
-          <div className="flex gap-2 relative">
+      <div className={student ? '' : 'mx-auto max-w-xl'}>
+        <Card className={`${student ? '' : 'shadow-2xl border-white/[0.08] bg-white/[0.02] backdrop-blur-xl'}`}>
+          {student && <CardHeader><CardTitle className="text-base flex items-center gap-2"><UserSearch className="w-5 h-5 text-muted-foreground" /> Find Student</CardTitle></CardHeader>}
+          <CardContent className={student ? '' : 'p-6'}>
+            <div className="flex gap-2 relative">
             <LiveSearch<FeeStudentResult>
               placeholder="Start typing admission no. or student name…"
               fetcher={studentFetcher}
@@ -287,6 +326,7 @@ function CollectFeePageContent() {
           )}
         </CardContent>
       </Card>
+      </div>
 
       {/* ── Step 2: Fee Items ── */}
       {student && structures.length > 0 && (
@@ -413,6 +453,7 @@ function CollectFeePageContent() {
           </CardContent>
         </Card>
       )}
+      </div>
     </div>
   )
 }

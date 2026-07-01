@@ -316,9 +316,9 @@ export default function POSPage() {
     // ── Header ────────────────────────────────────────────────────────────────
     const header = (
         <div className="flex items-center gap-4">
-            <Link href={"/manager/inventory" as any}>
-                <Button variant="outline" size="icon" aria-label="Go back"><ArrowLeft className="w-4 h-4" /></Button>
-            </Link>
+            <Button variant="outline" size="icon" aria-label="Go back" onClick={resetAll}>
+                <ArrowLeft className="w-4 h-4" />
+            </Button>
             <div>
                 <h2 className="text-2xl font-bold tracking-tight">Bookstore — Point of Sale</h2>
                 <p className="text-sm text-muted-foreground">Sell a class book set or individual items</p>
@@ -329,9 +329,32 @@ export default function POSPage() {
     // ── Stage: START (search only) ────────────────────────────────────────────
     if (stage === 'start') {
         return (
-            <div className="max-w-2xl mx-auto w-full flex min-h-[calc(100vh-6rem)] flex-col justify-center space-y-6">
-                {header}
-                <Card className="shadow-soft">
+            <div className="relative w-full flex min-h-[calc(100vh-6rem)] items-center justify-center p-6">
+                <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                    {/* Flowey abstract background */}
+                    <div className="absolute top-[10%] right-[10%] h-[400px] w-[400px] rounded-full bg-blue-500/10 blur-[100px] mix-blend-screen" />
+                    <div className="absolute bottom-[10%] left-[5%] h-[500px] w-[500px] rounded-full bg-emerald-500/10 blur-[120px] mix-blend-screen" />
+                    <div className="absolute -bottom-[5%] right-[20%] h-[300px] w-[300px] rounded-full bg-purple-500/10 blur-[100px] mix-blend-screen" />
+                    {/* Subtle grid */}
+                    <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`, backgroundSize: '48px 48px' }} />
+                </div>
+
+                <div className="relative z-10 w-full max-w-xl space-y-8">
+                    <div className="text-center relative">
+                        <Link href={"/manager/inventory" as any}>
+                            <Button variant="ghost" size="sm" className="absolute -top-6 -left-4 gap-1 text-muted-foreground"><ArrowLeft className="w-4 h-4" /> Back</Button>
+                        </Link>
+                        <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-tr from-emerald-600/20 to-blue-600/20 shadow-inner ring-1 ring-white/10 relative overflow-hidden backdrop-blur-xl">
+                            <div className="absolute inset-0 bg-emerald-500/10 blur-xl" />
+                            <ShoppingCart className="h-10 w-10 text-emerald-400 relative z-10" />
+                        </div>
+                        <h1 className="text-4xl font-extrabold tracking-tight text-white mb-3">Point of Sale</h1>
+                        <p className="text-zinc-400/80 text-lg max-w-md mx-auto">
+                            Start a new sale by loading a student&apos;s book set or scanning individual items.
+                        </p>
+                    </div>
+
+                    <Card className="shadow-2xl border-white/[0.08] bg-white/[0.02] backdrop-blur-xl">
                     <CardHeader className="pb-2">
                         <div className="flex gap-2">
                             <button
@@ -416,6 +439,7 @@ export default function POSPage() {
                         )}
                     </CardContent>
                 </Card>
+                </div>
             </div>
         )
     }
