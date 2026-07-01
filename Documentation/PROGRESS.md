@@ -38,6 +38,13 @@
 
 ## Completed Tasks
 
+### 2026-06-25 — Photo storage (students/teachers) + fee-reminder rebuild
+- Status: ✅ Code complete; `pnpm type-check` → 0 errors, `pnpm lint` → exit 0 (warnings only), full `pnpm build` → compiled successfully, new unit suite **11 passed**. ⚠️ Migration `20260625000001_photo_storage.sql` must still be applied to remote and `pnpm db:types` re-run to confirm the manual `teachers.photo_url` type edit.
+- **Photo storage (migration `20260625000001_photo_storage.sql`):** idempotently creates public storage buckets `student-photos`, `teacher-photos`, `school-logos`; per-bucket `storage.objects` RLS (public read; tenant-scoped insert/update/delete keyed on the first path segment = `school_id`, with super-admin bypass); `ALTER teachers ADD COLUMN photo_url TEXT` (parity with existing `students.photo_url` / `teachers.signature_url`).
+  - **Teacher photo** wired end-to-end: new `uploadTeacherPhoto` action (uploads to `teacher-photos/${schoolId}/<uuid>.<ext>`, returns public URL), `photo_url` threaded through `createTeacher` / `updateTeacher` and the new + edit teacher forms; teacher profile header renders the photo (avatar-initials fallback).
+  - **Display reuse:** student profile identity card, **report card** print (`ReportCardDocument` shows the student photo beside the details grid via `PrintableReportCard.student.photoUrl`), and the **fee receipt slip** (student photo with school-logo fallback) now all surface the stored photo.
+- **Fee-reminder rebuild (replaces the old dead cron):** `src/lib/fee-reminder-utils.ts` (+ 11 unit tests) — pure helpers `pickReminderRecipient` (primary-with-email wins → first-with-email → null), `formatReminderAmount` (locale currency, floor-at-zero, NaN-safe), `summarizeReminderRun` (sent/skipped/failed tally). `fees/reminder-actions.ts` runs against the real `get_pending_fees` RPC: service-role `dispatchAllFeeReminders()` fan-out over active non-suspended schools (cron) + caller-verified `sendFeeRemindersNow(schoolId)` (admin-gated, **Send Reminders** button on the fees page). New cron route `GET /api/cron/fee-reminders` (CRON_SECRET-gated, allow-listed in `middleware.ts` PUBLIC_ROUTES), mirroring weekly-digest. Reminders dispatch `FeeReminderEmail` via `notify({ event: 'fee_reminder' })`.
+
 ### 2026-06-24 — School Customization & Access Control epic (per-school control of all functionality)
 - Status: ✅ Completed (4 migrations applied to remote, HTTP 201; `pnpm type-check`/`lint`/`build` all green). Gives each school deep, self-service control over report cards, locale, and who-can-do-what — defaults preserve prior behavior so existing schools are unaffected.
 - **Result/fee guardrail fixes (migration `20260624000001_report_signatures_fee_lock.sql`):**

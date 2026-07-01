@@ -31,6 +31,7 @@ export interface TeacherRow {
   qualification: string | null
   specialization: string | null
   signature_url: string | null
+  photo_url: string | null
   join_date: string
   is_active: boolean
   created_at: string
@@ -54,6 +55,7 @@ export interface CreateTeacherPayload {
   qualification?: string
   specialization?: string
   join_date?: string
+  photo_url?: string
 }
 
 export interface UpdateTeacherPayload {
@@ -63,6 +65,7 @@ export interface UpdateTeacherPayload {
   qualification?: string
   specialization?: string
   signature_url?: string
+  photo_url?: string
   join_date?: string
 }
 
@@ -224,6 +227,7 @@ export async function createTeacher(
         employee_id: payload.employee_id ?? null,
         qualification: payload.qualification ?? null,
         specialization: payload.specialization ?? null,
+        photo_url: payload.photo_url || null,
         join_date: payload.join_date ?? schoolToday(),
         is_active: true,
       })
@@ -303,6 +307,7 @@ export async function updateTeacher(
   if (payload.qualification !== undefined) teacherUpdate.qualification = payload.qualification
   if (payload.specialization !== undefined) teacherUpdate.specialization = payload.specialization
   if (payload.signature_url !== undefined) teacherUpdate.signature_url = payload.signature_url || null
+  if (payload.photo_url !== undefined) teacherUpdate.photo_url = payload.photo_url || null
   if (payload.join_date) teacherUpdate.join_date = payload.join_date
 
   if (Object.keys(teacherUpdate).length > 0) {
@@ -365,4 +370,38 @@ export async function removeAssignment(assignmentId: string): Promise<void> {
     .delete()
     .eq('id', assignmentId)
   if (error) throw new Error(error.message)
+}
+
+/**
+ * Uploads a teacher profile photo to the `teacher-photos` bucket under the
+ * school's folder and returns its public URL. The session client enforces the
+ * tenant-scoped storage write policy (member may only write within their own
+ * school's folder). Mirrors `uploadStudentPhoto`.
+ */
+export async function uploadTeacherPhoto(formData: FormData): Promise<string> {
+  const file = formData.get('file') as File
+  const schoolId = formData.get('schoolId') as string
+  if (!file || !schoolId) throw new Error('Missing file or schoolId')
+
+  const supabase = await getSupabase()
+
+  const fileExt = file.name.split('.').pop()
+  const fileName = `${schoolId}/${crypto.randomUUID()}.${fileExt}`
+
+  const arrayBuffer = await file.arrayBuffer()
+  const buffer = Buffer.from(arrayBuffer)
+
+  const { error } = await supabase.storage
+    .from('teacher-photos')
+    .upload(fileName, buffer, {
+      contentType: file.type,
+      upsert: false,
+    })
+
+  if (error) {
+    throw new Error('We could not upload the photo. Please try again.')
+  }
+
+  const { data: urlData } = supabase.storage.from('teacher-photos').getPublicUrl(fileName)
+  return urlData.publicUrl
 }

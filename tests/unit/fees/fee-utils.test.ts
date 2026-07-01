@@ -10,6 +10,8 @@ import {
   validateFeePayload,
   validateCollectFeeInput,
   MAX_FEE_TRANSACTION_AMOUNT,
+  isReferenceRequired,
+  REFERENCE_REQUIRED_MODES,
   formatCurrency,
   buildReceiptSummary,
   PAYMENT_MODE_LABELS,
@@ -249,5 +251,47 @@ describe('validateCollectFeeInput() (Chunk 2.2)', () => {
 
   it('rejects a malformed student id', () => {
     expect(validateCollectFeeInput({ ...validInput, studentId: 'not-a-uuid' })).toMatch(/student/i)
+  })
+
+  it('requires a reference number for non-cash modes', () => {
+    for (const mode of REFERENCE_REQUIRED_MODES) {
+      expect(validateCollectFeeInput({ ...validInput, paymentMode: mode })).toMatch(
+        /reference number is required/i,
+      )
+    }
+  })
+
+  it('accepts a non-cash payment when a reference number is provided', () => {
+    expect(
+      validateCollectFeeInput({ ...validInput, paymentMode: 'upi', referenceNumber: 'UPI-12345' }),
+    ).toBeNull()
+  })
+
+  it('treats a whitespace-only reference as missing for non-cash modes', () => {
+    expect(
+      validateCollectFeeInput({ ...validInput, paymentMode: 'cheque', referenceNumber: '   ' }),
+    ).toMatch(/reference number is required/i)
+  })
+
+  it('does not require a reference number for cash', () => {
+    expect(validateCollectFeeInput({ ...validInput, paymentMode: 'cash' })).toBeNull()
+  })
+})
+
+// ── isReferenceRequired ─────────────────────────────────────────────
+
+describe('isReferenceRequired()', () => {
+  it('is false only for cash', () => {
+    expect(isReferenceRequired('cash')).toBe(false)
+  })
+
+  it('is true for every non-cash mode', () => {
+    for (const mode of REFERENCE_REQUIRED_MODES) {
+      expect(isReferenceRequired(mode)).toBe(true)
+    }
+  })
+
+  it('does not include cash in the required set', () => {
+    expect(REFERENCE_REQUIRED_MODES).not.toContain('cash')
   })
 })

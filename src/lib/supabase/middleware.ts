@@ -18,20 +18,31 @@ const ROLE_PREFIXES: { prefix: string; roles: string[] }[] = [
   { prefix: '/super-admin', roles: ['super_admin'] },
   { prefix: '/school-admin', roles: ['school_admin'] },
   { prefix: '/teacher', roles: ['teacher'] },
-  { prefix: '/manager', roles: ['manager', 'cashier'] },
+  // School admins share the manager surface (inventory + bookstore POS).
+  { prefix: '/manager', roles: ['manager', 'cashier', 'school_admin'] },
   { prefix: '/parent', roles: ['parent'] },
 ]
+
+/**
+ * School-admin sub-surfaces that managers/cashiers may also use: student
+ * records and fee collection / receipts. Gated precisely in server actions.
+ */
+const MANAGER_SHARED_PREFIXES = ['/school-admin/students', '/school-admin/fees']
 
 /** Routes that don't require authentication */
 const PUBLIC_ROUTES = [
   '/',
   '/login',
   '/create-account',
+  '/register-school',
   '/reset-password',
   '/auth/callback',
   '/api/auth/parent-register',
+  '/api/auth/school-register',
   '/api/health',
   '/api/cron/weekly-digest',
+  '/api/cron/fee-reminders',
+  '/api/debug/sentry',
 ]
 
 export async function updateSession(request: NextRequest) {
@@ -91,9 +102,19 @@ export async function updateSession(request: NextRequest) {
       'school_admin'
     const match = ROLE_PREFIXES.find((r) => pathname.startsWith(r.prefix))
     if (match && !match.roles.includes(role)) {
-      const url = request.nextUrl.clone()
-      url.pathname = ROLE_ROUTES[role] ?? '/login'
-      return NextResponse.redirect(url)
+      // Managers/cashiers share specific school-admin surfaces: viewing/editing
+      // students and collecting fees (issuing receipts). Precise capability
+      // gating still happens in the server actions via requirePermission and RLS.
+      const sharedManagerOk =
+        (role === 'manager' || role === 'cashier') &&
+        MANAGER_SHARED_PREFIXES.some(
+          (p) => pathname === p || pathname.startsWith(p + '/'),
+        )
+      if (!sharedManagerOk) {
+        const url = request.nextUrl.clone()
+        url.pathname = ROLE_ROUTES[role] ?? '/login'
+        return NextResponse.redirect(url)
+      }
     }
 
     // Subscription lockout (B0.1): block a school whose subscription is

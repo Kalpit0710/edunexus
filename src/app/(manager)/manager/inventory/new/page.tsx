@@ -11,7 +11,8 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { ArrowLeft, Save } from 'lucide-react'
 import Link from 'next/link'
-import { createInventoryItem, type InventoryItemInput } from '../actions'
+import { useEffect } from 'react'
+import { createInventoryItem, getPosClasses, type InventoryItemInput, type PosClass } from '../actions'
 import type { InventoryCategory } from '@/lib/inventory-utils'
 
 const categories: { label: string, value: InventoryCategory }[] = [
@@ -27,6 +28,7 @@ export default function NewInventoryItemPage() {
     const router = useRouter()
     const { school } = useAuthStore()
     const [loading, setLoading] = useState(false)
+    const [classes, setClasses] = useState<PosClass[]>([])
 
     const [formData, setFormData] = useState<Partial<InventoryItemInput>>({
         name: '',
@@ -36,8 +38,14 @@ export default function NewInventoryItemPage() {
         unitPrice: 0,
         costPrice: 0,
         stockQuantity: 0,
-        lowStockAlert: 10
+        lowStockAlert: 10,
+        classId: null,
     })
+
+    useEffect(() => {
+        if (!school?.id) return
+        getPosClasses(school.id).then(setClasses).catch(() => {})
+    }, [school?.id])
 
     const updateForm = (field: keyof InventoryItemInput, value: any) => {
         setFormData(prev => ({ ...prev, [field]: value }))
@@ -135,6 +143,20 @@ export default function NewInventoryItemPage() {
                                 value={formData.sku}
                                 onChange={e => updateForm('sku', e.target.value)}
                             />
+                        </div>
+
+                        <div className="space-y-2 md:col-span-2">
+                            <Label htmlFor="item-class">Class (for book sets)</Label>
+                            <select
+                                id="item-class"
+                                className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                value={formData.classId ?? ''}
+                                onChange={e => updateForm('classId', e.target.value || null)}
+                            >
+                                <option value="">General / All classes</option>
+                                {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            </select>
+                            <p className="text-xs text-muted-foreground mt-1">Tag books to a class so the POS can pull the whole set. Leave as General for items like stationery.</p>
                         </div>
 
                         <div className="space-y-2 md:col-span-2">

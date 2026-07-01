@@ -17,6 +17,7 @@ import {
   type AcademicYearRow,
 } from './actions'
 import { getClasses } from '../settings/actions'
+import { sendFeeRemindersNow } from './reminder-actions'
 import { usePermissions } from '@/hooks/use-permissions'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -26,7 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/utils'
-import { Plus, Trash2, Power, CircleDollarSign, RotateCcw } from 'lucide-react'
+import { Plus, Trash2, Power, CircleDollarSign, RotateCcw, Mail } from 'lucide-react'
 import Link from 'next/link'
 import { Spinner } from '@/components/ui/spinner'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -60,6 +61,34 @@ export default function FeesPage() {
   const [newAmount, setNewAmount] = useState('')
   const [newDueDate, setNewDueDate] = useState('')
   const [addingStruct, setAddingStruct] = useState(false)
+
+  // Fee reminders
+  const [sendingReminders, setSendingReminders] = useState(false)
+
+  const handleSendReminders = async () => {
+    if (!school?.id) return
+    setSendingReminders(true)
+    try {
+      const res = await sendFeeRemindersNow(school.id)
+      if (!res.success) {
+        toast.error(res.error ?? 'Could not send reminders.')
+        return
+      }
+      if (res.sent === 0 && res.skipped === 0 && res.failed === 0) {
+        toast.success('No outstanding fees — nothing to remind.')
+      } else {
+        toast.success(
+          `Reminders sent: ${res.sent}` +
+            (res.skipped ? ` · ${res.skipped} skipped (no parent email)` : '') +
+            (res.failed ? ` · ${res.failed} failed` : ''),
+        )
+      }
+    } catch (e) {
+      toast.error(getErrorMessage(e))
+    } finally {
+      setSendingReminders(false)
+    }
+  }
 
   const load = useCallback(async (yearId?: string) => {
     if (!school?.id) return
@@ -164,12 +193,22 @@ export default function FeesPage() {
           <h1 className="text-2xl font-bold">Fee &amp; Billing</h1>
           <p className="text-muted-foreground text-sm">Manage fee categories and class-wise fee structures</p>
         </div>
-        <Link href={"/school-admin/fees/collect" as any}>
-          <Button disabled={!canCollect}>
-            <CircleDollarSign className="mr-2 h-4 w-4" />
-            Collect Fee
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            disabled={!canCollect || sendingReminders}
+            onClick={handleSendReminders}
+          >
+            <Mail className="mr-2 h-4 w-4" />
+            {sendingReminders ? 'Sending…' : 'Send Reminders'}
           </Button>
-        </Link>
+          <Link href={"/school-admin/fees/collect" as any}>
+            <Button disabled={!canCollect}>
+              <CircleDollarSign className="mr-2 h-4 w-4" />
+              Collect Fee
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -1,16 +1,18 @@
 'use client'
 
 import { useAuthStore } from '@/stores/auth.store'
-import { Suspense, useState, useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { Suspense, useState, useEffect, useCallback } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
   getStudentFeeStructure,
   collectFeePayment,
   getNextReceiptSeq,
   searchStudentForFee,
+  searchStudentsForFeeLive,
   type FeeStructureRow,
+  type FeeStudentResult,
 } from '../actions'
-import { generateReceiptNumber } from '@/lib/fee-utils'
+import { generateReceiptNumber, isReferenceRequired } from '@/lib/fee-utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,8 +23,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/utils'
-import { Search, PrinterIcon, CheckCircle } from 'lucide-react'
+import { Search, PrinterIcon, CheckCircle, ArrowLeft, GraduationCap, Banknote, UserSearch } from 'lucide-react'
 import Link from 'next/link'
+import { LiveSearch } from '@/components/live-search'
 
 type PaymentMode = 'cash' | 'cheque' | 'upi' | 'neft' | 'card' | 'online'
 
@@ -37,6 +40,7 @@ const PAYMENT_MODES: { value: PaymentMode; label: string }[] = [
 
 function CollectFeePageContent() {
   const { school, user } = useAuthStore()
+  const router = useRouter()
   const searchParams = useSearchParams()
 
   // Step 1: search
@@ -61,9 +65,14 @@ function CollectFeePageContent() {
   useEffect(() => {
     const q = searchParams.get('q')
     if (q) {
-      setSearchInput(q)
+      handleSearch(q)
     }
   }, [searchParams])
+
+  const studentFetcher = useCallback(
+    (q: string) => school?.id ? searchStudentsForFeeLive(school.id, q) : Promise.resolve([]),
+    [school?.id],
+  )
 
   const totalSelected = structures
     .filter(s => selectedItems[s.id])
@@ -72,17 +81,34 @@ function CollectFeePageContent() {
   const changeDue = paymentMode === 'cash' && Number(paidAmount) > netPayable && netPayable > 0
     ? Number(paidAmount) - netPayable
     : 0
+  // Balance left on the selected items after this payment (partial collection).
+  const balanceRemaining = Math.max(0, netPayable - Number(paidAmount || 0))
+  const referenceRequired = isReferenceRequired(paymentMode)
+  const referenceMissing = referenceRequired && !reference.trim()
 
-  const handleSearch = async () => {
-    if (!school?.id || !searchInput.trim()) return
+  const handleSearch = async (overrideQuery?: string) => {
+    const q = overrideQuery ?? searchInput
+    if (!school?.id || !q.trim()) return
     setSearching(true)
     setStudent(null)
     setStructures([])
     setSelectedItems({})
     setReceiptNumber(null)
     try {
-      const found = await searchStudentForFee(school.id, searchInput.trim())
+      const found = await searchStudentForFee(school.id, q.trim())
       if (!found) { toast.error('Student not found'); return }
+      await loadStudentData(found)
+    } catch (e) {
+      toast.error(getErrorMessage(e))
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  const loadStudentData = async (found: FeeStudentResult) => {
+    if (!school?.id) return
+    setSearching(true)
+    try {
       const { structures: structs } = await getStudentFeeStructure(school.id, found.id)
       setStudent(found)
       setStructures(structs)
@@ -105,6 +131,10 @@ function CollectFeePageContent() {
       .map(s => ({ categoryId: s.category_id, amount: Number(s.amount) }))
     if (!items.length) { toast.error('Select at least one fee item'); return }
     if (!Number(paidAmount)) { toast.error('Enter paid amount'); return }
+    if (referenceMissing) {
+      toast.error(`Enter a reference number for ${paymentMode.toUpperCase()} payments`)
+      return
+    }
 
     setSaving(true)
     try {
@@ -136,6 +166,34 @@ function CollectFeePageContent() {
           <CardContent className="pt-8 pb-6 flex flex-col items-center text-center gap-4">
             <CheckCircle className="h-16 w-16 text-green-500" />
             <h2 className="text-xl font-bold">Payment Successful</h2>
+            {/* Student + school identity for the printed slip */}
+            <div className="flex items-center gap-3">
+              {student?.photo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element -- dynamic student photo on receipt
+                <img
+                  src={student.photo_url}
+                  alt={student.full_name}
+                  className="w-14 h-14 rounded-full object-cover border shadow-sm"
+                />
+              ) : school?.logo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element -- dynamic school logo on receipt
+                <img
+                  src={school.logo_url}
+                  alt={school.name}
+                  className="w-14 h-14 rounded-full object-contain border shadow-sm bg-white"
+                />
+              ) : null}
+              {student && (
+                <div className="text-left">
+                  <p className="font-semibold leading-tight">{student.full_name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {student.admission_number}
+                    {student.class_name ? ` · ${student.class_name}` : ''}
+                    {student.section_name ? `-${student.section_name}` : ''}
+                  </p>
+                </div>
+              )}
+            </div>
             <p className="text-muted-foreground">Receipt Number</p>
             <p className="text-3xl font-mono font-bold tracking-widest">{receiptNumber}</p>
             <p className="text-lg font-semibold">
@@ -144,6 +202,11 @@ function CollectFeePageContent() {
             {changeDue > 0 && (
               <div className="text-lg font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg px-4 py-2">
                 💵 Change Due: ₹{changeDue.toLocaleString('en-IN')}
+              </div>
+            )}
+            {balanceRemaining > 0 && (
+              <div className="text-base font-semibold text-amber-600 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-4 py-2">
+                ⚠️ Balance remaining: ₹{balanceRemaining.toLocaleString('en-IN')}
               </div>
             )}
             <div className="flex gap-3">
@@ -168,37 +231,58 @@ function CollectFeePageContent() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-2xl mx-auto">
+    <div className={`p-6 max-w-2xl mx-auto w-full ${student ? 'space-y-6' : 'flex min-h-[calc(100vh-6rem)] flex-col justify-center space-y-6'}`}>
       <div>
+        <Button variant="ghost" size="sm" className="gap-1 -ml-2 mb-2 w-fit text-muted-foreground" onClick={() => router.back()}>
+          <ArrowLeft className="h-4 w-4" /> Back
+        </Button>
         <h1 className="text-2xl font-bold">Collect Fee</h1>
         <p className="text-muted-foreground text-sm">Search student → select items → record payment</p>
       </div>
 
       {/* ── Step 1: Student Search ── */}
       <Card>
-        <CardHeader><CardTitle className="text-base">1. Find Student</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base flex items-center gap-2"><UserSearch className="w-5 h-5 text-muted-foreground" /> Find Student</CardTitle></CardHeader>
         <CardContent>
-          <div className="flex gap-2">
-            <Input
-              placeholder="Admission no. or student name"
-              value={searchInput}
-              onChange={e => setSearchInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleSearch() }}
+          <div className="flex gap-2 relative">
+            <LiveSearch<FeeStudentResult>
+              placeholder="Start typing admission no. or student name…"
+              fetcher={studentFetcher}
+              getKey={(s) => s.id}
+              onSelect={loadStudentData}
+              autoFocus
+              className="flex-1"
+              renderItem={(s) => (
+                <span className="flex flex-col">
+                  <span className="font-medium">{s.full_name}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {s.admission_number}{s.class_name ? ` · ${s.class_name}${s.section_name ? '-' + s.section_name : ''}` : ''}
+                  </span>
+                </span>
+              )}
             />
-            <Button onClick={handleSearch} disabled={searching || !searchInput.trim()}>
-              <Search className="mr-2 h-4 w-4" />
-              {searching ? 'Searching...' : 'Search'}
-            </Button>
           </div>
           {student && (
-            <div className="mt-4 p-3 rounded-lg bg-muted/40 flex items-center justify-between">
-              <div>
-                <p className="font-semibold">{student.full_name}</p>
-                <p className="text-sm text-muted-foreground">
-                  {student.admission_number} · {student.class_name} {student.section_name}
-                </p>
+            <div className="mt-4 p-3 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="shrink-0">
+                  {student.photo_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={student.photo_url} alt={student.full_name} className="w-10 h-10 rounded-full object-cover shadow-sm bg-white" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                      <GraduationCap className="h-5 w-5 text-primary" />
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <p className="font-semibold text-primary">{student.full_name}</p>
+                  <p className="text-sm text-primary/80">
+                    {student.admission_number} <span className="opacity-50 mx-1">•</span> {student.class_name} {student.section_name}
+                  </p>
+                </div>
               </div>
-              <Badge variant="default">Found</Badge>
+              <Badge variant="default" className="bg-primary hover:bg-primary">Selected</Badge>
             </div>
           )}
         </CardContent>
@@ -279,8 +363,22 @@ function CollectFeePageContent() {
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="reference-no">Reference No.</Label>
-                <Input id="reference-no" placeholder="Cheque/UPI ref (optional)" value={reference} onChange={e => setReference(e.target.value)} />
+                <Label htmlFor="reference-no">
+                  Reference No.{referenceRequired && ' *'}
+                </Label>
+                <Input
+                  id="reference-no"
+                  placeholder={referenceRequired ? 'Cheque / UPI / txn ref' : 'Optional'}
+                  value={reference}
+                  onChange={e => setReference(e.target.value)}
+                  aria-invalid={referenceMissing}
+                  className={referenceMissing ? 'border-destructive focus-visible:ring-destructive' : undefined}
+                />
+                {referenceMissing && (
+                  <p className="text-xs text-destructive">
+                    Required for {PAYMENT_MODES.find(m => m.value === paymentMode)?.label} payments.
+                  </p>
+                )}
               </div>
             </div>
             <div className="space-y-1">
@@ -298,11 +396,17 @@ function CollectFeePageContent() {
                 <span className="font-bold">₹{changeDue.toLocaleString('en-IN')}</span>
               </div>
             )}
+            {balanceRemaining > 0 && (
+              <div className="flex items-center justify-between text-base text-amber-600 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-4 py-2">
+                <span className="font-medium">⚠️ Partial — Balance Remaining</span>
+                <span className="font-bold">₹{balanceRemaining.toLocaleString('en-IN')}</span>
+              </div>
+            )}
             <Button
               className="w-full"
               size="lg"
               onClick={handleCollect}
-              disabled={saving || !paidAmount || !Number(paidAmount)}
+              disabled={saving || !paidAmount || !Number(paidAmount) || referenceMissing}
             >
               {saving ? 'Recording...' : 'Collect & Generate Receipt'}
             </Button>

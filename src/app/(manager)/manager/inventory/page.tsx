@@ -3,12 +3,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
 import { usePermissions } from '@/hooks/use-permissions'
-import { getInventoryItems } from './actions'
+import { getInventoryItems, getPosClasses, type PosClass } from './actions'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Plus, Search, ShoppingCart, Settings2, Package, Tag, Edit, AlertCircle } from 'lucide-react'
+import { Plus, Search, ShoppingCart, Settings2, Package, Tag, Edit, AlertCircle, Upload } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import Link from 'next/link'
@@ -34,7 +34,16 @@ export default function InventoryPage() {
     // Filters
     const [search, setSearch] = useState('')
     const [selectedCategory, setSelectedCategory] = useState<string>('all')
+    const [selectedClass, setSelectedClass] = useState<string>('all')
     const [activeFilter, setActiveFilter] = useState<string>('active')
+    const [classes, setClasses] = useState<PosClass[]>([])
+
+    useEffect(() => {
+        if (!school?.id) return
+        getPosClasses(school.id).then(setClasses).catch(() => {})
+    }, [school?.id])
+
+    const classNameById = new Map(classes.map(c => [c.id, c.name]))
 
     const fetchItems = useCallback(async () => {
         if (!school?.id) return
@@ -60,6 +69,8 @@ export default function InventoryPage() {
 
     const filteredItems = items.filter(i => {
         if (selectedCategory !== 'all' && i.category !== selectedCategory) return false
+        if (selectedClass === 'general' && i.class_id) return false
+        if (selectedClass !== 'all' && selectedClass !== 'general' && i.class_id !== selectedClass) return false
 
         if (search) {
             const term = search.toLowerCase()
@@ -90,6 +101,13 @@ export default function InventoryPage() {
                         </Button>
                     </Link>
                     {canManage && (
+                        <Link href={"/manager/inventory/import" as any}>
+                            <Button variant="outline" className="shadow-soft hover:scale-105 transition-transform">
+                                <Upload className="w-4 h-4 mr-2" /> Import
+                            </Button>
+                        </Link>
+                    )}
+                    {canManage && (
                         <Link href={"/manager/inventory/new" as any}>
                             <Button className="shadow-soft hover:scale-105 transition-transform">
                                 <Plus className="w-4 h-4 mr-2" /> Add Item
@@ -119,6 +137,19 @@ export default function InventoryPage() {
                                 <SelectItem value="all">All Categories</SelectItem>
                                 {categories.map(c => (
                                     <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
+                        <Select value={selectedClass} onValueChange={setSelectedClass}>
+                            <SelectTrigger className="w-[150px] h-9">
+                                <SelectValue placeholder="All Classes" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Classes</SelectItem>
+                                <SelectItem value="general">General (no class)</SelectItem>
+                                {classes.map(c => (
+                                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
@@ -159,6 +190,7 @@ export default function InventoryPage() {
                                     <tr>
                                         <th className="px-6 py-3 font-medium">Item Details</th>
                                         <th className="px-6 py-3 font-medium">Category</th>
+                                        <th className="px-6 py-3 font-medium">Class</th>
                                         <th className="px-6 py-3 font-medium text-right">Unit Price</th>
                                         <th className="px-6 py-3 font-medium text-center">Stock</th>
                                         <th className="px-6 py-3 font-medium text-center">Status</th>
@@ -179,6 +211,15 @@ export default function InventoryPage() {
                                                 </td>
                                                 <td className="px-6 py-4 capitalize text-muted-foreground">
                                                     {item.category}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {item.class_id ? (
+                                                        <span className="inline-flex items-center rounded-full bg-primary/10 text-primary px-2 py-0.5 text-xs font-medium">
+                                                            {classNameById.get(item.class_id) ?? 'Class'}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-xs text-muted-foreground">General</span>
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-4 text-right font-medium">
                                                     {formatCurrency(item.unit_price)}

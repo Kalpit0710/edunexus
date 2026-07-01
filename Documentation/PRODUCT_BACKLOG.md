@@ -54,7 +54,7 @@
 | F1.1 | **Timetable / class schedule** | Asked for on day one; drives the teacher + parent day view | ✅ **DONE 2026-06-19** |
 | F1.2 | **Homework / daily diary** | Primary parents live in this; biggest engagement driver | ✅ **DONE 2026-06-19** |
 | F1.3 | **Year-end promotion / roll-over** | Bulk move Class 1→2, graduate the top class, roll the year | ✅ **DONE 2026-06-19** |
-| F1.4 | **Self-serve school onboarding** | Today only super-admin can create a school + admin user → caps sales velocity. Add a guarded signup + trial provisioning. | **P1 (growth)** |
+| F1.4 | **Self-serve school onboarding** | Today only super-admin can create a school + admin user → caps sales velocity. Add a guarded signup + trial provisioning. | ✅ **DONE 2026-07-01** — public [`/register-school`](../src/app/(auth)/register-school/page.tsx) page + rate-limited [`/api/auth/school-register`](../src/app/api/auth/school-register/route.ts) route provision a school in `trial` status (premium plan, 14-day trial via [`school-onboarding.ts`](../src/lib/school-onboarding.ts)) with a first school-admin, unique-code enforcement, and full rollback on failure. 12 unit tests. |
 | F1.5 | Holiday / academic calendar | Feeds attendance "holiday" + parent calendar | ✅ **DONE 2026-06-19** |
 | F1.6 | Transfer certificate + ID-card generation | Standard admin paperwork (PDF) | 🟡 **TC DONE 2026-06-19** · ID card pending |
 | F1.7 | Health / allergy records on student profile | Safety expectation for young kids | ✅ **DONE 2026-06-19** |

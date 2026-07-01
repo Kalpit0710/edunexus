@@ -25,6 +25,8 @@ import {
     CalendarDays,
     BookMarked,
     Bus,
+    Package,
+    ShoppingCart,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { usePlan } from '@/hooks/use-plan'
@@ -42,6 +44,8 @@ const navItems: { href: string; label: string; icon: typeof LayoutDashboard; fea
     { href: '/school-admin/fees/pending', label: 'Pending Fees', icon: ClockAlert, feature: 'fees' },
     { href: '/school-admin/fees/history', label: 'Payment History', icon: History, feature: 'fees' },
     { href: '/school-admin/library', label: 'Library', icon: BookMarked, feature: 'inventory' },
+    { href: '/manager/inventory', label: 'Inventory', icon: Package, feature: 'inventory' },
+    { href: '/manager/inventory/pos', label: 'Bookstore POS', icon: ShoppingCart, feature: 'inventory' },
     { href: '/school-admin/transport', label: 'Transport', icon: Bus, feature: 'students' },
     { href: '/school-admin/reports', label: 'Reports', icon: BarChart2, feature: 'reports' },
     { href: '/school-admin/promotion', label: 'Promotion', icon: ArrowUpCircle, feature: 'students' },

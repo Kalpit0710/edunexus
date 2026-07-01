@@ -18,14 +18,28 @@ Manages physical inventory (books, uniforms, stationery) with a POS billing inte
 
 ## POS Billing Flow
 ```
-1. Search/select student (optional for walk-in)
-2. Add items to cart (search or browse by category)
-3. Review cart + total
-4. Select payment mode
-5. Generate bill
-6. Auto-deduct stock quantities
-7. PDF bill → Supabase Storage → Print/Download
+1. Cashier opens Bookstore POS (/manager/inventory/pos) — school_admin or manager/cashier
+2. Stage START — choose how to sell:
+   a. Class / Student book set:
+      - search a student by admission no. / name → resolves their class, OR
+      - pick a class directly
+      → loads that class's complete book set (items tagged with class_id)
+        and pre-fills the cart (in-stock items, qty 1)
+   b. Single item: search by item name / SKU (e.g. a pencil)
+3. Stage SHOP — adjust the order:
+   - increase / decrease qty, remove lines
+   - "Add more items" search appends any item (books or general) to the catalog
+4. Stage PAY — revealed once the cart has items:
+   - customer is REQUIRED: a selected student OR explicit Guest billing
+   - pick payment mode → Charge & Print Bill
+5. create_inventory_sale RPC (atomic): records sale + items, deducts stock, bill no.
+6. Success screen → print / new sale; receipt emailed to the primary parent if a student was linked
 ```
+
+**Book sets:** `inventory_items.class_id` (nullable FK → `classes`) tags an item to a
+class. Items with `class_id = NULL` are general (stationery, uniforms) sellable to
+any class or guest.
+
 
 ## Low Stock Alerts
 Dashboard widget shows items where `stock_quantity <= low_stock_alert`.  

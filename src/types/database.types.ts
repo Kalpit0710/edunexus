@@ -55,79 +55,6 @@ export type Database = {
           },
         ]
       }
-      co_scholastic_areas: {
-        Row: {
-          created_at: string
-          deleted_at: string | null
-          display_order: number
-          id: string
-          is_active: boolean
-          name: string
-          school_id: string
-        }
-        Insert: {
-          created_at?: string
-          deleted_at?: string | null
-          display_order?: number
-          id?: string
-          is_active?: boolean
-          name: string
-          school_id: string
-        }
-        Update: {
-          created_at?: string
-          deleted_at?: string | null
-          display_order?: number
-          id?: string
-          is_active?: boolean
-          name?: string
-          school_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "co_scholastic_areas_school_id_fkey"
-            columns: ["school_id"]
-            isOneToOne: false
-            referencedRelation: "schools"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      role_permissions: {
-        Row: {
-          allowed: boolean
-          id: string
-          permission: string
-          role: string
-          school_id: string
-          updated_at: string
-        }
-        Insert: {
-          allowed?: boolean
-          id?: string
-          permission: string
-          role: string
-          school_id: string
-          updated_at?: string
-        }
-        Update: {
-          allowed?: boolean
-          id?: string
-          permission?: string
-          role?: string
-          school_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "role_permissions_school_id_fkey"
-            columns: ["school_id"]
-            isOneToOne: false
-            referencedRelation: "schools"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       attendance_records: {
         Row: {
           class_id: string
@@ -476,6 +403,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "classes_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      co_scholastic_areas: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          display_order: number
+          id: string
+          is_active: boolean
+          name: string
+          school_id: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          school_id: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          school_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "co_scholastic_areas_school_id_fkey"
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
@@ -879,6 +844,7 @@ export type Database = {
       inventory_items: {
         Row: {
           category: Database["public"]["Enums"]["inventory_category"]
+          class_id: string | null
           cost_price: number | null
           created_at: string
           created_by: string | null
@@ -895,6 +861,7 @@ export type Database = {
         }
         Insert: {
           category: Database["public"]["Enums"]["inventory_category"]
+          class_id?: string | null
           cost_price?: number | null
           created_at?: string
           created_by?: string | null
@@ -911,6 +878,7 @@ export type Database = {
         }
         Update: {
           category?: Database["public"]["Enums"]["inventory_category"]
+          class_id?: string | null
           cost_price?: number | null
           created_at?: string
           created_by?: string | null
@@ -926,6 +894,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "inventory_items_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "inventory_items_created_by_fkey"
             columns: ["created_by"]
@@ -1572,13 +1547,48 @@ export type Database = {
           },
         ]
       }
+      role_permissions: {
+        Row: {
+          allowed: boolean
+          id: string
+          permission: string
+          role: string
+          school_id: string
+          updated_at: string
+        }
+        Insert: {
+          allowed?: boolean
+          id?: string
+          permission: string
+          role: string
+          school_id: string
+          updated_at?: string
+        }
+        Update: {
+          allowed?: boolean
+          id?: string
+          permission?: string
+          role?: string
+          school_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_permissions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schools: {
         Row: {
           academic_year_start_month: number
           address: string | null
           city: string | null
-          code: string
           co_scholastic_grades: string[]
+          code: string
           created_at: string
           currency_symbol: string
           date_format: string
@@ -1587,13 +1597,13 @@ export type Database = {
           id: string
           is_active: boolean
           locale: string
-          logo_url: string | null
           lock_results_on_fee: boolean
-          principal_signature_url: string | null
+          logo_url: string | null
           name: string
           pass_percentage: number
           phone: string | null
           pincode: string | null
+          principal_signature_url: string | null
           report_card_title: string
           report_grand_total_rule: string
           result_statuses: string[]
@@ -1611,8 +1621,8 @@ export type Database = {
           academic_year_start_month?: number
           address?: string | null
           city?: string | null
-          code: string
           co_scholastic_grades?: string[]
+          code: string
           created_at?: string
           currency_symbol?: string
           date_format?: string
@@ -1621,13 +1631,13 @@ export type Database = {
           id?: string
           is_active?: boolean
           locale?: string
-          logo_url?: string | null
           lock_results_on_fee?: boolean
-          principal_signature_url?: string | null
+          logo_url?: string | null
           name: string
           pass_percentage?: number
           phone?: string | null
           pincode?: string | null
+          principal_signature_url?: string | null
           report_card_title?: string
           report_grand_total_rule?: string
           result_statuses?: string[]
@@ -1645,8 +1655,8 @@ export type Database = {
           academic_year_start_month?: number
           address?: string | null
           city?: string | null
-          code?: string
           co_scholastic_grades?: string[]
+          code?: string
           created_at?: string
           currency_symbol?: string
           date_format?: string
@@ -1655,13 +1665,13 @@ export type Database = {
           id?: string
           is_active?: boolean
           locale?: string
-          logo_url?: string | null
           lock_results_on_fee?: boolean
-          principal_signature_url?: string | null
+          logo_url?: string | null
           name?: string
           pass_percentage?: number
           phone?: string | null
           pincode?: string | null
+          principal_signature_url?: string | null
           report_card_title?: string
           report_grand_total_rule?: string
           result_statuses?: string[]
@@ -2075,6 +2085,7 @@ export type Database = {
           id: string
           is_active: boolean
           join_date: string
+          photo_url: string | null
           qualification: string | null
           school_id: string
           signature_url: string | null
@@ -2088,6 +2099,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           join_date?: string
+          photo_url?: string | null
           qualification?: string | null
           school_id: string
           signature_url?: string | null
@@ -2101,6 +2113,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           join_date?: string
+          photo_url?: string | null
           qualification?: string | null
           school_id?: string
           signature_url?: string | null

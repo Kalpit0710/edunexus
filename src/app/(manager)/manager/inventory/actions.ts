@@ -24,6 +24,7 @@ export interface InventoryItemInput {
   costPrice?: number | null
   stockQuantity?: number
   lowStockAlert?: number
+  classId?: string | null
   createdByProfileId?: string
 }
 
@@ -102,6 +103,135 @@ export async function getInventoryItems(
   return data ?? []
 }
 
+// ─── Bookstore POS helpers ────────────────────────────────────────────────────
+
+export interface PosClass {
+  id: string
+  name: string
+}
+
+/** Classes for the school, for the POS class/book-set filter. */
+export async function getPosClasses(schoolId: string): Promise<PosClass[]> {
+  const supabase = await createServerSupabaseClient()
+  const db = supabase as any
+  const { data, error } = await db
+    .from('classes')
+    .select('id, name')
+    .eq('school_id', schoolId)
+    .order('display_order', { ascending: true })
+  if (error) throw new Error(error.message)
+  return (data ?? []) as PosClass[]
+}
+
+export interface PosStudent {
+  id: string
+  fullName: string
+  admissionNumber: string
+  classId: string | null
+  className: string
+  sectionName: string
+}
+
+/**
+ * Find a single active student by admission number or name for the POS. Returns
+ * the student's class so the cashier can pull that class's book set.
+ */
+export async function searchStudentForPos(
+  schoolId: string,
+  query: string,
+): Promise<PosStudent | null> {
+  const q = query.trim()
+  if (!q) return null
+  const supabase = await createServerSupabaseClient()
+  const db = supabase as any
+  const { data } = await db
+    .from('students')
+    .select('id, full_name, admission_number, class_id, classes(name), sections(name)')
+    .eq('school_id', schoolId)
+    .eq('is_active', true)
+    .or(`admission_number.ilike.%${q}%,full_name.ilike.%${q}%`)
+    .limit(1)
+    .maybeSingle()
+  if (!data) return null
+  return {
+    id: data.id,
+    fullName: data.full_name,
+    admissionNumber: data.admission_number,
+    classId: data.class_id ?? null,
+    className: data.classes?.name ?? '',
+    sectionName: data.sections?.name ?? '',
+  }
+}
+
+/**
+ * Live-search active students by admission number or name for the POS. Returns
+ * up to `limit` matches (each with class info) for a typeahead dropdown.
+ */
+export async function searchStudentsForPos(
+  schoolId: string,
+  query: string,
+  limit = 8,
+): Promise<PosStudent[]> {
+  const q = query.trim()
+  if (!q) return []
+  const supabase = await createServerSupabaseClient()
+  const db = supabase as any
+  const { data, error } = await db
+    .from('students')
+    .select('id, full_name, admission_number, class_id, classes(name), sections(name)')
+    .eq('school_id', schoolId)
+    .eq('is_active', true)
+    .or(`admission_number.ilike.%${q}%,full_name.ilike.%${q}%`)
+    .order('full_name', { ascending: true })
+    .limit(limit)
+  if (error) throw new Error(error.message)
+  return (data ?? []).map((row: any) => ({
+    id: row.id,
+    fullName: row.full_name,
+    admissionNumber: row.admission_number,
+    classId: row.class_id ?? null,
+    className: row.classes?.name ?? '',
+    sectionName: row.sections?.name ?? '',
+  }))
+}
+
+/**
+ * The active inventory items that make up a class's book set (items tagged with
+ * that `class_id`). Returns [] when the class has no items configured yet.
+ */
+export async function getClassInventorySet(schoolId: string, classId: string) {
+  const supabase = await createServerSupabaseClient()
+  const db = supabase as any
+  const { data, error } = await db
+    .from('inventory_items')
+    .select('*')
+    .eq('school_id', schoolId)
+    .eq('class_id', classId)
+    .eq('is_active', true)
+    .order('name', { ascending: true })
+  if (error) throw new Error(error.message)
+  return data ?? []
+}
+
+/**
+ * POS catalog for a class: the class's own book-set items PLUS general items
+ * (`class_id IS NULL`, e.g. stationery/uniforms). The caller pre-fills the cart
+ * with only the class-tagged items; general items are shown but not auto-added.
+ */
+export async function getClassPosCatalog(schoolId: string, classId: string) {
+  const supabase = await createServerSupabaseClient()
+  const db = supabase as any
+  const { data, error } = await db
+    .from('inventory_items')
+    .select('*')
+    .eq('school_id', schoolId)
+    .eq('is_active', true)
+    .or(`class_id.eq.${classId},class_id.is.null`)
+    .order('name', { ascending: true })
+  if (error) throw new Error(error.message)
+  return data ?? []
+}
+
 export async function createInventoryItem(schoolId: string, input: InventoryItemInput) {
   if (!input.name.trim()) throw new Error('Item name is required.')
   if (input.unitPrice < 0) throw new Error('Unit price cannot be negative.')
@@ -125,6 +255,7 @@ export async function createInventoryItem(schoolId: string, input: InventoryItem
       cost_price: input.costPrice == null ? null : Number(input.costPrice.toFixed(2)),
       stock_quantity: input.stockQuantity ?? 0,
       low_stock_alert: input.lowStockAlert ?? 10,
+      class_id: input.classId ?? null,
       created_by: actorProfileId,
       is_active: true,
     })
@@ -133,6 +264,74 @@ export async function createInventoryItem(schoolId: string, input: InventoryItem
 
   if (error) throw new Error(error.message)
   return data
+}
+
+export interface InventoryBulkRow {
+  name: string
+  category: InventoryCategory
+  sku?: string | null
+  description?: string | null
+  unitPrice: number
+  costPrice?: number | null
+  stockQuantity?: number
+  lowStockAlert?: number
+  /** A class id in the same school, or null for a general item. */
+  classId?: string | null
+}
+
+/**
+ * Bulk-create inventory items from an imported spreadsheet. Validates each row
+ * server-side (name/category/price + that any class belongs to this school) and
+ * inserts them in one batch. Throws on the first invalid row.
+ */
+export async function bulkCreateInventoryItems(
+  schoolId: string,
+  rows: InventoryBulkRow[],
+): Promise<{ inserted: number }> {
+  const supabase = await createServerSupabaseClient()
+  const db = supabase as any
+  await requireActor(supabase, ['school_admin', 'manager', 'cashier'])
+  await requirePermission(supabase, 'inventory.manage')
+
+  if (!rows.length) throw new Error('No rows to import.')
+
+  const validCategories: InventoryCategory[] = ['book', 'uniform', 'stationery', 'sports', 'lab', 'other']
+
+  const { data: classRows } = await db.from('classes').select('id').eq('school_id', schoolId)
+  const validClassIds = new Set((classRows ?? []).map((c: { id: string }) => c.id))
+
+  const actorProfileId = await getActorProfileId(db, schoolId)
+
+  const payload = rows.map((r, i) => {
+    const name = (r.name ?? '').trim()
+    if (!name) throw new Error(`Row ${i + 1}: item name is required.`)
+    if (!validCategories.includes(r.category)) {
+      throw new Error(`Row ${i + 1}: invalid category "${r.category}".`)
+    }
+    const unitPrice = Number(r.unitPrice)
+    if (!Number.isFinite(unitPrice) || unitPrice < 0) {
+      throw new Error(`Row ${i + 1}: unit price must be a number ≥ 0.`)
+    }
+    const classId = r.classId && validClassIds.has(r.classId) ? r.classId : null
+    return {
+      school_id: schoolId,
+      name,
+      category: r.category,
+      sku: r.sku?.trim() || null,
+      description: r.description?.trim() || null,
+      unit_price: Number(unitPrice.toFixed(2)),
+      cost_price: r.costPrice == null ? null : Number(Number(r.costPrice).toFixed(2)),
+      stock_quantity: Math.max(0, Math.floor(Number(r.stockQuantity ?? 0)) || 0),
+      low_stock_alert: Math.max(0, Math.floor(Number(r.lowStockAlert ?? 10)) || 0),
+      class_id: classId,
+      created_by: actorProfileId,
+      is_active: true,
+    }
+  })
+
+  const { error } = await db.from('inventory_items').insert(payload)
+  if (error) throw new Error(error.message)
+  return { inserted: payload.length }
 }
 
 export async function updateInventoryItem(
@@ -152,6 +351,7 @@ export async function updateInventoryItem(
   }
   if (updates.lowStockAlert !== undefined) payload.low_stock_alert = updates.lowStockAlert
   if (updates.stockQuantity !== undefined) payload.stock_quantity = updates.stockQuantity
+  if (updates.classId !== undefined) payload.class_id = updates.classId || null
 
   if ('unit_price' in payload && Number(payload.unit_price) < 0) {
     throw new Error('Unit price cannot be negative.')

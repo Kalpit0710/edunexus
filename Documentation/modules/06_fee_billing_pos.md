@@ -23,10 +23,11 @@ The Fee & Billing module is the financial heart of EduNexus. It handles:
 2. **Installments auto-generate** when a student is assigned to a fee structure
 3. **Payments are never deleted** — refunds create a new negative record
 4. **Receipt numbers are sequential per school:** `{SCHOOL_CODE}-{YYYY}-{NNNNN}`
-5. **Partial payments are supported** — installment status becomes `partial`
+5. **Partial payments are supported** — installment status becomes `partial`; the POS shows the remaining balance before and after collection
 6. **Late fees auto-apply daily** via Edge Function cron at 1 AM
 7. **Discounts must be approved** by School Admin
 8. **Collection requires Manager or Admin role**
+9. **Non-cash payments require a reference number** — cheque no. / UPI or txn ref / card auth / online gateway id, enforced client-side and in `collectFeeInputSchema` for reconciliation
 
 ---
 

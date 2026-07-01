@@ -94,6 +94,24 @@ export function validateFeePayload(payload: CollectFeePayload): string[] {
 /** Maximum amount accepted in a single fee transaction (₹1 crore) — a sane upper bound. */
 export const MAX_FEE_TRANSACTION_AMOUNT = 10_000_000
 
+/**
+ * Payment modes that must carry a reference number (cheque no., UPI/txn ref,
+ * card auth code, etc.) so collections can be reconciled against bank/gateway
+ * statements. Cash is the only mode where a reference is not applicable.
+ */
+export const REFERENCE_REQUIRED_MODES: readonly PaymentMode[] = [
+  'cheque',
+  'upi',
+  'neft',
+  'card',
+  'online',
+]
+
+/** True when the given payment mode requires a reference number. */
+export function isReferenceRequired(mode: PaymentMode): boolean {
+  return REFERENCE_REQUIRED_MODES.includes(mode)
+}
+
 const feeMoney = (label: string) =>
   z
     .number({ invalid_type_error: `${label} must be a number.` })
@@ -133,6 +151,13 @@ export const collectFeeInputSchema = z
         code: z.ZodIssueCode.custom,
         path: ['discountAmount'],
         message: 'Discount cannot exceed the total fee amount.',
+      })
+    }
+    if (isReferenceRequired(data.paymentMode) && !data.referenceNumber?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['referenceNumber'],
+        message: `A reference number is required for ${PAYMENT_MODE_LABELS[data.paymentMode]} payments.`,
       })
     }
   })

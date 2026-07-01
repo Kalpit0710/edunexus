@@ -149,9 +149,18 @@ export default function TeacherProfilePage() {
         <CardContent className="pt-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
             {/* Avatar */}
-            <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xl font-bold shrink-0">
-              {getInitials(teacher.user_profile?.full_name ?? '?')}
-            </div>
+            {teacher.photo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element -- dynamic uploaded teacher photo
+              <img
+                src={teacher.photo_url}
+                alt={teacher.user_profile?.full_name ?? 'Teacher photo'}
+                className="h-16 w-16 rounded-full object-cover border shadow-sm shrink-0"
+              />
+            ) : (
+              <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xl font-bold shrink-0">
+                {getInitials(teacher.user_profile?.full_name ?? '?')}
+              </div>
+            )}
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">

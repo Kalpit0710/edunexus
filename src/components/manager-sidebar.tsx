@@ -6,13 +6,16 @@ import { useAuthStore } from '@/stores/auth.store'
 import { createClient } from '@/lib/supabase/client'
 import { getInitials } from '@/lib/utils'
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, LogOut, Briefcase, Package, ShoppingCart } from 'lucide-react'
+import { LayoutDashboard, LogOut, Briefcase, Package, ShoppingCart, Users, IndianRupee, ClockAlert } from 'lucide-react'
 import { toast } from 'sonner'
 
 const navItems = [
     { href: '/manager/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/school-admin/students', label: 'Students', icon: Users },
+    { href: '/school-admin/fees/collect', label: 'Collect Fee', icon: IndianRupee },
+    { href: '/school-admin/fees/pending', label: 'Pending Fees', icon: ClockAlert },
     { href: '/manager/inventory', label: 'Inventory', icon: Package },
-    { href: '/manager/pos', label: 'Point of Sale', icon: ShoppingCart },
+    { href: '/manager/inventory/pos', label: 'Point of Sale', icon: ShoppingCart },
 ]
 
 export function ManagerSidebar() {

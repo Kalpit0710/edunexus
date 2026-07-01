@@ -122,9 +122,18 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
                 <div className="md:col-span-1 space-y-4">
                     <Card>
                         <CardContent className="pt-6 flex flex-col items-center text-center">
-                            <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                                <User className="w-10 h-10 text-primary" />
-                            </div>
+                            {student.photo_url ? (
+                                // eslint-disable-next-line @next/next/no-img-element -- dynamic uploaded student photo
+                                <img
+                                    src={student.photo_url}
+                                    alt={student.full_name}
+                                    className="w-20 h-20 rounded-full object-cover border shadow-sm mb-4"
+                                />
+                            ) : (
+                                <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                                    <User className="w-10 h-10 text-primary" />
+                                </div>
+                            )}
                             <h3 className="text-lg font-bold">{student.full_name}</h3>
                             <p className="text-muted-foreground text-sm mt-1">
                                 {className}{sectionName ? ` - ${sectionName}` : ''}

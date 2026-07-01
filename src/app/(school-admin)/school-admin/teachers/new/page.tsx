@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/card'
 import { ArrowLeft, ChevronRight, ChevronLeft, Check } from 'lucide-react'
 import Link from 'next/link'
-import { createTeacher } from '../actions'
+import { createTeacher, uploadTeacherPhoto } from '../actions'
 
 type FormData = {
   // Step 1 — Personal
@@ -45,6 +45,7 @@ export default function NewTeacherPage() {
   const { school } = useAuthStore()
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
 
   const [form, setForm] = useState<FormData>({
     full_name: '',
@@ -92,6 +93,13 @@ export default function NewTeacherPage() {
     if (!school?.id) return
     setLoading(true)
     try {
+      let photoUrl = ''
+      if (photoFile) {
+        const fd = new FormData()
+        fd.append('file', photoFile)
+        fd.append('schoolId', school.id)
+        photoUrl = await uploadTeacherPhoto(fd)
+      }
       const teacherId = await createTeacher(school.id, {
         full_name: form.full_name,
         email: form.email,
@@ -101,6 +109,7 @@ export default function NewTeacherPage() {
         qualification: form.qualification || undefined,
         specialization: form.specialization || undefined,
         join_date: form.join_date,
+        photo_url: photoUrl || undefined,
       })
       toast.success('Teacher created successfully!')
       router.push(`/school-admin/teachers/${teacherId}` as any)
@@ -272,6 +281,19 @@ export default function NewTeacherPage() {
                   value={form.specialization}
                   onChange={(e) => update('specialization', e.target.value)}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="teacher_photo">Profile Photo (Optional)</Label>
+                <Input
+                  id="teacher_photo"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Used on the teacher profile and printed documents.
+                </p>
               </div>
             </>
           )}

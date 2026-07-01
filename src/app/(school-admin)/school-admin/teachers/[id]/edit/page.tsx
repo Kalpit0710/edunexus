@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { getTeacherById, updateTeacher } from '../../actions'
+import { useAuthStore } from '@/stores/auth.store'
+import { getTeacherById, updateTeacher, uploadTeacherPhoto } from '../../actions'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -16,9 +17,12 @@ import { ContentAreaLoader } from '@/components/loaders/page-loaders'
 export default function EditTeacherPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
+  const { school } = useAuthStore()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [userProfileId, setUserProfileId] = useState('')
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
 
   const [form, setForm] = useState({
     full_name: '',
@@ -35,6 +39,7 @@ export default function EditTeacherPage() {
       getTeacherById(params.id)
         .then((t) => {
           setUserProfileId(t.user_profile?.id ?? '')
+          setPhotoUrl(t.photo_url ?? null)
           setForm({
             full_name: t.user_profile?.full_name ?? '',
             phone: t.user_profile?.phone ?? '',
@@ -60,7 +65,14 @@ export default function EditTeacherPage() {
     }
     setSaving(true)
     try {
-      await updateTeacher(params.id, userProfileId, form)
+      let nextPhotoUrl = photoUrl ?? undefined
+      if (photoFile && school?.id) {
+        const fd = new FormData()
+        fd.append('file', photoFile)
+        fd.append('schoolId', school.id)
+        nextPhotoUrl = await uploadTeacherPhoto(fd)
+      }
+      await updateTeacher(params.id, userProfileId, { ...form, photo_url: nextPhotoUrl })
       toast.success('Teacher updated successfully')
       router.push(`/school-admin/teachers/${params.id}` as any)
     } catch (e) {
@@ -112,6 +124,27 @@ export default function EditTeacherPage() {
               value={form.phone}
               onChange={(e) => update('phone', e.target.value)}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="teacher_photo">Profile Photo</Label>
+            <div className="flex items-center gap-4">
+              {photoUrl && !photoFile && (
+                // eslint-disable-next-line @next/next/no-img-element -- dynamic uploaded photo preview
+                <img
+                  src={photoUrl}
+                  alt="Teacher's current profile photo"
+                  className="w-12 h-12 rounded-full object-cover border shadow-sm"
+                />
+              )}
+              <Input
+                id="teacher_photo"
+                type="file"
+                accept="image/*"
+                onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
+                className="max-w-xs"
+              />
+            </div>
           </div>
         </CardContent>
       </Card>

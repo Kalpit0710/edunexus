@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import { ArrowLeft, Save, ShieldBan, ShieldCheck } from 'lucide-react'
 import Link from 'next/link'
-import { updateInventoryItem, setInventoryItemActive, type InventoryItemInput } from '../../actions'
+import { updateInventoryItem, setInventoryItemActive, getPosClasses, type InventoryItemInput, type PosClass } from '../../actions'
 import { ContentAreaLoader } from '@/components/loaders/page-loaders'
 import { createClient } from '@/lib/supabase/client'
 import type { InventoryCategory } from '@/lib/inventory-utils'
@@ -34,6 +34,7 @@ export default function EditInventoryItemPage() {
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [isActive, setIsActive] = useState(true)
+    const [classes, setClasses] = useState<PosClass[]>([])
 
     const [formData, setFormData] = useState<Partial<InventoryItemInput>>({
         name: '',
@@ -43,7 +44,8 @@ export default function EditInventoryItemPage() {
         unitPrice: 0,
         costPrice: 0,
         stockQuantity: 0,
-        lowStockAlert: 10
+        lowStockAlert: 10,
+        classId: null,
     })
 
     const loadItem = useCallback(async () => {
@@ -71,6 +73,7 @@ export default function EditInventoryItemPage() {
                 costPrice: item.cost_price ? Number(item.cost_price) : 0,
                 stockQuantity: Number(item.stock_quantity),
                 lowStockAlert: Number(item.low_stock_alert),
+                classId: item.class_id ?? null,
             })
             setIsActive(item.is_active)
         } catch (e) {
@@ -86,6 +89,11 @@ export default function EditInventoryItemPage() {
             loadItem()
         }
     }, [loadItem, school?.id, itemId])
+
+    useEffect(() => {
+        if (!school?.id) return
+        getPosClasses(school.id).then(setClasses).catch(() => {})
+    }, [school?.id])
 
     const updateForm = (field: keyof InventoryItemInput, value: any) => {
         setFormData(prev => ({ ...prev, [field]: value }))
@@ -214,6 +222,20 @@ export default function EditInventoryItemPage() {
                                     value={formData.description}
                                     onChange={e => updateForm('description', e.target.value)}
                                 />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-item-class">Class (for book sets)</Label>
+                                <select
+                                    id="edit-item-class"
+                                    className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                    value={formData.classId ?? ''}
+                                    onChange={e => updateForm('classId', e.target.value || null)}
+                                >
+                                    <option value="">General / All classes</option>
+                                    {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                </select>
+                                <p className="text-xs text-muted-foreground mt-1">Tag books to a class so the POS can pull the whole set. Leave as General for stationery/other items.</p>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">

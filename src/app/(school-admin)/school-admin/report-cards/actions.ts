@@ -826,6 +826,7 @@ export interface PrintableReportCard {
     dateOfBirth: string | null
     fatherName: string | null
     motherName: string | null
+    photoUrl: string | null
   }
   subjects: PrintableSubjectRow[]
   coScholastic: CoScholasticMarkRow[]
@@ -878,7 +879,7 @@ export async function getPrintableReportCard(studentId: string): Promise<Printab
   const { data: student } = await db
     .from('students')
     .select(
-      'id, full_name, admission_number, roll_number, class_id, section_id, school_id, date_of_birth, ' +
+      'id, full_name, admission_number, roll_number, class_id, section_id, school_id, date_of_birth, photo_url, ' +
         'schools ( name, address, city, state, pincode, phone, email, logo_url, principal_signature_url, lock_results_on_fee, report_card_title, pass_percentage, currency_symbol, locale, report_grand_total_rule, scholastic_component_labels ), ' +
         'classes ( name, report_card_type ), sections ( name )',
     )
@@ -1109,6 +1110,7 @@ async function buildPrintableReportCard(
       dateOfBirth: student.date_of_birth ?? null,
       fatherName,
       motherName,
+      photoUrl: student.photo_url ?? null,
     },
     subjects: subjectRows,
     coScholastic,
@@ -1141,7 +1143,7 @@ async function buildPrintableReportCard(
 }
 
 const PRINTABLE_STUDENT_SELECT =
-  'id, full_name, admission_number, roll_number, class_id, section_id, school_id, date_of_birth, ' +
+  'id, full_name, admission_number, roll_number, class_id, section_id, school_id, date_of_birth, photo_url, ' +
   'schools ( name, address, city, state, pincode, phone, email, logo_url, principal_signature_url, lock_results_on_fee, report_card_title, pass_percentage, currency_symbol, locale, report_grand_total_rule, scholastic_component_labels ), ' +
   'classes ( name, report_card_type ), sections ( name )'
 

@@ -67,21 +67,10 @@ export async function sendEmail({
         status = 'failed'
         errorMsg = error.message
         console.error(`[Email Failed] ${subject} to ${maskedEmail}:`, error.message)
-      } else {
-        console.log(`[Email Sent] ${subject} to ${maskedEmail} via Resend`)
       }
     } else {
-      // Fallback if no API key (development aid only).
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('--------------------------------------------------')
-        console.log(`[MOCK EMAIL SENT] Event: ${event}`)
-        console.log(`To: ${maskedEmail}`)
-        console.log(`Subject: ${subject}`)
-        console.log(`Body: (React Email Template Rendered)`)
-        console.log('NOTE: Not actually delivered. Set RESEND_API_KEY in .env.local')
-        console.log('--------------------------------------------------')
-      }
-      status = 'sent' // Log as sent for testing purposes
+      // No API key configured — treat as sent for local/testing flows.
+      status = 'sent'
     }
 
     // 2. Log to notification_logs

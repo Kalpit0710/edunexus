@@ -306,17 +306,30 @@ export async function getAcademicYearsForFees(schoolId: string): Promise<Academi
 
 // ─── Payment (POS) Actions ────────────────────────────────────────────────────
 
+export interface FeeStudentResult {
+  id: string
+  full_name: string
+  admission_number: string
+  class_id: string
+  section_id: string
+  class_name: string
+  section_name: string
+  photo_url: string | null
+}
+
 export async function searchStudentForFee(
   schoolId: string,
   query: string,
-): Promise<{ id: string; full_name: string; admission_number: string; class_id: string; section_id: string; class_name: string; section_name: string } | null> {
+): Promise<FeeStudentResult | null> {
+  const q = query.trim()
+  if (!q) return null
   const supabase = await createServerSupabaseClient()
   const { data } = await supabase
     .from('students')
-    .select('id, full_name, admission_number, class_id, section_id, classes(name), sections(name)')
+    .select('id, full_name, admission_number, class_id, section_id, photo_url, classes(name), sections(name)')
     .eq('school_id', schoolId)
     .eq('is_active', true)
-    .or(`admission_number.ilike.%${query}%,full_name.ilike.%${query}%`)
+    .or(`admission_number.ilike.%${q}%,full_name.ilike.%${q}%`)
     .limit(1)
     .maybeSingle()
   if (!data) return null
@@ -328,7 +341,38 @@ export async function searchStudentForFee(
     section_id: (data as any).section_id,
     class_name: (data as any).classes?.name ?? '',
     section_name: (data as any).sections?.name ?? '',
+    photo_url: (data as any).photo_url ?? null,
   }
+}
+
+export async function searchStudentsForFeeLive(
+  schoolId: string,
+  query: string,
+  limit = 8,
+): Promise<FeeStudentResult[]> {
+  const q = query.trim()
+  if (!q) return []
+  const supabase = await createServerSupabaseClient()
+  const { data, error } = await supabase
+    .from('students')
+    .select('id, full_name, admission_number, class_id, section_id, photo_url, classes(name), sections(name)')
+    .eq('school_id', schoolId)
+    .eq('is_active', true)
+    .or(`admission_number.ilike.%${q}%,full_name.ilike.%${q}%`)
+    .order('full_name', { ascending: true })
+    .limit(limit)
+  
+  if (error) throw new Error(error.message)
+  return (data ?? []).map((row: any) => ({
+    id: row.id,
+    full_name: row.full_name,
+    admission_number: row.admission_number,
+    class_id: row.class_id,
+    section_id: row.section_id,
+    class_name: row.classes?.name ?? '',
+    section_name: row.sections?.name ?? '',
+    photo_url: row.photo_url ?? null,
+  }))
 }
 
 export async function getStudentFeeStructure(

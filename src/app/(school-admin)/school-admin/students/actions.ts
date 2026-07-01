@@ -305,7 +305,9 @@ export async function getStudentById(id: string) {
 export async function updateStudent(id: string, payload: any) {
     const supabase = await getSupabase()
     const actorProfile = await getActorProfile(supabase)
-    assertSchoolAdmin(actorProfile)
+    if (!actorProfile.school_id) {
+        throw new Error('Your account is not linked to any school.')
+    }
     await requirePermission(supabase, 'students.edit')
 
     const rawPayload = (payload ?? {}) as Record<string, unknown>

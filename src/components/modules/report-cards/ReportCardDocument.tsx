@@ -117,15 +117,31 @@ export function ReportCardDocument({ data }: { data: PrintableReportCard }) {
 
       {/* ── STUDENT PROFILE ── */}
       <div className="srms-section-label">Student Details</div>
-      <div className="srms-student-grid">
-        <Field label="Name" value={data.student.fullName} />
-        <Field label="Admission No." value={data.student.admissionNumber} />
-        <Field label="Father's Name" value={data.student.fatherName ?? '—'} />
-        <Field label="Mother's Name" value={data.student.motherName ?? '—'} />
-        <Field label="Class" value={cls} />
-        <Field label="Roll No." value={data.student.rollNumber ?? '—'} />
-        <Field label="Date of Birth" value={fmtDate(data.student.dateOfBirth, data.locale)} />
-        <Field label="Academic Session" value={data.academicSession ?? '—'} />
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+        <div className="srms-student-grid" style={{ flex: 1 }}>
+          <Field label="Name" value={data.student.fullName} />
+          <Field label="Admission No." value={data.student.admissionNumber} />
+          <Field label="Father's Name" value={data.student.fatherName ?? '—'} />
+          <Field label="Mother's Name" value={data.student.motherName ?? '—'} />
+          <Field label="Class" value={cls} />
+          <Field label="Roll No." value={data.student.rollNumber ?? '—'} />
+          <Field label="Date of Birth" value={fmtDate(data.student.dateOfBirth, data.locale)} />
+          <Field label="Academic Session" value={data.academicSession ?? '—'} />
+        </div>
+        {data.student.photoUrl && (
+          // eslint-disable-next-line @next/next/no-img-element -- dynamic student photo on printed card
+          <img
+            src={data.student.photoUrl}
+            alt={data.student.fullName}
+            style={{
+              width: '70px',
+              height: '85px',
+              objectFit: 'cover',
+              border: '1px solid #888',
+              flexShrink: 0,
+            }}
+          />
+        )}
       </div>
 
       {/* ── SCHOLASTIC AREA ── */}
