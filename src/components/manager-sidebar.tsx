@@ -34,6 +34,13 @@ export function ManagerSidebar() {
 
     const fullName = (user?.user_metadata?.full_name as string) || 'Manager'
 
+    // Only the most specific matching nav item should be active. Otherwise a
+    // parent route (e.g. /manager/inventory) also lights up on nested pages
+    // (e.g. /manager/inventory/pos).
+    const activeHref = navItems
+        .filter(({ href }) => pathname === href || pathname.startsWith(href + '/'))
+        .sort((a, b) => b.href.length - a.href.length)[0]?.href
+
     return (
         <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-white/[0.06] bg-[#0a0a0a]">
             {/* School brand */}
@@ -50,7 +57,7 @@ export function ManagerSidebar() {
             {/* Nav */}
             <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5 scrollbar-hide">
                 {navItems.map(({ href, label, icon: Icon }) => {
-                    const active = pathname === href || pathname.startsWith(href)
+                    const active = href === activeHref
                     return (
                         <Link
                             key={href}

@@ -60,6 +60,21 @@ export async function computeStudentFeeBalance(
     }
   }
 
+  // Library fines are recorded on book_loans.fine_amount and are treated as an
+  // amount the student owes (folded into the fee balance so they surface in
+  // Pending Fees / parent fee view — see migration
+  // 20260702000001_library_fines_in_pending_fees). Kept in lockstep with the
+  // get_pending_fees RPC so the admin list and this helper never disagree.
+  const { data: fines } = await db
+    .from('book_loans')
+    .select('fine_amount')
+    .eq('student_id', studentId)
+    .eq('school_id', schoolId)
+    .gt('fine_amount', 0)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  totalFee += ((fines ?? []) as any[]).reduce((s, l) => s + Number(l.fine_amount), 0)
+
   // Sum every payment for this student — never a limited slice.
   const { data: payments } = await db
     .from('fee_payments')

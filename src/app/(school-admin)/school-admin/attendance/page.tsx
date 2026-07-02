@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
+import { DateInput } from '@/components/ui/date-input'
 import { BarChart2, CheckCheck, Save, Grid2X2, FileUp } from 'lucide-react'
 import Link from 'next/link'
 
@@ -188,7 +189,7 @@ export default function AttendancePage() {
 
             <div className="space-y-1">
               <Label className="text-xs">Date</Label>
-              <Input type="date" value={date} onChange={(e) => { setDate(e.target.value); setLoaded(false) }} />
+              <DateInput value={date} onChange={(e) => { setDate(e.target.value); setLoaded(false) }} />
             </div>
 
             <div className="flex items-end">

@@ -19,6 +19,7 @@ import { getErrorMessage } from '@/lib/utils'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DateInput } from '@/components/ui/date-input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -278,7 +279,7 @@ function IssueDialog({
             </div>
             <div className="space-y-1.5">
               <Label>Due date</Label>
-              <Input type="date" value={dueDate} min={schoolToday()} onChange={(e) => setDueDate(e.target.value)} />
+              <DateInput value={dueDate} min={schoolToday()} onChange={(e) => setDueDate(e.target.value)} />
             </div>
           </div>
         )}
@@ -338,7 +339,7 @@ function ReturnDialog({
           )}
           <div className="space-y-1.5">
             <Label>Return date</Label>
-            <Input type="date" value={returnedDate} onChange={(e) => setReturnedDate(e.target.value)} />
+            <DateInput value={returnedDate} onChange={(e) => setReturnedDate(e.target.value)} />
           </div>
           <div className="space-y-1.5">
             <Label>Fine (₹)</Label>

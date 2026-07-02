@@ -16,6 +16,7 @@ import { getErrorMessage } from '@/lib/utils'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DateInput } from '@/components/ui/date-input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -253,11 +254,11 @@ function HolidayDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Start date</Label>
-              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              <DateInput value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label>End date (optional)</Label>
-              <Input type="date" value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)} />
+              <DateInput value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)} />
             </div>
           </div>
           <div className="space-y-1.5">

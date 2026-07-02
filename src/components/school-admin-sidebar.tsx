@@ -69,6 +69,13 @@ export function SchoolAdminSidebar() {
 
     const fullName = (user?.user_metadata?.full_name as string) || 'Admin'
 
+    // Only the most specific matching nav item should be active. Otherwise a
+    // parent route (e.g. /school-admin/fees) also lights up on nested pages
+    // (e.g. /school-admin/fees/history or /school-admin/fees/pending).
+    const activeHref = navItems
+        .filter(({ href }) => pathname === href || pathname.startsWith(href + '/'))
+        .sort((a, b) => b.href.length - a.href.length)[0]?.href
+
     return (
         <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-white/[0.06] bg-[#0a0a0a]">
             {/* School brand */}
@@ -102,7 +109,7 @@ export function SchoolAdminSidebar() {
                         )
                     }
 
-                    const active = pathname === href || (href !== '/school-admin/dashboard' && pathname.startsWith(href))
+                    const active = href === activeHref
                     return (
                         <Link
                             key={href}

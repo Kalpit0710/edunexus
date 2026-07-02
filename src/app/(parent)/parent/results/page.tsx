@@ -61,11 +61,11 @@ export default function ParentResultsPage() {
   const isLower = card?.reportCardType === 'lower'
 
   return (
-    <div className="space-y-5">
+    <div className="p-5 space-y-5 animate-fade-in">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-white">Report Card</h1>
-          <p className="text-xs text-zinc-500">Scholastic & co-scholastic performance</p>
+          <h1 className="text-2xl font-bold tracking-tight text-white">Report Card</h1>
+          <p className="text-sm text-zinc-500 mt-0.5">Scholastic & co-scholastic performance</p>
         </div>
         {card && !feeLocked && (
           <Link

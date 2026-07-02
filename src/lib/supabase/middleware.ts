@@ -13,6 +13,20 @@ const ROLE_ROUTES: Record<string, string> = {
   parent: '/parent/today',
 }
 
+/**
+ * Inactivity (idle) session timeout. Even though Supabase keeps a long-lived
+ * refresh token in cookies (so a session normally survives server restarts and
+ * browser closes), we enforce our own sliding idle window: if no authenticated
+ * request is seen for this long, the session is force-signed-out on the next
+ * request and the user must log in again.
+ *
+ * Configurable via `SESSION_INACTIVITY_TIMEOUT_MINUTES` (default 480 = 8 hours,
+ * matching the value documented in ARCHITECTURE.md).
+ */
+const ACTIVITY_COOKIE = 'en_last_activity'
+const INACTIVITY_TIMEOUT_MS =
+  (Number(process.env.SESSION_INACTIVITY_TIMEOUT_MINUTES) || 480) * 60 * 1000
+
 /** Route prefix → roles permitted to access it */
 const ROLE_PREFIXES: { prefix: string; roles: string[] }[] = [
   { prefix: '/super-admin', roles: ['super_admin'] },
@@ -83,7 +97,23 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Authenticated on public route → redirect to role dashboard
+  // Authenticated user explicitly visiting the landing page or the login screen:
+  // sign them out (clear the session) instead of bouncing them back to their
+  // dashboard, so the URL change "sticks" and they land logged-out where they
+  // asked to go (useful for logging in as a different user).
+  if (user && (pathname === '/' || pathname === '/login')) {
+    await supabase.auth.signOut()
+    const url = request.nextUrl.clone()
+    url.search = ''
+    const redirect = NextResponse.redirect(url)
+    request.cookies.getAll().forEach((c) => {
+      if (c.name.startsWith('sb-')) redirect.cookies.delete(c.name)
+    })
+    redirect.cookies.delete(ACTIVITY_COOKIE)
+    return redirect
+  }
+
+  // Authenticated on any other public route → redirect to role dashboard
   if (user && isPublicRoute && pathname !== '/auth/callback') {
     const role = (user.user_metadata?.role as string | undefined) ?? 'school_admin'
     const dashboardPath = ROLE_ROUTES[role] ?? '/school-admin/dashboard'
@@ -96,6 +126,38 @@ export async function updateSession(request: NextRequest) {
   // app_metadata.role is server-controlled (not user-editable) so it is the
   // trusted source; fall back to user_metadata for older sessions.
   if (user && !isPublicRoute) {
+    // Idle-session enforcement (sliding window). If the last authenticated
+    // request is older than the inactivity window, force sign-out. This is what
+    // makes an overnight-idle session require a fresh login even though the
+    // Supabase refresh token cookie would otherwise still be valid.
+    const now = Date.now()
+    const lastActivityRaw = request.cookies.get(ACTIVITY_COOKIE)?.value
+    const lastActivity = lastActivityRaw ? Number(lastActivityRaw) : NaN
+
+    if (Number.isFinite(lastActivity) && now - lastActivity > INACTIVITY_TIMEOUT_MS) {
+      // Session is idle-expired → clear auth + activity cookies and redirect.
+      await supabase.auth.signOut()
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      url.search = ''
+      url.searchParams.set('reason', 'timeout')
+      const redirect = NextResponse.redirect(url)
+      request.cookies.getAll().forEach((c) => {
+        if (c.name.startsWith('sb-')) redirect.cookies.delete(c.name)
+      })
+      redirect.cookies.delete(ACTIVITY_COOKIE)
+      return redirect
+    }
+
+    // Still active → refresh the sliding activity timestamp on the response.
+    supabaseResponse.cookies.set(ACTIVITY_COOKIE, String(now), {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      maxAge: Math.floor(INACTIVITY_TIMEOUT_MS / 1000),
+    })
+
     const role =
       (user.app_metadata?.role as string | undefined) ??
       (user.user_metadata?.role as string | undefined) ??

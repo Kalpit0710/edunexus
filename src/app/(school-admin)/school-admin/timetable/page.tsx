@@ -33,6 +33,7 @@ import {
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { TimeInput } from '@/components/ui/time-input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -407,11 +408,11 @@ function PeriodDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Start time</Label>
-              <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+              <TimeInput value={startTime} onChange={(e) => setStartTime(e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label>End time</Label>
-              <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+              <TimeInput value={endTime} onChange={(e) => setEndTime(e.target.value)} />
             </div>
           </div>
           <div className="space-y-1.5">

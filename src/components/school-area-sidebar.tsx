@@ -5,12 +5,15 @@ import { SchoolAdminSidebar } from './school-admin-sidebar'
 import { ManagerSidebar } from './manager-sidebar'
 
 /**
- * Role-aware sidebar for the shared `/school-admin` surfaces.
+ * Role-aware sidebar for surfaces shared between school admins and
+ * managers/cashiers (the `/school-admin` student/fee pages and the `/manager`
+ * inventory + POS pages).
  *
- * Managers and cashiers may use a few school-admin pages (student records and
- * fee collection). Rather than dropping them into the School Admin shell — which
- * exposes admin-only nav they can't use — keep their own Manager chrome so the
- * experience is consistent with the rest of the manager area.
+ * Each role keeps its own chrome regardless of which route group the page lives
+ * in: a school admin browsing `/manager/inventory` still sees the School Admin
+ * nav (not the Manager Portal), and a manager stays in the Manager shell. This
+ * avoids exposing nav a role can't use and prevents the confusing "switched to
+ * manager view" effect when an admin opens Inventory.
  */
 export function SchoolAreaSidebar() {
   const user = useAuthStore((s) => s.user)

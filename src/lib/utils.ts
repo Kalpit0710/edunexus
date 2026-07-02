@@ -7,15 +7,48 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * Best-effort extraction of a human-readable message from an unknown thrown
+ * value. Handles Error instances, plain strings, and the object-shaped errors
+ * commonly returned by Supabase (`PostgrestError`), `fetch` responses, and API
+ * routes (`{ message | error | error_description | ... }`), including one level
+ * of nesting (e.g. `{ error: { message } }`). Returns '' when nothing usable
+ * is found so callers can apply a friendly fallback.
+ */
+function extractErrorMessage(raw: unknown): string {
+  if (raw == null) return ''
+  if (typeof raw === 'string') return raw
+  if (raw instanceof Error) return raw.message
+  if (typeof raw === 'object') {
+    const obj = raw as Record<string, unknown>
+    const keys = ['message', 'error_description', 'error', 'msg', 'details', 'hint', 'statusText']
+    for (const key of keys) {
+      const val = obj[key]
+      if (typeof val === 'string' && val.trim()) return val
+      // Nested error object, e.g. { error: { message } }.
+      if (val && typeof val === 'object') {
+        const nested = (val as Record<string, unknown>).message
+        if (typeof nested === 'string' && nested.trim()) return nested
+      }
+    }
+  }
+  return ''
+}
+
+/**
  * Maps raw technical error strings (GoTrue / Postgres / Supabase / network)
  * to friendly, user-facing messages. Already-friendly messages are returned
  * unchanged; only clearly technical/internal strings are translated or
  * replaced with a safe generic fallback.
  */
 export function humanizeError(raw: unknown): string {
-  const message =
-    raw instanceof Error ? raw.message : typeof raw === 'string' ? raw : ''
-  if (!message.trim()) return 'Something went wrong. Please try again.'
+  const message = extractErrorMessage(raw).trim()
+
+  // Guard against useless serializations that must never reach the user
+  // (e.g. an empty object rendered as "{}", or "[object Object]").
+  const uselessMessages = new Set(['{}', '[object object]', 'null', 'undefined'])
+  if (!message || uselessMessages.has(message.toLowerCase())) {
+    return 'Something went wrong. Please try again.'
+  }
 
   const lower = message.toLowerCase()
 
@@ -93,6 +126,14 @@ export function humanizeError(raw: unknown): string {
     '500 internal',
   ]
   if (technicalSignatures.some((sig) => lower.includes(sig))) {
+    return 'Something went wrong. Please try again.'
+  }
+
+  // A raw JSON/object dump (e.g. "{...}" or "[...]") is never user-friendly.
+  if (
+    (message.startsWith('{') && message.endsWith('}')) ||
+    (message.startsWith('[') && message.endsWith(']'))
+  ) {
     return 'Something went wrong. Please try again.'
   }
 

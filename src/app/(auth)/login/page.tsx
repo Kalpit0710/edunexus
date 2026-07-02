@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
@@ -34,8 +34,22 @@ type LoginFormValues = z.infer<typeof loginSchema>
 export default function LoginPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [redirecting, setRedirecting] = useState(false)
   const supabase = createClient()
   const { setUser, setSchool } = useAuthStore()
+
+  // Surface a friendly notice when the middleware signed the user out for
+  // inactivity (redirects here with `?reason=timeout`).
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const reason = new URLSearchParams(window.location.search).get('reason')
+    if (reason === 'timeout') {
+      toast.info('You were signed out due to inactivity. Please sign in again.')
+      const url = new URL(window.location.href)
+      url.searchParams.delete('reason')
+      window.history.replaceState({}, '', url.toString())
+    }
+  }, [])
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -50,8 +64,8 @@ export default function LoginPage() {
         password: data.password,
       })
 
-      if (authError) { toast.error(getErrorMessage(authError)); return }
-      if (!authData.user) { toast.error('Login failed. No user returned.'); return }
+      if (authError) { setIsLoading(false); toast.error(getErrorMessage(authError)); return }
+      if (!authData.user) { setIsLoading(false); toast.error('Login failed. No user returned.'); return }
 
       const { data: profileResp, error: profileError } = await supabase
         .from('user_profiles')
@@ -62,6 +76,7 @@ export default function LoginPage() {
       const profileData = profileResp
 
       if (profileError || !profileData) {
+        setIsLoading(false)
         console.error('Profile fetch error:', profileError)
         toast.error('Could not fetch user profile details.')
         return
@@ -105,6 +120,10 @@ export default function LoginPage() {
       }
 
       toast.success('Welcome back!')
+      // Keep a loader on screen from here until the destination route mounts —
+      // do NOT reset the loading state on success, otherwise the login form
+      // briefly flashes back to idle while the next page is still loading.
+      setRedirecting(true)
 
       const ROLE_ROUTES: Record<string, string> = {
         super_admin: '/super-admin/dashboard',
@@ -117,15 +136,24 @@ export default function LoginPage() {
       router.push((ROLE_ROUTES[profileData.role] || '/school-admin/dashboard') as any)
       router.refresh()
     } catch (error) {
+      setIsLoading(false)
       toast.error('An unexpected error occurred during login.')
       console.error(error)
-    } finally {
-      setIsLoading(false)
     }
   }
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0a0a0a] p-4">
+      {/* Post-validation loader — stays until the destination route replaces this page */}
+      {redirecting && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-[#0a0a0a]/90 backdrop-blur-sm">
+          <svg className="h-8 w-8 animate-spin text-blue-400" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          <p className="text-sm text-zinc-400">Loading your dashboard…</p>
+        </div>
+      )}
       {/* Radial blue glow background */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-1/2 top-1/3 h-[600px] w-[800px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-600/10 blur-[120px]" />
