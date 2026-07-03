@@ -42,3 +42,10 @@ Enables school staff to communicate with students, parents, and other teachers t
 - [ ] Fee reminder scheduler (configurable per school)
 - [ ] PDF attachment support
 - [ ] Announcement approval workflow
+
+## Mermaid Visual Summary
+
+`mermaid
+flowchart LR
+  Discovery --> Planning --> Build --> Validate --> Release
+`

@@ -116,3 +116,10 @@ The Fee & Billing module is the financial heart of EduNexus. It handles:
 - [ ] Fee reminder automation
 - [ ] GST-ready receipt format
 - [ ] Advanced financial charts
+
+## Mermaid Visual Summary
+
+`mermaid
+flowchart LR
+  Discovery --> Planning --> Build --> Validate --> Release
+`

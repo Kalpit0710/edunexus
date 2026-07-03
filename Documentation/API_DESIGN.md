@@ -17,6 +17,38 @@ EduNexus does not maintain a traditional REST API. All data access goes through:
 
 All APIs are authenticated via JWT. All data is filtered by RLS automatically.
 
+### Mermaid: API Access Path
+
+```mermaid
+flowchart LR
+  UI[Next.js Server Actions / Components] --> SB[Supabase Client]
+  SB --> PR[PostgREST Tables]
+  SB --> RPC[PostgreSQL RPC Functions]
+  UI --> EF[Edge Functions]
+  EF --> PR
+  EF --> EXT[Email/PDF Providers]
+```
+
+### Mermaid: Fee Collection Sequence
+
+```mermaid
+sequenceDiagram
+  participant U as Manager UI
+  participant SA as Server Action
+  participant DB as Supabase RPC collect_fee
+  participant FN as Edge Function generate-pdf
+  participant ST as Storage
+
+  U->>SA: Submit collection payload
+  SA->>DB: rpc('collect_fee', args)
+  DB-->>SA: payment_id
+  SA->>FN: generate receipt PDF
+  FN->>ST: Store receipt
+  ST-->>FN: signed URL
+  FN-->>SA: receipt URL
+  SA-->>U: Success + receipt link
+```
+
 ---
 
 ## Supabase Client Initialization

@@ -89,3 +89,10 @@ Generate TC PDF with:
 - [ ] Student promotion (bulk move to next class at year end)
 - [ ] Biometric ID integration
 - [ ] Digital student ID card PDF
+
+## Mermaid Visual Summary
+
+`mermaid
+flowchart LR
+  Discovery --> Planning --> Build --> Validate --> Release
+`

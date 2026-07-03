@@ -77,3 +77,10 @@ Home | Attendance | Results | Fees | More
 - [ ] Announcements view
 - [ ] Multi-child switcher
 - [ ] Fee unpaid result lock
+
+## Mermaid Visual Summary
+
+`mermaid
+flowchart LR
+  Discovery --> Planning --> Build --> Validate --> Release
+`

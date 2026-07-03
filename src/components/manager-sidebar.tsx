@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { createClient } from '@/lib/supabase/client'
 import { getInitials } from '@/lib/utils'
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, LogOut, Briefcase, Package, ShoppingCart, Users, IndianRupee, ClockAlert } from 'lucide-react'
+import { LayoutDashboard, LogOut, Briefcase, Package, ShoppingCart, Users, IndianRupee, ClockAlert, Bell } from 'lucide-react'
 import { toast } from 'sonner'
 
 const navItems = [
@@ -16,6 +16,7 @@ const navItems = [
     { href: '/school-admin/fees/pending', label: 'Pending Fees', icon: ClockAlert },
     { href: '/manager/inventory', label: 'Inventory', icon: Package },
     { href: '/manager/inventory/pos', label: 'Point of Sale', icon: ShoppingCart },
+    { href: '/manager/notifications', label: 'Notifications', icon: Bell },
 ]
 
 export function ManagerSidebar() {

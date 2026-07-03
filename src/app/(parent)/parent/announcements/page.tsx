@@ -3,6 +3,7 @@
 import { useAuthStore } from '@/stores/auth.store'
 import { useEffect, useState } from 'react'
 import { getLatestAnnouncements, type AnnouncementRow } from '../actions'
+import { audienceLabel } from '@/lib/announcement-utils'
 import { Megaphone, Bell } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -15,10 +16,9 @@ function timeAgo(dateStr: string) {
 }
 
 const AUDIENCE_STYLE: Record<string, { color: string; bg: string; border: string }> = {
-  parents: { color: '#3b82f6', bg: '#3b82f620', border: '#3b82f630' },
-  students: { color: '#8b5cf6', bg: '#8b5cf620', border: '#8b5cf630' },
-  teachers: { color: '#f59e0b', bg: '#f59e0b20', border: '#f59e0b30' },
-  all: { color: '#10b981', bg: '#10b98120', border: '#10b98130' },
+  class_students: { color: '#3b82f6', bg: '#3b82f620', border: '#3b82f630' },
+  all_students: { color: '#8b5cf6', bg: '#8b5cf620', border: '#8b5cf630' },
+  all_teachers: { color: '#f59e0b', bg: '#f59e0b20', border: '#f59e0b30' },
 }
 
 export default function AnnouncementsPage() {
@@ -63,7 +63,7 @@ export default function AnnouncementsPage() {
       ) : (
         <div className="space-y-3">
           {announcements.map(a => {
-            const audienceStyle = AUDIENCE_STYLE[a.targetAudience] ?? AUDIENCE_STYLE.all!
+            const audienceStyle = AUDIENCE_STYLE[a.targetAudience] ?? AUDIENCE_STYLE.class_students!
             return (
               <div
                 key={a.id}
@@ -81,7 +81,7 @@ export default function AnnouncementsPage() {
                   </div>
                   <div className="flex flex-col items-end gap-2 shrink-0">
                     <span className="text-[10px] text-zinc-600 whitespace-nowrap">{timeAgo(a.createdAt)}</span>
-                    {a.targetAudience && a.targetAudience !== 'all' && (
+                    {a.targetAudience && (
                       <span
                         className="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium capitalize"
                         style={{
@@ -90,7 +90,7 @@ export default function AnnouncementsPage() {
                           borderColor: audienceStyle.border,
                         }}
                       >
-                        {a.targetAudience}
+                        {audienceLabel(a.targetAudience)}
                       </span>
                     )}
                   </div>

@@ -55,6 +55,63 @@ export type Database = {
           },
         ]
       }
+      announcements: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          created_by_name: string | null
+          deleted_at: string | null
+          id: string
+          school_id: string
+          target_audience: string
+          target_class_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          deleted_at?: string | null
+          id?: string
+          school_id: string
+          target_audience: string
+          target_class_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          deleted_at?: string | null
+          id?: string
+          school_id?: string
+          target_audience?: string
+          target_class_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcements_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcements_target_class_id_fkey"
+            columns: ["target_class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attendance_records: {
         Row: {
           class_id: string

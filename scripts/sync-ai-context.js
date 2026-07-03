@@ -314,6 +314,18 @@ function main() {
   lines.push(`- Architecture heading: ${firstHeading(architectureText)}`)
   lines.push('')
 
+  lines.push('## Mermaid Visual Summary')
+  lines.push('')
+  lines.push('```mermaid')
+  lines.push('flowchart LR')
+  lines.push('  SourceDocs[Source Documentation] --> Snapshot[AI Context Snapshot]')
+  lines.push('  Snapshot --> AgentUse[AI Assistant Context]')
+  lines.push('  AgentUse --> RepoChanges[Code or Doc Updates]')
+  lines.push('  RepoChanges --> RefreshSync[Context Sync]')
+  lines.push('  RefreshSync --> Snapshot')
+  lines.push('```')
+  lines.push('')
+
   lines.push('## Milestone Snapshot')
   lines.push('')
   if (milestones.length === 0) {

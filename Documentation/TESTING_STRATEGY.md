@@ -12,6 +12,19 @@
 EduNexus uses a **test pyramid** approach:
 
 ```
+
+### Mermaid: CI Test Gate Flow
+
+```mermaid
+flowchart LR
+  CH[Code Change] --> TC[pnpm type-check]
+  TC --> L[pnpm lint]
+  L --> U[Unit Tests]
+  U --> I[Integration + RLS Tests]
+  I --> E[E2E Playwright]
+  E --> B[pnpm build]
+  B --> OK[Ready to Merge]
+```
          /\
         /E2E\          ← Few, covers critical user journeys
        /──────\

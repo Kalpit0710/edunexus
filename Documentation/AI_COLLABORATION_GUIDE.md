@@ -43,6 +43,18 @@
 4. Teacher — handles attendance and marks for their classes
 5. Parent — read-only view of their own child
 
+### Mermaid: AI Navigation Map
+
+```mermaid
+flowchart TB
+  Task[Incoming Task] --> Phase[Read PROGRESS + DEVELOPMENT_PLAN]
+  Phase --> Scope[Locate module under src/app + src/lib]
+  Scope --> Rules[Apply invariants\nRLS + school_id + soft-delete]
+  Rules --> Change[Implement minimal safe change]
+  Change --> Verify[type-check + tests + lint]
+  Verify --> Docs[Update docs/context snapshot if needed]
+```
+
 ---
 
 ## Technology Stack (Quick Reference)

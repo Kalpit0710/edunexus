@@ -40,6 +40,32 @@
 
 ## Entity Relationship Overview
 
+### Mermaid: Core Domain ER (Simplified)
+
+```mermaid
+erDiagram
+  schools ||--o{ users : has
+  schools ||--o{ classes : has
+  classes ||--o{ sections : has
+  sections ||--o{ students : has
+  students ||--o{ parents : linked_to
+  schools ||--o{ teachers : has
+  teachers ||--o{ teacher_class_assignments : assigned
+  sections ||--o{ teacher_class_assignments : mapped
+  schools ||--o{ announcements : broadcasts
+  schools ||--o{ audit_logs : audits
+```
+
+```
+
+### Mermaid: RLS Enforcement Flow
+
+```mermaid
+flowchart TB
+  JWT[JWT Claims\nrole + school_id] --> POL[RLS Policy Evaluation]
+  Q[SELECT/INSERT/UPDATE/DELETE] --> POL
+  POL -->|allowed| DATA[(Tenant Rows)]
+  POL -->|denied| BLOCK[Permission Denied / Empty Result]
 ```
 schools (1)
   └── users (N)                          -- all users belong to a school

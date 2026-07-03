@@ -254,3 +254,10 @@ Examples:
 | Local | localhost:3000 | any | Manual |
 | Staging | staging.edunexus.app | `develop` | Yes (on push) |
 | Production | app.edunexus.app | `main` | Yes (on PR merge) |
+
+## Mermaid Visual Summary
+
+`mermaid
+flowchart LR
+  Discovery --> Planning --> Build --> Validate --> Release
+`

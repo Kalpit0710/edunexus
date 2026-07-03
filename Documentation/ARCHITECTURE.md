@@ -35,6 +35,29 @@ EduNexus follows a **BaaS (Backend-as-a-Service) + SSR Frontend** architecture:
 - **Edge Functions** (Deno) handle compute-heavy, scheduled, and secure operations
 - All school data is **logically isolated** via PostgreSQL Row-Level Security (RLS)
 
+### Mermaid: End-to-End Architecture
+
+```mermaid
+flowchart TB
+  U[Users\nSuper Admin | School Admin | Teacher | Manager | Parent]
+  FE[Next.js App Router\nSSR + Client Components]
+  MW[Middleware + Role Routing\nPermission/Feature Gates]
+  AUTH[Supabase Auth\nJWT + Session]
+  DB[(PostgreSQL\nRLS + RPC)]
+  EF[Edge Functions\nPDF | Email | Jobs]
+  ST[Supabase Storage\nLogos | Photos | Documents]
+  EXT[External Services\nResend/Vercel]
+
+  U --> FE
+  FE --> MW
+  MW --> AUTH
+  FE --> DB
+  FE --> EF
+  FE --> ST
+  EF --> DB
+  EF --> EXT
+```
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        CLIENT LAYER                             │
@@ -314,6 +337,19 @@ $$;
 ---
 
 ## Multi-Tenant Design
+
+### Mermaid: Tenant Isolation Model
+
+```mermaid
+flowchart LR
+  T1[School A User JWT\nschool_id=A] --> RLS[RLS Policy Layer]
+  T2[School B User JWT\nschool_id=B] --> RLS
+  SA[Super Admin JWT\nrole=super_admin] --> RLS
+
+  RLS --> A[(Rows where school_id=A)]
+  RLS --> B[(Rows where school_id=B)]
+  RLS --> ALL[(All rows for super admin policies)]
+```
 
 ### Tenant Isolation via RLS
 

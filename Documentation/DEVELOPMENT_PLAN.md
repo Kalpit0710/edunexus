@@ -23,6 +23,23 @@
 10. [Milestone Checklist](#milestone-checklist)
 11. [Risk Register](#risk-register)
 
+## Mermaid Roadmap Snapshot
+
+```mermaid
+timeline
+  title EduNexus Delivery Phases
+  2026 Q1 : Phase 1 MVP
+    : Core school operations
+    : Exit gate signed off
+  2026 Q2 : Phase 2 Advanced Modules
+    : Report cards, inventory POS, parent portal
+    : Exit gate signed off
+  2026 Q3 : Phase 3 Scalability
+    : Optimization, automation, growth features
+  Future : Phase 4 Mobile Expansion
+   : React Native / PWA expansion
+```
+
 ---
 
 ## Development Principles

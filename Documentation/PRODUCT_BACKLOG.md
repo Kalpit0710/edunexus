@@ -91,3 +91,10 @@
 3. **Tier 2** pick by demo impact (E2.1 / E2.2 / E2.3).
 
 > Every change ships with: migration (if any), tests, and a `pnpm ai:sync-context` refresh per repo workflow.
+
+## Mermaid Visual Summary
+
+`mermaid
+flowchart LR
+  Discovery --> Planning --> Build --> Validate --> Release
+`

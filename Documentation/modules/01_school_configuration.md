@@ -89,3 +89,10 @@ For new schools, a step-by-step wizard walks through:
 - [ ] Custom school subdomain
 - [ ] Timetable configuration
 - [ ] Holiday calendar setup
+
+## Mermaid Visual Summary
+
+`mermaid
+flowchart LR
+  Discovery --> Planning --> Build --> Validate --> Release
+`

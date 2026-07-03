@@ -79,3 +79,10 @@ Edge Function generates beautiful PDF with:
 - [ ] Result locking
 - [ ] Class performance report
 - [ ] Topper list
+
+## Mermaid Visual Summary
+
+`mermaid
+flowchart LR
+  Discovery --> Planning --> Build --> Validate --> Release
+`

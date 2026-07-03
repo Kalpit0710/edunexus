@@ -58,3 +58,10 @@
 | Emails delivered | > 95% delivery rate |
 | Inventory bills generated | 50+ |
 | Report cards generated | 100+ |
+
+## Mermaid Visual Summary
+
+`mermaid
+flowchart LR
+  Discovery --> Planning --> Build --> Validate --> Release
+`

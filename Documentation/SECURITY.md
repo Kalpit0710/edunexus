@@ -38,6 +38,36 @@ Layer 6: Audit logging (accountability)
 
 Every layer is independent. Bypassing one layer does not compromise the system.
 
+### Mermaid: Defense in Depth
+
+```mermaid
+flowchart TB
+  L1[TLS/HTTPS]
+  L2[Supabase Auth JWT]
+  L3[Next.js Middleware Guards]
+  L4[PostgreSQL RLS]
+  L5[Role Permissions + Feature Gates]
+  L6[Audit Logs + Monitoring]
+
+  L1 --> L2 --> L3 --> L4 --> L5 --> L6
+```
+
+### Mermaid: Authorization Decision Flow
+
+```mermaid
+flowchart LR
+  R[Incoming Request] --> A{Authenticated?}
+  A -->|No| D1[Redirect/401]
+  A -->|Yes| S{Subscription Active?}
+  S -->|No| D2[subscription-inactive]
+  S -->|Yes| P{Permission + Feature Allowed?}
+  P -->|No| D3[403/redirect]
+  P -->|Yes| Q[Execute Query]
+  Q --> RLS{RLS Policy Pass?}
+  RLS -->|No| D4[Denied/empty]
+  RLS -->|Yes| OK[Response]
+```
+
 ---
 
 ## Authentication

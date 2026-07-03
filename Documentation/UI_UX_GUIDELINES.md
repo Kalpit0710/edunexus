@@ -438,3 +438,10 @@ if (error) return (
   </Alert>
 )
 ```
+
+## Mermaid Visual Summary
+
+`mermaid
+flowchart LR
+  Discovery --> Planning --> Build --> Validate --> Release
+`

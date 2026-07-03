@@ -4,6 +4,7 @@ import { createAdminClient, createClient } from '@/lib/supabase/server'
 import { schoolToday } from '@/lib/date-utils'
 import { pickTodayHomework, pickUpcomingDue } from '@/lib/digest-utils'
 import { normalizeWorkingDays } from '@/lib/timetable-utils'
+import { normalizeAnnouncementAudience, parentCanSeeAnnouncement } from '@/lib/announcement-utils'
 import type { FeePaymentRow } from '../../(school-admin)/school-admin/fees/actions'
 import { getPrintableReportCard } from '../../(school-admin)/school-admin/report-cards/actions'
 import { computeStudentFeeBalance } from '@/lib/fees/balance'
@@ -419,17 +420,20 @@ export async function getLatestAnnouncements(
 
         if (error || !data) return []
 
-        // Filter: show general announcements + ones for this class
+        let effectiveClassId = classId ?? null
+        if (!effectiveClassId) {
+            const linkedChildren = await getLinkedChildrenInternal(context)
+            effectiveClassId = linkedChildren[0]?.classId ?? null
+        }
+
         return (data as any[])
-            .filter((a: any) =>
-                !a.target_class_id || a.target_class_id === classId
-            )
+            .filter((a: any) => parentCanSeeAnnouncement(a.target_audience, a.target_class_id, effectiveClassId))
             .map((a: any) => ({
                 id: a.id,
                 title: a.title,
                 body: a.body,
                 createdAt: a.created_at,
-                targetAudience: a.target_audience ?? 'all',
+                targetAudience: normalizeAnnouncementAudience(a.target_audience),
             }))
     } catch {
         return []

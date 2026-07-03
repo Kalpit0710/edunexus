@@ -120,3 +120,10 @@ ALTER TABLE schools
 | Route | Purpose |
 |-------|---------|
 | `/super-admin/schools/[id]/impersonate` | View-as school admin (pending) |
+
+## Mermaid Visual Summary
+
+`mermaid
+flowchart LR
+  Discovery --> Planning --> Build --> Validate --> Release
+`

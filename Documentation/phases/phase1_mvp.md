@@ -64,3 +64,10 @@ Before formal Phase 2 go-live, ALL of the following must be true:
 | Fee collections via POS | 100+ | Pending UAT |
 | Critical bugs reported by users | < 5 | 0 (dev environment) |
 | User satisfaction (informal) | Positive feedback from admins | Pending UAT |
+
+## Mermaid Visual Summary
+
+`mermaid
+flowchart LR
+  Discovery --> Planning --> Build --> Validate --> Release
+`

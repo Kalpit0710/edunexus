@@ -61,3 +61,10 @@ Optional email alert to Admin when threshold crossed.
 - [ ] Student-linked purchase
 - [ ] Low stock dashboard widget
 - [ ] Inventory reports
+
+## Mermaid Visual Summary
+
+`mermaid
+flowchart LR
+  Discovery --> Planning --> Build --> Validate --> Release
+`

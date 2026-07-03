@@ -85,3 +85,10 @@ mv_exam_performance_summary  -- average marks, pass % per exam per class
 - [ ] Materialized views for performance
 - [ ] Scheduled report emails (weekly summary to admin)
 - [ ] Super Admin cross-school analytics
+
+## Mermaid Visual Summary
+
+`mermaid
+flowchart LR
+  Discovery --> Planning --> Build --> Validate --> Release
+`

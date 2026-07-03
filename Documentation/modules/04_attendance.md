@@ -68,3 +68,10 @@ Edge Function cron (daily evening):
 - [ ] Holiday calendar integration
 - [ ] Attendance-linked certificate generation
 - [ ] Biometric integration hook (Phase 3/4)
+
+## Mermaid Visual Summary
+
+`mermaid
+flowchart LR
+  Discovery --> Planning --> Build --> Validate --> Release
+`

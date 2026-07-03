@@ -205,3 +205,10 @@ The architecture is prepared so each Part 6 feature is a **drop-in**, not a refa
 6. **Part 6** — deferred.
 
 > Each Chunk should ship with: migration (if any), updated/added tests, and a `pnpm ai:sync-context` refresh per repo workflow.
+
+## Mermaid Visual Summary
+
+`mermaid
+flowchart LR
+  Discovery --> Planning --> Build --> Validate --> Release
+`

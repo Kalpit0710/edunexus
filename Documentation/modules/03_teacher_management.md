@@ -64,3 +64,10 @@ Performance tab:
 - [ ] Salary tracking (basic)
 - [ ] Parent feedback collection
 - [ ] Teacher attendance (separate from student attendance)
+
+## Mermaid Visual Summary
+
+`mermaid
+flowchart LR
+  Discovery --> Planning --> Build --> Validate --> Release
+`

@@ -38,6 +38,43 @@
 
 ## Completed Tasks
 
+### 2026-07-03 — Documentation enhancement: Mermaid diagrams across core docs
+- Status: ✅ Completed.
+- Added Mermaid diagrams to improve system comprehension and onboarding speed across documentation set:
+  - `Documentation/ARCHITECTURE.md`: end-to-end architecture flow + tenant isolation model.
+  - `Documentation/API_DESIGN.md`: API access path + fee-collection sequence.
+  - `Documentation/DATABASE_SCHEMA.md`: simplified ER diagram + RLS enforcement flow.
+  - `Documentation/DEVELOPMENT_PLAN.md`: phase timeline roadmap.
+  - `Documentation/TESTING_STRATEGY.md`: CI test gate flow.
+  - `Documentation/SECURITY.md`: defense-in-depth and authorization decision flow.
+  - `Documentation/AI_COLLABORATION_GUIDE.md`: AI navigation map for consistent change workflow.
+  - `Documentation/README.md`: documentation mind-map for discoverability.
+- Outcome: project docs are now visually navigable, with architecture, security, delivery, and testing flows represented in executable Mermaid blocks.
+
+### 2026-07-03 — Super-admin broadcast notifications (global/school/class scopes)
+- Status: ✅ Completed.
+- Added a super-admin notifications console at `super-admin/notifications` with multi-scope targeting:
+  - global everyone (all schools), global students, global teachers,
+  - school-wise everyone, school-wise students, school-wise teachers,
+  - class-wise students.
+- Implementation dispatches announcements per school/class using existing `announcements` channel so downstream parent/student/teacher visibility stays consistent with role filters.
+- Added pure target-expansion utilities (`src/lib/super-admin-notification-utils.ts`) + unit tests (`tests/unit/lib/super-admin-notification-utils.test.ts`).
+- Wired super-admin sidebar navigation to the new Notifications page.
+
+### 2026-07-03 — Homework governance + role-scoped notifications
+- Status: ✅ Completed (code + tests). Added school-admin homework oversight and a full communication flow aligned with role boundaries.
+- **Homework governance:** new school-admin module at `school-admin/homework` with create/view/update/delete across classes; route is feature-gated (`teachers`) and server-guarded with `requirePermission('teachers.manage')`.
+- **Announcements/notifications:** added migration `20260703000001_announcements_module.sql` creating `announcements` with RLS policies for role-scoped write rules:
+  - teachers can post only `class_students` notifications and only for classes they are assigned to,
+  - school_admin/manager/cashier can post `class_students`, `all_students`, or `all_teachers`.
+  - school_admin/manager/cashier can edit/delete school notifications; teachers can edit/delete only their own.
+- **New UI flows:**
+  - `teacher/notifications`: send/edit/delete class-student notifications for assigned classes.
+  - `manager/notifications`: manager/admin send/edit/delete class, all-students, or all-teachers notifications.
+  - sidebars updated for teacher, manager, and school-admin navigation.
+- **Parent visibility tightening:** parent announcement feed now includes only student-targeted notifications (class-matched or all-students), excluding teacher-only broadcasts.
+- **Validation:** `pnpm type-check` passed; new unit tests `tests/unit/lib/announcement-utils.test.ts` (5 passed); `pnpm lint` completed with existing workspace warnings.
+
 ### 2026-06-25 — Photo storage (students/teachers) + fee-reminder rebuild
 - Status: ✅ Code complete; `pnpm type-check` → 0 errors, `pnpm lint` → exit 0 (warnings only), full `pnpm build` → compiled successfully, new unit suite **11 passed**. ⚠️ Migration `20260625000001_photo_storage.sql` must still be applied to remote and `pnpm db:types` re-run to confirm the manual `teachers.photo_url` type edit.
 - **Photo storage (migration `20260625000001_photo_storage.sql`):** idempotently creates public storage buckets `student-photos`, `teacher-photos`, `school-logos`; per-bucket `storage.objects` RLS (public read; tenant-scoped insert/update/delete keyed on the first path segment = `school_id`, with super-admin bypass); `ALTER teachers ADD COLUMN photo_url TEXT` (parity with existing `students.photo_url` / `teachers.signature_url`).
@@ -428,3 +465,10 @@ When completing a task, update this file with:
 - Tests: What tests were run/written
 - Notes: Any important decisions made
 ```
+
+## Mermaid Visual Summary
+
+`mermaid
+flowchart LR
+  Discovery --> Planning --> Build --> Validate --> Release
+`

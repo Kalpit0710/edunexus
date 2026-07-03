@@ -27,6 +27,7 @@ import {
     Bus,
     Package,
     ShoppingCart,
+    Bell,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { usePlan } from '@/hooks/use-plan'
@@ -38,6 +39,7 @@ const navItems: { href: string; label: string; icon: typeof LayoutDashboard; fea
     { href: '/school-admin/teachers', label: 'Teachers', icon: GraduationCap, feature: 'teachers' },
     { href: '/school-admin/timetable', label: 'Timetable', icon: CalendarRange, feature: 'teachers' },
     { href: '/school-admin/attendance', label: 'Attendance', icon: CalendarCheck, feature: 'attendance' },
+    { href: '/school-admin/homework', label: 'Homework', icon: BookOpen, feature: 'teachers' },
     { href: '/school-admin/calendar', label: 'Calendar', icon: CalendarDays, feature: 'attendance' },
     { href: '/school-admin/report-cards', label: 'Report Cards', icon: BookOpen, feature: 'exams' },
     { href: '/school-admin/fees', label: 'Fees & Billing', icon: IndianRupee, feature: 'fees' },
@@ -46,6 +48,7 @@ const navItems: { href: string; label: string; icon: typeof LayoutDashboard; fea
     { href: '/school-admin/library', label: 'Library', icon: BookMarked, feature: 'inventory' },
     { href: '/manager/inventory', label: 'Inventory', icon: Package, feature: 'inventory' },
     { href: '/manager/inventory/pos', label: 'Bookstore POS', icon: ShoppingCart, feature: 'inventory' },
+    { href: '/manager/notifications', label: 'Notifications', icon: Bell, feature: 'communication' },
     { href: '/school-admin/transport', label: 'Transport', icon: Bus, feature: 'students' },
     { href: '/school-admin/reports', label: 'Reports', icon: BarChart2, feature: 'reports' },
     { href: '/school-admin/promotion', label: 'Promotion', icon: ArrowUpCircle, feature: 'students' },

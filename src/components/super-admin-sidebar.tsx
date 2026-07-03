@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth.store'
 import { createClient } from '@/lib/supabase/client'
 import { getInitials, cn } from '@/lib/utils'
-import { LayoutDashboard, Building2, LogOut, Users, ScrollText, Tag } from 'lucide-react'
+import { LayoutDashboard, Building2, LogOut, Users, ScrollText, Tag, Bell } from 'lucide-react'
 import { BrandLogo } from '@/components/brand-logo'
 import { toast } from 'sonner'
 
@@ -13,6 +13,7 @@ const navItems = [
   { href: '/super-admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/super-admin/schools', label: 'Schools', icon: Building2 },
   { href: '/super-admin/users', label: 'Users', icon: Users },
+  { href: '/super-admin/notifications', label: 'Notifications', icon: Bell },
   { href: '/super-admin/pricing', label: 'Pricing', icon: Tag },
   { href: '/super-admin/audit', label: 'Audit Log', icon: ScrollText },
 ]

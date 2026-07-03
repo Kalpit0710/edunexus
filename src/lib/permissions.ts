@@ -111,6 +111,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<ConfigurableRole, Set<string>> = {
     'exams.enter_marks',
     'reports.view',
     'communication.view',
+    'communication.send',
     'timetable.view',
     'transport.view',
     'library.view',

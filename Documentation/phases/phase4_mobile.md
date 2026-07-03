@@ -78,3 +78,10 @@ The most-used mobile interface. Parents check this daily.
 - [ ] Push notification delivery > 95%
 - [ ] Offline attendance: marks saved locally, synced on reconnect
 - [ ] App Store rating: 4.0+
+
+## Mermaid Visual Summary
+
+`mermaid
+flowchart LR
+  Discovery --> Planning --> Build --> Validate --> Release
+`

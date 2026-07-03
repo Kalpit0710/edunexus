@@ -63,3 +63,10 @@
 | System uptime | 99.9% |
 | Average page load | < 2s |
 | Fee collection automation rate | 80% via send reminders |
+
+## Mermaid Visual Summary
+
+`mermaid
+flowchart LR
+  Discovery --> Planning --> Build --> Validate --> Release
+`

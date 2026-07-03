@@ -122,6 +122,33 @@ Full breakdown: see [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md)
 
 ## Documentation Index
 
+### Mermaid: Documentation Map
+
+```mermaid
+mindmap
+	root((EduNexus Docs))
+		Architecture
+			ARCHITECTURE.md
+			API_DESIGN.md
+			DATABASE_SCHEMA.md
+			SECURITY.md
+		Delivery
+			DEVELOPMENT_PLAN.md
+			PROGRESS.md
+			QA_AUDIT_AND_HARDENING_PLAN.md
+		Product
+			PRODUCT_BACKLOG.md
+			modules/
+			phases/
+		Engineering
+			TESTING_STRATEGY.md
+			CONTRIBUTING.md
+			UI_UX_GUIDELINES.md
+		AI
+			AI_COLLABORATION_GUIDE.md
+			AI_CONTEXT_SNAPSHOT.md
+```
+
 | Document | Purpose |
 |----------|---------|
 | [README.md](./README.md) | This file — project overview |
