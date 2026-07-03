@@ -12,6 +12,7 @@ import { getInventorySummary, getInventorySales, getLowStockItems } from '../act
 import { formatCurrency } from '@/lib/utils'
 import * as xlsx from 'xlsx'
 import { ContentAreaLoader } from '@/components/loaders/page-loaders'
+import { DateInput } from '@/components/ui/date-input'
 
 export default function InventoryReportsPage() {
     const { school } = useAuthStore()
@@ -219,16 +220,14 @@ export default function InventoryReportsPage() {
                                 <CardTitle>Sales Ledger</CardTitle>
                                 <div className="flex items-center gap-2">
                                     <div className="flex items-center text-sm gap-2">
-                                        <input
-                                            type="date"
-                                            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                                        <DateInput
+                                            className="h-9 w-40"
                                             value={dateRange.from}
                                             onChange={e => setDateRange(prev => ({ ...prev, from: e.target.value }))}
                                         />
                                         <span className="text-muted-foreground">to</span>
-                                        <input
-                                            type="date"
-                                            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                                        <DateInput
+                                            className="h-9 w-40"
                                             value={dateRange.to}
                                             onChange={e => setDateRange(prev => ({ ...prev, to: e.target.value }))}
                                         />

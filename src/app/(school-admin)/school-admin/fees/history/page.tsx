@@ -7,6 +7,7 @@ import { schoolToday } from '@/lib/date-utils'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DateInput } from '@/components/ui/date-input'
 import { } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Label } from '@/components/ui/label'
@@ -125,8 +126,7 @@ export default function PaymentHistoryPage() {
                     <div className="flex flex-wrap gap-4 items-end">
                         <div className="space-y-1">
                             <Label className="text-xs">From Date</Label>
-                            <Input
-                                type="date"
+                            <DateInput
                                 value={fromDate}
                                 max={toDate}
                                 onChange={e => setFromDate(e.target.value)}
@@ -135,8 +135,7 @@ export default function PaymentHistoryPage() {
                         </div>
                         <div className="space-y-1">
                             <Label className="text-xs">To Date</Label>
-                            <Input
-                                type="date"
+                            <DateInput
                                 value={toDate}
                                 min={fromDate}
                                 max={today}

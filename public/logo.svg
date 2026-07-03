@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none" role="img" aria-label="EduNexus">
+  <defs>
+    <!-- Primary brand gradient: indigo -> blue -> cyan -->
+    <linearGradient id="enxMain" x1="96" y1="70" x2="430" y2="452" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2233b4" />
+      <stop offset="0.5" stop-color="#2f6fe4" />
+      <stop offset="1" stop-color="#22d3ee" />
+    </linearGradient>
+    <!-- Lighter gradient for highlights / page tops -->
+    <linearGradient id="enxLight" x1="128" y1="150" x2="384" y2="420" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7aa2ff" />
+      <stop offset="1" stop-color="#7ff0ff" />
+    </linearGradient>
+    <!-- Deeper shade for 3D underside of the cap -->
+    <linearGradient id="enxDeep" x1="140" y1="196" x2="372" y2="250" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1b2a9a" />
+      <stop offset="1" stop-color="#1f7fc4" />
+    </linearGradient>
+    <!-- Soft glow for the circuit nodes -->
+    <radialGradient id="enxNode" cx="0.35" cy="0.3" r="0.8">
+      <stop offset="0" stop-color="#a6ecff" />
+      <stop offset="0.45" stop-color="#37b6f0" />
+      <stop offset="1" stop-color="#2247c8" />
+    </radialGradient>
+  </defs>
+
+  <!-- ===== Circuit hexagon frame ===== -->
+  <path d="M256 46 L438 150 L438 362 L256 466 L74 362 L74 150 Z"
+        stroke="url(#enxMain)" stroke-width="15" stroke-linejoin="round" />
+
+  <!-- ===== Circuit nodes (glowing) ===== -->
+  <g stroke="#0b1230" stroke-width="3">
+    <circle cx="256" cy="46"  r="25" fill="url(#enxNode)" />
+    <circle cx="438" cy="150" r="21" fill="url(#enxNode)" />
+    <circle cx="438" cy="362" r="15" fill="url(#enxNode)" />
+    <circle cx="256" cy="466" r="23" fill="url(#enxNode)" />
+    <circle cx="74"  cy="362" r="18" fill="url(#enxNode)" />
+    <circle cx="74"  cy="150" r="16" fill="url(#enxNode)" />
+  </g>
+  <!-- node specular highlights -->
+  <g fill="#ffffff" opacity="0.65">
+    <circle cx="248" cy="38"  r="6" />
+    <circle cx="431" cy="143" r="5" />
+    <circle cx="249" cy="458" r="5.5" />
+    <circle cx="68"  cy="355" r="4.5" />
+  </g>
+
+  <!-- ===== Open book ===== -->
+  <!-- page bodies -->
+  <path d="M256 322 C214 300 168 300 122 316 L122 404 C168 388 214 388 256 408 Z" fill="url(#enxMain)" />
+  <path d="M256 322 C298 300 344 300 390 316 L390 404 C344 388 298 388 256 408 Z" fill="url(#enxMain)" />
+  <!-- page top highlights -->
+  <path d="M256 322 C214 300 168 300 122 316 L122 328 C168 312 214 312 256 334 Z" fill="url(#enxLight)" opacity="0.85" />
+  <path d="M256 322 C298 300 344 300 390 316 L390 328 C344 312 298 312 256 334 Z" fill="url(#enxLight)" opacity="0.85" />
+  <!-- page lines -->
+  <g stroke="#0b1230" stroke-width="3" stroke-linecap="round" opacity="0.35">
+    <path d="M150 340 C182 331 214 333 240 344" />
+    <path d="M150 362 C182 353 214 355 240 366" />
+    <path d="M272 344 C298 333 330 331 362 340" />
+    <path d="M272 366 C298 355 330 353 362 362" />
+  </g>
+  <!-- spine -->
+  <path d="M256 320 L256 408" stroke="url(#enxLight)" stroke-width="6" stroke-linecap="round" />
+
+  <!-- ===== Graduation cap ===== -->
+  <!-- cap crown (head band) -->
+  <path d="M206 214 L306 214 L306 266 C306 294 282 306 256 306 C230 306 206 294 206 266 Z" fill="url(#enxDeep)" />
+  <!-- mortarboard 3D underside -->
+  <path d="M256 158 L380 200 L256 244 L132 200 Z" fill="url(#enxDeep)" />
+  <!-- mortarboard top face -->
+  <path d="M256 148 L380 192 L256 236 L132 192 Z" fill="url(#enxMain)" />
+  <!-- board top-left facet highlight -->
+  <path d="M256 148 L380 192 L256 200 L132 192 Z" fill="url(#enxLight)" opacity="0.55" />
+  <!-- center button -->
+  <circle cx="256" cy="192" r="9" fill="url(#enxLight)" />
+  <circle cx="256" cy="192" r="4" fill="#0b1230" opacity="0.55" />
+
+  <!-- ===== Tassel ===== -->
+  <path d="M380 192 C398 208 402 232 398 258" stroke="url(#enxMain)" stroke-width="7" stroke-linecap="round" />
+  <path d="M398 258 l-8 26 M398 258 l0 28 M398 258 l8 26" stroke="url(#enxMain)" stroke-width="5" stroke-linecap="round" />
+  <circle cx="398" cy="256" r="8" fill="url(#enxLight)" />
+</svg>

@@ -8,6 +8,7 @@ import { schoolToday } from '@/lib/date-utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DateInput } from '@/components/ui/date-input'
 import { Label } from '@/components/ui/label'
 import { InlineLoader } from '@/components/loaders/page-loaders'
 import { DataLoadError } from '@/components/shared/DataLoadError'
@@ -223,11 +224,11 @@ export default function TeacherHomeworkPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="hw-date">Date</Label>
-                  <Input id="hw-date" type="date" value={homeworkDate} onChange={(e) => setHomeworkDate(e.target.value)} />
+                  <DateInput id="hw-date" value={homeworkDate} onChange={(e) => setHomeworkDate(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="hw-due">Due date (optional)</Label>
-                  <Input id="hw-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                  <DateInput id="hw-due" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
                 </div>
               </div>
 

@@ -8,6 +8,7 @@ import { getErrorMessage } from '@/lib/utils'
 import { schoolToday } from '@/lib/date-utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DateInput } from '@/components/ui/date-input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { ArrowLeft, ChevronRight, ChevronLeft, Save } from 'lucide-react'
@@ -199,7 +200,7 @@ export default function NewStudentPage() {
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="date_of_birth">Date of Birth <span className="text-red-500">*</span></Label>
-                                <Input id="date_of_birth" type="date" value={formData.date_of_birth} onChange={e => updateForm('date_of_birth', e.target.value)} />
+                                <DateInput id="date_of_birth" value={formData.date_of_birth} onChange={e => updateForm('date_of_birth', e.target.value)} />
                             </div>
                             <div className="space-y-2 md:col-span-2">
                                 <Label htmlFor="student_photo">Student Photo (Optional)</Label>
@@ -248,7 +249,7 @@ export default function NewStudentPage() {
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="date_of_joining">Date of Joining <span className="text-red-500">*</span></Label>
-                                <Input id="date_of_joining" type="date" value={formData.date_of_joining} onChange={e => updateForm('date_of_joining', e.target.value)} />
+                                <DateInput id="date_of_joining" value={formData.date_of_joining} onChange={e => updateForm('date_of_joining', e.target.value)} />
                             </div>
                         </div>
                     )}

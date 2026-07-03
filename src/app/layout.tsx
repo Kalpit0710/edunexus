@@ -20,6 +20,11 @@ export const metadata: Metadata = {
   keywords: ['school management', 'EduNexus', 'education', 'students', 'teachers'],
   authors: [{ name: 'EduNexus Team' }],
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'),
+  icons: {
+    icon: '/logo.svg',
+    shortcut: '/logo.svg',
+    apple: '/logo.svg',
+  },
 }
 
 export default function RootLayout({

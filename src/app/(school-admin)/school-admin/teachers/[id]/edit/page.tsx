@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DateInput } from '@/components/ui/date-input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import { ArrowLeft, Save } from 'lucide-react'
@@ -165,9 +166,8 @@ export default function EditTeacherPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="join_date">Date of Joining</Label>
-              <Input
+              <DateInput
                 id="join_date"
-                type="date"
                 value={form.join_date}
                 onChange={(e) => update('join_date', e.target.value)}
               />

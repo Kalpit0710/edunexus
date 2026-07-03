@@ -19,6 +19,7 @@ import {
     SelectValue,
 } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
+import { DateInput } from '@/components/ui/date-input'
 import { ArrowLeft, Download, Upload, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import * as XLSX from 'xlsx'
@@ -224,7 +225,7 @@ export default function AttendanceImportPage() {
                         </div>
                         <div className="space-y-1">
                             <Label className="text-xs">Date</Label>
-                            <Input type="date" value={date} onChange={e => { setDate(e.target.value); setIsParsed(false) }} />
+                            <DateInput value={date} onChange={e => { setDate(e.target.value); setIsParsed(false) }} />
                         </div>
                     </div>
                 </CardContent>

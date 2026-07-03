@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import Link from 'next/link'
 import { motion, useScroll, useTransform, useMotionValueEvent, AnimatePresence } from 'framer-motion'
+import { BrandLogo } from '@/components/brand-logo'
 import {
   ArrowRight,
   BookOpen,
@@ -110,9 +111,7 @@ export default function LandingPage() {
       <nav className="fixed top-0 inset-x-0 z-50 border-b border-white/[0.05] bg-[#020202]/70 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 shadow-lg shadow-blue-500/20">
-              <ShieldCheck className="h-5 w-5 text-white" />
-            </div>
+            <BrandLogo size={32} className="h-8 w-8" priority />
             <span className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-zinc-400">EduNexus</span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-zinc-400">
@@ -433,9 +432,7 @@ export default function LandingPage() {
       <footer className="border-t border-white/[0.05] bg-[#020202] py-14 px-6 mt-12 relative z-10">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-800">
-               <ShieldCheck className="h-4 w-4 text-zinc-400" />
-            </div>
+            <BrandLogo size={32} className="h-8 w-8" />
             <span className="font-bold text-lg text-zinc-200 tracking-tight">EduNexus</span>
           </div>
           <div className="flex gap-8 text-sm font-medium text-zinc-500">

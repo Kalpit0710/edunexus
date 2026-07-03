@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DateInput } from '@/components/ui/date-input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { ChevronRight, ChevronLeft, Save, Plus, Trash2 } from 'lucide-react'
@@ -227,11 +228,11 @@ export default function OnboardingWizardPage() {
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-lg">Start Date</Label>
-                                <Input type="date" value={ayStart} onChange={e => setAyStart(e.target.value)} className="h-12" />
+                                <DateInput value={ayStart} onChange={e => setAyStart(e.target.value)} className="h-12" />
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-lg">End Date</Label>
-                                <Input type="date" value={ayEnd} onChange={e => setAyEnd(e.target.value)} className="h-12" />
+                                <DateInput value={ayEnd} onChange={e => setAyEnd(e.target.value)} className="h-12" />
                             </div>
                         </div>
                     )}

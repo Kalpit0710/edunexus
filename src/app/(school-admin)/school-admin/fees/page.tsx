@@ -22,6 +22,7 @@ import { usePermissions } from '@/hooks/use-permissions'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DateInput } from '@/components/ui/date-input'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
@@ -328,8 +329,7 @@ export default function FeesPage() {
                 value={newAmount}
                 onChange={e => setNewAmount(e.target.value)}
               />
-              <Input
-                type="date"
+              <DateInput
                 className="h-8 text-sm"
                 value={newDueDate}
                 onChange={e => setNewDueDate(e.target.value)}

@@ -8,6 +8,7 @@ import { getErrorMessage } from '@/lib/utils'
 import { schoolToday } from '@/lib/date-utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DateInput } from '@/components/ui/date-input'
 import { Label } from '@/components/ui/label'
 import {
   Card,
@@ -254,9 +255,8 @@ export default function NewTeacherPage() {
                   <Label htmlFor="join_date">
                     Date of Joining <span className="text-red-500">*</span>
                   </Label>
-                  <Input
+                  <DateInput
                     id="join_date"
-                    type="date"
                     value={form.join_date}
                     onChange={(e) => update('join_date', e.target.value)}
                   />

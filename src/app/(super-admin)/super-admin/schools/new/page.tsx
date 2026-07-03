@@ -7,6 +7,7 @@ import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { DateInput } from '@/components/ui/date-input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
@@ -160,7 +161,7 @@ export default function NewSchoolPage() {
             {status === 'trial' && (
               <div className="space-y-1">
                 <Label>Trial ends *</Label>
-                <Input type="date" value={trialEndsAt} onChange={(e) => setTrialEndsAt(e.target.value)} />
+                <DateInput value={trialEndsAt} onChange={(e) => setTrialEndsAt(e.target.value)} />
               </div>
             )}
           </CardContent>

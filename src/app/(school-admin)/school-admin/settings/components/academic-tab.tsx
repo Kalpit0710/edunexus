@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DateInput } from '@/components/ui/date-input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { Trash2, Calendar, CheckSquare } from 'lucide-react'
@@ -131,11 +132,11 @@ export function AcademicTab() {
                         </div>
                         <div className="w-full">
                             <Label htmlFor="ay-start" className="text-xs mb-1 block">Start Date</Label>
-                            <Input id="ay-start" type="date" value={newStartDate} onChange={e => setNewStartDate(e.target.value)} />
+                            <DateInput id="ay-start" value={newStartDate} onChange={e => setNewStartDate(e.target.value)} />
                         </div>
                         <div className="w-full">
                             <Label htmlFor="ay-end" className="text-xs mb-1 block">End Date</Label>
-                            <Input id="ay-end" type="date" value={newEndDate} onChange={e => setNewEndDate(e.target.value)} />
+                            <DateInput id="ay-end" value={newEndDate} onChange={e => setNewEndDate(e.target.value)} />
                         </div>
                         <div className="flex items-center gap-2 h-10 bg-gray-50 dark:bg-gray-900 border rounded-md px-3">
                             <input type="checkbox" id="is_cur" checked={newIsCurrent} onChange={e => setNewIsCurrent(e.target.checked)} className="rounded text-primary focus:ring-primary" />

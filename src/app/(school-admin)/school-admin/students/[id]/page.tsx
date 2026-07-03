@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { DateInput } from '@/components/ui/date-input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
@@ -430,11 +431,11 @@ function IssueTcDialog({
                     <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1.5">
                             <Label>Issue date</Label>
-                            <Input type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} />
+                            <DateInput value={issueDate} onChange={(e) => setIssueDate(e.target.value)} />
                         </div>
                         <div className="space-y-1.5">
                             <Label>Date of leaving</Label>
-                            <Input type="date" value={leavingDate} onChange={(e) => setLeavingDate(e.target.value)} />
+                            <DateInput value={leavingDate} onChange={(e) => setLeavingDate(e.target.value)} />
                         </div>
                     </div>
                     <div className="space-y-1.5">

@@ -5,7 +5,8 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth.store'
 import { createClient } from '@/lib/supabase/client'
 import { getInitials, cn } from '@/lib/utils'
-import { LayoutDashboard, Building2, ShieldCheck, LogOut, Users, ScrollText, Tag } from 'lucide-react'
+import { LayoutDashboard, Building2, LogOut, Users, ScrollText, Tag } from 'lucide-react'
+import { BrandLogo } from '@/components/brand-logo'
 import { toast } from 'sonner'
 
 const navItems = [
@@ -36,9 +37,7 @@ export function SuperAdminSidebar() {
     <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-white/[0.06] bg-[#0a0a0a]">
       {/* Platform brand */}
       <div className="flex items-center gap-3 border-b border-white/[0.06] px-5 py-4">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-blue-500/30 bg-blue-600/10 text-blue-400 shadow-[0_0_12px_rgba(59,130,246,0.2)]">
-          <ShieldCheck className="h-5 w-5" />
-        </div>
+        <BrandLogo size={36} className="h-9 w-9 shrink-0" priority />
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold leading-tight text-white">EduNexus</p>
           <p className="truncate text-xs text-zinc-500">Platform Admin</p>
