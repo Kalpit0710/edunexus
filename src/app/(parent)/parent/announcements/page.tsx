@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useAuthStore } from '@/stores/auth.store'
 import { useEffect, useState } from 'react'
@@ -36,7 +36,7 @@ export default function AnnouncementsPage() {
   }, [school?.id, activeChildId])
 
   return (
-    <div className="p-5 space-y-5 animate-fade-in">
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-rose-500/25 bg-rose-500/10">
