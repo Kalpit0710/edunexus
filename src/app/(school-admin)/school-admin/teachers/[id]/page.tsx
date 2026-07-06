@@ -114,6 +114,7 @@ export default function TeacherProfilePage() {
   }
 
   async function handleRemoveAssignment(id: string) {
+    if (!confirm('Remove this class assignment from the teacher?')) return
     try {
       await removeAssignment(id)
       toast.success('Assignment removed')
@@ -280,13 +281,14 @@ export default function TeacherProfilePage() {
                     )}
                   </div>
                   <Button
-                    variant="ghost"
-                    size="icon"
+                    variant="outline"
+                    size="sm"
                     aria-label="Remove assignment"
-                    className="h-7 w-7 text-muted-foreground hover:text-red-500"
+                    className="text-red-600 hover:text-red-700"
                     onClick={() => handleRemoveAssignment(a.id)}
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                    Remove
                   </Button>
                 </div>
               ))}

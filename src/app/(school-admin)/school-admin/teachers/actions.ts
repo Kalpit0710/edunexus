@@ -353,6 +353,7 @@ export async function assignTeacherToSection(
   isClassTeacher: boolean
 ): Promise<void> {
   const supabase = await getSupabase()
+  await requirePermission(supabase, 'teachers.manage')
   const { error } = await supabase.from('teacher_section_assignments').insert({
     school_id: schoolId,
     teacher_id: teacherId,
@@ -365,6 +366,7 @@ export async function assignTeacherToSection(
 
 export async function removeAssignment(assignmentId: string): Promise<void> {
   const supabase = await getSupabase()
+  await requirePermission(supabase, 'teachers.manage')
   const { error } = await supabase
     .from('teacher_section_assignments')
     .delete()
