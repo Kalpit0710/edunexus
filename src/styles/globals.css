@@ -430,24 +430,20 @@
   display: none;
 }
 
+.receipt-print-sheet {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
 @media print {
   @page {
     size: A4 portrait;
-    margin: 10mm;
+    margin: 8mm;
   }
 
   body {
     background: white !important;
     color: black !important;
-  }
-
-  body * {
-    visibility: hidden;
-  }
-
-  .id-cards-page,
-  .id-cards-page * {
-    visibility: visible;
   }
 
   .no-print {
@@ -459,30 +455,70 @@
   }
 
   .id-cards-page {
-    position: absolute;
-    inset: 0;
     margin: 0;
     padding: 0;
   }
 
   .id-print-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 5mm;
+    grid-template-columns: 1fr;
+    row-gap: 5mm;
   }
 
   .id-card-pair {
+    display: grid;
+    grid-template-columns: repeat(2, 86mm);
+    justify-content: center;
+    column-gap: 4mm;
     break-inside: avoid;
     page-break-inside: avoid;
   }
 
   .id-card-template {
     min-height: auto;
+    width: 86mm;
     height: 54mm;
     border-radius: 3mm;
+    border: 0.25mm solid rgba(15, 23, 42, 0.35);
     box-shadow: none !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+
+  .id-card-front__name {
+    font-size: 11pt;
+    line-height: 1.2;
+  }
+
+  .id-card-front__meta {
+    font-size: 8.2pt;
+    line-height: 1.25;
+  }
+
+  .id-card-back__title {
+    font-size: 9pt;
+  }
+
+  .id-card-back__body {
+    font-size: 7.5pt;
+    line-height: 1.3;
+  }
+
+  .receipt-print-sheet {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .receipt-print-sheet table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .receipt-print-sheet th,
+  .receipt-print-sheet td {
+    font-size: 10pt;
+    line-height: 1.25;
+    vertical-align: top;
   }
 }
 

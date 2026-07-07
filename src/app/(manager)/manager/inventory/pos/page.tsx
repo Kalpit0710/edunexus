@@ -525,51 +525,71 @@ export default function POSPage() {
 
     // ── Receipt ───────────────────────────────────────────────────────────────
     if (successBill) {
+        const printedAt = new Date().toLocaleString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        })
+
         return (
-            <div className="max-w-md mx-auto mt-8">
-                <Card className="border-t-4 border-t-green-500 shadow-xl overflow-hidden print-area">
-                    <CardHeader className="text-center pb-2 bg-muted/20">
-                        <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Receipt className="w-8 h-8" />
+            <div className="mx-auto mt-6 w-full max-w-3xl px-4 print:mt-0 print:max-w-none print:px-0">
+                <Card className="receipt-print-sheet border-zinc-200 bg-white text-zinc-900 shadow-xl print:rounded-none print:border-none print:shadow-none">
+                    <CardHeader className="space-y-2 border-b border-zinc-300 bg-white print:py-3">
+                        <div className="print:hidden flex items-center justify-center">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-700">
+                                <Receipt className="h-6 w-6" />
+                            </div>
                         </div>
-                        <CardTitle className="text-2xl font-bold">Payment Successful</CardTitle>
-                        <p className="text-muted-foreground">Bill No: {successBill.billNumber}</p>
+                        <div className="flex items-start justify-between gap-3">
+                            <div>
+                                <CardTitle className="text-xl font-bold tracking-tight">Bookstore Sales Receipt</CardTitle>
+                                <p className="text-xs uppercase tracking-[0.14em] text-zinc-500">EduNexus POS</p>
+                            </div>
+                            <div className="text-right text-sm">
+                                <p className="font-semibold">Bill No: {successBill.billNumber}</p>
+                                <p className="text-zinc-600">Date: {printedAt}</p>
+                            </div>
+                        </div>
                     </CardHeader>
-                    <CardContent className="pt-6 space-y-6">
-                        <div className="grid grid-cols-2 gap-y-2 text-sm">
-                            <span className="text-muted-foreground">Date:</span>
-                            <span className="text-right font-medium">{successBill.date}</span>
-                            <span className="text-muted-foreground">Customer:</span>
-                            <span className="text-right font-medium">{successBill.customerName}</span>
-                            <span className="text-muted-foreground">Payment Mode:</span>
-                            <span className="text-right font-medium capitalize">{successBill.paymentMode}</span>
+
+                    <CardContent className="space-y-4 pt-4">
+                        <div className="grid gap-2 rounded-lg border border-zinc-200 p-3 text-sm sm:grid-cols-2">
+                            <p className="text-zinc-700">Customer: <span className="font-semibold">{successBill.customerName}</span></p>
+                            <p className="text-zinc-700 sm:text-right">Payment Mode: <span className="font-semibold capitalize">{successBill.paymentMode}</span></p>
                         </div>
-                        <div className="border-t border-dashed pt-4">
+
+                        <div className="overflow-hidden rounded-lg border border-zinc-200">
                             <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="text-muted-foreground">
-                                        <th className="text-left font-medium pb-2">Item</th>
-                                        <th className="text-right font-medium pb-2">Qty</th>
-                                        <th className="text-right font-medium pb-2">Total</th>
+                                <thead className="bg-zinc-50 text-zinc-700">
+                                    <tr>
+                                        <th className="px-3 py-2 text-left font-semibold">Item</th>
+                                        <th className="px-3 py-2 text-right font-semibold">Qty</th>
+                                        <th className="px-3 py-2 text-right font-semibold">Rate</th>
+                                        <th className="px-3 py-2 text-right font-semibold">Amount</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    {successBill.cart.map((l, i) => (
-                                        <tr key={i}>
-                                            <td className="py-1 break-words pr-2">{l.name}</td>
-                                            <td className="py-1 text-right">{l.quantity}</td>
-                                            <td className="py-1 text-right">{formatCurrency(l.unitPrice * l.quantity)}</td>
+                                <tbody className="divide-y divide-zinc-200">
+                                    {successBill.cart.map((line) => (
+                                        <tr key={line.itemId}>
+                                            <td className="px-3 py-2 pr-2 align-top">{line.name}</td>
+                                            <td className="px-3 py-2 text-right align-top">{line.quantity}</td>
+                                            <td className="px-3 py-2 text-right align-top">{formatCurrency(line.unitPrice)}</td>
+                                            <td className="px-3 py-2 text-right font-medium align-top">{formatCurrency(line.unitPrice * line.quantity)}</td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
                         </div>
-                        <div className="border-t border-dashed pt-4 flex justify-between items-center">
-                            <span className="text-lg font-bold">Total Amount</span>
-                            <span className="text-2xl font-bold text-primary">{formatCurrency(successBill.totalAmount)}</span>
+
+                        <div className="flex items-center justify-between border-t border-zinc-300 pt-3 text-base">
+                            <span className="font-semibold">Total Amount</span>
+                            <span className="text-xl font-extrabold tracking-tight">{formatCurrency(successBill.totalAmount)}</span>
                         </div>
                     </CardContent>
-                    <CardFooter className="bg-muted/30 p-4 border-t gap-3 print:hidden flex-col sm:flex-row">
+
+                    <CardFooter className="gap-3 border-t border-zinc-200 bg-zinc-50 p-4 print:hidden flex-col sm:flex-row">
                         <Button variant="outline" className="w-full" onClick={() => window.print()}>Print Receipt</Button>
                         <Button className="w-full" onClick={resetAll}>New Sale</Button>
                     </CardFooter>

@@ -332,56 +332,105 @@ function CollectFeePageContent() {
   }
 
   if (receiptNumber) {
+    const selectedRows = structures.filter((s) => selectedItems[s.id])
+    const paymentDate = new Date().toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+
     return (
-      <div className="p-6 max-w-lg mx-auto space-y-6">
-        <Card>
-          <CardContent className="pt-8 pb-6 flex flex-col items-center text-center gap-4">
-            <CheckCircle className="h-16 w-16 text-green-500" />
-            <h2 className="text-xl font-bold">Payment Successful</h2>
-            {/* Student + school identity for the printed slip */}
-            <div className="flex items-center gap-3">
-              {student?.photo_url ? (
-                // eslint-disable-next-line @next/next/no-img-element -- dynamic student photo on receipt
-                <img
-                  src={student.photo_url}
-                  alt={student.full_name}
-                  className="w-14 h-14 rounded-full object-cover border shadow-sm"
-                />
-              ) : school?.logo_url ? (
-                // eslint-disable-next-line @next/next/no-img-element -- dynamic school logo on receipt
-                <img
-                  src={school.logo_url}
-                  alt={school.name}
-                  className="w-14 h-14 rounded-full object-contain border shadow-sm bg-white"
-                />
-              ) : null}
-              {student && (
-                <div className="text-left">
-                  <p className="font-semibold leading-tight">{student.full_name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {student.admission_number}
-                    {student.class_name ? ` · ${student.class_name}` : ''}
-                    {student.section_name ? `-${student.section_name}` : ''}
-                  </p>
+      <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 print:max-w-none print:px-0 print:py-0">
+        <Card className="receipt-print-sheet border-zinc-200 bg-white text-zinc-900 shadow-xl print:rounded-none print:border-none print:shadow-none">
+          <CardContent className="space-y-5 p-6 print:p-0">
+            <div className="print:hidden flex flex-col items-center gap-2 text-center">
+              <CheckCircle className="h-14 w-14 text-green-600" />
+              <h2 className="text-xl font-bold">Payment Successful</h2>
+            </div>
+
+            <header className="receipt-header border-b border-zinc-300 pb-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xl font-extrabold tracking-tight">{school?.name ?? 'EduNexus School'}</p>
+                  <p className="text-xs uppercase tracking-[0.14em] text-zinc-500">Fee Payment Receipt</p>
+                </div>
+                <div className="text-right text-sm">
+                  <p className="font-semibold">Receipt No: {receiptNumber}</p>
+                  <p className="text-zinc-600">Date: {paymentDate}</p>
+                </div>
+              </div>
+            </header>
+
+            <section className="grid gap-3 text-sm sm:grid-cols-2">
+              <div className="rounded-lg border border-zinc-200 p-3">
+                <p className="text-xs uppercase tracking-wider text-zinc-500">Student</p>
+                <p className="mt-1 text-base font-semibold">{student?.full_name ?? 'N/A'}</p>
+                <p className="text-zinc-600">{student?.admission_number ?? 'N/A'}</p>
+                <p className="text-zinc-600">
+                  {student?.class_name ?? 'Class'}{student?.section_name ? ` - ${student.section_name}` : ''}
+                </p>
+              </div>
+              <div className="rounded-lg border border-zinc-200 p-3">
+                <p className="text-xs uppercase tracking-wider text-zinc-500">Payment Details</p>
+                <p className="mt-1 text-zinc-700">Mode: <span className="font-semibold capitalize">{paymentMode}</span></p>
+                <p className="text-zinc-700">Paid Amount: <span className="font-semibold">₹{Number(paidAmount).toLocaleString('en-IN')}</span></p>
+                {reference.trim() && <p className="text-zinc-700">Reference: <span className="font-semibold">{reference.trim()}</span></p>}
+              </div>
+            </section>
+
+            <section className="overflow-hidden rounded-lg border border-zinc-200">
+              <table className="w-full text-sm">
+                <thead className="bg-zinc-50 text-zinc-700">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-semibold">Fee Head</th>
+                    <th className="px-3 py-2 text-right font-semibold">Amount</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-200">
+                  {selectedRows.map((row) => (
+                    <tr key={row.id}>
+                      <td className="px-3 py-2">{row.category_name ?? 'Fee Item'}</td>
+                      <td className="px-3 py-2 text-right font-medium">₹{Number(row.amount).toLocaleString('en-IN')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+
+            <section className="space-y-2 border-t border-zinc-300 pt-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-zinc-600">Subtotal</span>
+                <span className="font-semibold">₹{totalSelected.toLocaleString('en-IN')}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-zinc-600">Discount</span>
+                <span className="font-semibold">- ₹{Number(discount || 0).toLocaleString('en-IN')}</span>
+              </div>
+              <div className="flex items-center justify-between text-base">
+                <span className="font-semibold">Net Payable</span>
+                <span className="font-bold">₹{netPayable.toLocaleString('en-IN')}</span>
+              </div>
+              {changeDue > 0 && (
+                <div className="flex items-center justify-between text-emerald-700">
+                  <span className="font-medium">Change Due</span>
+                  <span className="font-semibold">₹{changeDue.toLocaleString('en-IN')}</span>
                 </div>
               )}
-            </div>
-            <p className="text-muted-foreground">Receipt Number</p>
-            <p className="text-3xl font-mono font-bold tracking-widest">{receiptNumber}</p>
-            <p className="text-lg font-semibold">
-              ₹{Number(paidAmount).toLocaleString('en-IN')} collected via <span className="capitalize">{paymentMode}</span>
-            </p>
-            {changeDue > 0 && (
-              <div className="text-lg font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg px-4 py-2">
-                💵 Change Due: ₹{changeDue.toLocaleString('en-IN')}
-              </div>
-            )}
-            {balanceRemaining > 0 && (
-              <div className="text-base font-semibold text-amber-600 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-4 py-2">
-                ⚠️ Balance remaining: ₹{balanceRemaining.toLocaleString('en-IN')}
-              </div>
-            )}
-            <div className="flex gap-3">
+              {balanceRemaining > 0 && (
+                <div className="flex items-center justify-between text-amber-700">
+                  <span className="font-medium">Balance Remaining</span>
+                  <span className="font-semibold">₹{balanceRemaining.toLocaleString('en-IN')}</span>
+                </div>
+              )}
+            </section>
+
+            <footer className="receipt-footer border-t border-dashed border-zinc-300 pt-3 text-xs text-zinc-500">
+              <p>This is a system-generated receipt and does not require a physical signature.</p>
+            </footer>
+
+            <div className="print:hidden flex flex-wrap gap-3">
               <Button variant="outline" onClick={() => window.print()}>
                 <PrinterIcon className="mr-2 h-4 w-4" /> Print Receipt
               </Button>
@@ -390,10 +439,10 @@ function CollectFeePageContent() {
               }}>
                 New Payment
               </Button>
+              <Link href={'/school-admin/fees' as any} className="inline-flex items-center text-sm text-muted-foreground underline">
+                Back to Fee Management
+              </Link>
             </div>
-            <Link href={`/school-admin/fees`} className="text-sm text-muted-foreground underline">
-              Back to Fee Management
-            </Link>
           </CardContent>
         </Card>
       </div>

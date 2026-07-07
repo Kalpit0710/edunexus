@@ -407,23 +407,23 @@ const SHARED_CSS = `
     border: none; border-radius: 8px; padding: 8px 16px; font-size: 14px; font-weight: 600; cursor: pointer;
   }
   .srms-print-btn:hover { opacity: 0.92; }
-  .srms-logo { width: 84px; height: 84px; object-fit: contain; flex-shrink: 0; }
+  .srms-logo { width: 80px; height: 80px; object-fit: contain; flex-shrink: 0; }
   .srms-logo-ph { border: 1.5px solid #ccc; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 13px; }
   .srms-header { display: flex; justify-content: center; align-items: center; gap: 20px; padding: 10px 16px; background: #fff; }
   .srms-header-text { text-align: center; line-height: 1.25; display: flex; flex-direction: column; align-items: center; }
-  .srms-school-name { font-size: 22px; font-weight: 700; }
-  .srms-school-address { font-size: 12.5px; font-weight: 700; margin-top: 2px; }
-  .srms-school-contact { font-size: 10px; color: #555; margin-top: 1px; }
+  .srms-school-name { font-size: 21px; font-weight: 800; letter-spacing: 0.2px; }
+  .srms-school-address { font-size: 12px; font-weight: 700; margin-top: 2px; }
+  .srms-school-contact { font-size: 10px; color: #475569; margin-top: 1px; }
   .srms-badge { margin-top: 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; padding: 2px 14px; }
-  .srms-student-grid { display: grid; grid-template-columns: 50% 50%; column-gap: 16px; row-gap: 6px; padding: 6px 16px 10px; }
+  .srms-student-grid { display: grid; grid-template-columns: 50% 50%; column-gap: 16px; row-gap: 5px; padding: 6px 16px 10px; }
   .srms-field { display: grid; grid-template-columns: 130px 12px 1fr; align-items: center; }
-  .srms-fl { font-weight: 700; font-size: 12px; white-space: nowrap; }
-  .srms-fc { text-align: center; font-weight: 700; font-size: 12px; }
-  .srms-fv { font-size: 12.5px; text-transform: uppercase; font-weight: 600; }
-  .srms-table { width: 100%; border-collapse: collapse; font-size: 9.5px; margin-bottom: 8px; }
-  .srms-table th, .srms-table td { padding: 3px 4px; text-align: center; vertical-align: middle; }
+  .srms-fl { font-weight: 700; font-size: 11px; white-space: nowrap; }
+  .srms-fc { text-align: center; font-weight: 700; font-size: 11px; }
+  .srms-fv { font-size: 11.5px; text-transform: uppercase; font-weight: 600; }
+  .srms-table { width: 100%; border-collapse: collapse; font-size: 9.4px; margin-bottom: 8px; table-layout: fixed; }
+  .srms-table th, .srms-table td { padding: 3px 4px; text-align: center; vertical-align: middle; line-height: 1.25; }
   .srms-b { font-weight: 700; }
-  .srms-coscholastic-note { font-size: 9px; text-align: center; margin-bottom: 6px; font-weight: 700; color: #333; }
+  .srms-coscholastic-note { font-size: 9px; text-align: center; margin-bottom: 6px; font-weight: 700; color: #334155; }
   .srms-sig-table td { height: 64px; vertical-align: bottom; padding-bottom: 6px; font-size: 11px; font-weight: 700; width: 50%; }
   .srms-sign-img { display: block; max-height: 44px; max-width: 180px; margin: 0 auto 2px; object-fit: contain; }
   .srms-grade-table th { font-size: 9px; }
@@ -431,21 +431,21 @@ const SHARED_CSS = `
   @media print {
     .srms-screen { background: #fff; padding: 0; }
     .srms-toolbar { display: none; }
-    .srms-page { box-shadow: none; max-width: none; transform: none; }
+    .srms-page { box-shadow: none; max-width: none; transform: none; margin: 0; }
     .srms-page + .srms-page { page-break-before: always; }
     * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
-  @page { size: A4 portrait; margin: 10mm; }
+  @page { size: A4 portrait; margin: 8mm; }
 `
 
 export const STANDARD_CSS =
   SHARED_CSS +
   `
-  .srms-page { max-width: 820px; margin: 0 auto 24px; background: #fff; color: #111; font-family: Arial, Helvetica, sans-serif; border: 2px solid #1a3a5c; box-shadow: 0 10px 40px rgba(0,0,0,0.12); }
-  .srms-header { border-bottom: 2px solid #1a3a5c; }
+  .srms-page { max-width: 820px; margin: 0 auto 24px; background: #fff; color: #0f172a; font-family: 'Segoe UI', Arial, Helvetica, sans-serif; border: 1.6px solid #1e3a5f; box-shadow: 0 10px 40px rgba(0,0,0,0.12); page-break-inside: avoid; }
+  .srms-header { border-bottom: 1.6px solid #1e3a5f; }
   .srms-badge { background: #1a3a5c; color: #fff; }
   .srms-section-label { background: #1a3a5c; color: #fff; font-weight: 700; font-size: 12px; letter-spacing: 0.6px; padding: 5px 10px; text-transform: uppercase; }
-  .srms-table th, .srms-table td { border: 1px solid #555; }
+  .srms-table th, .srms-table td { border: 0.85px solid #475569; }
   .srms-marks-table th { background: #e8b84b; color: #111; font-weight: 700; font-size: 8.5px; }
   .srms-marks-table .srms-term-header { background: #f5d98b; font-size: 10px; letter-spacing: 0.4px; }
   .srms-max-row td { background: #fffae8; font-style: italic; font-size: 8.5px; color: #555; }
@@ -455,9 +455,9 @@ export const STANDARD_CSS =
   .srms-s-label { background: #1a3a5c; color: #fff; font-weight: 700; width: 14%; }
   .srms-s-val { background: #fffae8; font-weight: 700; width: 19%; }
   .srms-remark-table th { background: #e8b84b; }
-  .srms-sig-table td { border: 1px solid #555; }
+  .srms-sig-table td { border: 0.85px solid #475569; }
   .srms-grade-table th { background: #e8b84b; }
-  .srms-grade-table td { border: 1px solid #555; }
+  .srms-grade-table td { border: 0.85px solid #475569; }
   .srms-page > .srms-section-label,
   .srms-page > .srms-table,
   .srms-page > .srms-coscholastic-note { margin-left: 8px; margin-right: 8px; width: calc(100% - 16px); }
@@ -466,12 +466,12 @@ export const STANDARD_CSS =
 export const LOWER_CSS =
   SHARED_CSS +
   `
-  .srms-page { max-width: 820px; margin: 0 auto 24px; background: #fff; color: #111; font-family: Arial, Helvetica, sans-serif; border: 2px solid #a32a2a; box-shadow: 0 10px 40px rgba(0,0,0,0.12); }
-  .srms-header { border-bottom: 2px solid #a32a2a; }
+  .srms-page { max-width: 820px; margin: 0 auto 24px; background: #fff; color: #0f172a; font-family: 'Segoe UI', Arial, Helvetica, sans-serif; border: 1.6px solid #a32a2a; box-shadow: 0 10px 40px rgba(0,0,0,0.12); page-break-inside: avoid; }
+  .srms-header { border-bottom: 1.6px solid #a32a2a; }
   .srms-school-address { color: #a32a2a; }
   .srms-badge { background: #a32a2a; color: #fff; }
   .srms-section-label { background: #a32a2a; color: #fff; font-weight: 700; font-size: 12px; letter-spacing: 0.6px; padding: 5px 10px; text-transform: uppercase; }
-  .srms-table th, .srms-table td { border: 1px solid #111; }
+  .srms-table th, .srms-table td { border: 0.85px solid #334155; }
   .srms-lower-table th { background: #fce5cd; color: #a32a2a; font-weight: 700; font-size: 9px; }
   .srms-data-row td { background: #fff; }
   .srms-total-row td { background: #d9ead3; font-weight: 800; }
@@ -479,8 +479,8 @@ export const LOWER_CSS =
   .srms-summary-table td { font-size: 11px; }
   .srms-s-label { background: #a32a2a; color: #fff; font-weight: 700; width: 14%; }
   .srms-s-val { background: #ead1dc; font-weight: 700; width: 19%; }
-  .srms-sig-table td { border: 1px solid #111; }
-  .srms-grade-table td { border: 1px solid #111; }
+  .srms-sig-table td { border: 0.85px solid #334155; }
+  .srms-grade-table td { border: 0.85px solid #334155; }
   .srms-page > .srms-section-label,
   .srms-page > .srms-table,
   .srms-page > .srms-coscholastic-note { margin-left: 8px; margin-right: 8px; width: calc(100% - 16px); }

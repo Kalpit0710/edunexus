@@ -77,7 +77,7 @@ export default function TransferCertificatePrintPage({ params }: { params: Promi
       </div>
 
       {/* Certificate sheet */}
-      <div className="mx-auto max-w-[800px] bg-white p-12 text-zinc-900 shadow-lg print:max-w-none print:p-10 print:shadow-none">
+      <div className="receipt-print-sheet mx-auto max-w-[800px] bg-white p-10 text-zinc-900 shadow-lg print:max-w-none print:p-0 print:shadow-none">
         {/* Letterhead */}
         <div className="border-b-2 border-zinc-800 pb-4 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element -- dynamic school logo */}
@@ -92,6 +92,15 @@ export default function TransferCertificatePrintPage({ params }: { params: Promi
         <h2 className="my-6 text-center text-lg font-bold uppercase underline underline-offset-4">
           Transfer Certificate
         </h2>
+
+        <div className="mb-4 grid grid-cols-2 gap-3 rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm">
+          <p>
+            <span className="font-semibold text-zinc-700">Certificate No:</span> {tc.tcNumber}
+          </p>
+          <p className="text-right">
+            <span className="font-semibold text-zinc-700">Issue Date:</span> {fmtDate(tc.issueDate)}
+          </p>
+        </div>
 
         {/* Body */}
         <p className="mb-6 text-[15px] leading-7">
