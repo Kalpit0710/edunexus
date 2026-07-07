@@ -1,5 +1,10 @@
+import type { Metadata } from 'next'
 import { SchoolAreaSidebar } from '@/components/school-area-sidebar'
 import { AppInitializer } from '@/components/app-initializer'
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+}
 
 export default function ManagerLayout({ children }: { children: React.ReactNode }) {
   return (

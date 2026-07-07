@@ -2,15 +2,19 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'EduNexus',
+    name: 'EduNexus — School Management System',
     short_name: 'EduNexus',
-    description: 'EduNexus school management system for admins, teachers, managers, and parents.',
+    description:
+      'EduNexus is a modern, all-in-one school management system for managing students, teachers, fees, attendance, exams, and report cards.',
     start_url: '/',
     scope: '/',
     display: 'standalone',
     orientation: 'portrait',
     background_color: '#0a0a0a',
     theme_color: '#3b82f6',
+    categories: ['education', 'productivity', 'business'],
+    lang: 'en',
+    dir: 'ltr',
     icons: [
       {
         src: '/icons/icon-192x192.svg',
@@ -23,6 +27,19 @@ export default function manifest(): MetadataRoute.Manifest {
         sizes: '512x512',
         type: 'image/svg+xml',
         purpose: 'maskable',
+      },
+      {
+        src: '/logo.svg',
+        sizes: 'any',
+        type: 'image/svg+xml',
+        purpose: 'any',
+      },
+    ],
+    screenshots: [
+      {
+        src: '/og-image.png',
+        sizes: '1200x630',
+        type: 'image/png',
       },
     ],
   }

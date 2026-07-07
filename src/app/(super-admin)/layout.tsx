@@ -1,5 +1,10 @@
+import type { Metadata } from 'next'
 import { SuperAdminSidebar } from '@/components/super-admin-sidebar'
 import { AppInitializer } from '@/components/app-initializer'
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+}
 
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
   return (

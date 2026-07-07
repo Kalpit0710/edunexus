@@ -1,5 +1,10 @@
-﻿import { ParentSidebar } from '@/components/parent-sidebar'
+﻿import type { Metadata } from 'next'
+import { ParentSidebar } from '@/components/parent-sidebar'
 import { AppInitializer } from '@/components/app-initializer'
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+}
 
 export default function ParentLayout({ children }: { children: React.ReactNode }) {
   return (
