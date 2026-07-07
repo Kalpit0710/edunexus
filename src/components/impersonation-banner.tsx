@@ -69,8 +69,8 @@ export function ImpersonationBanner() {
   const secs = remaining % 60
 
   return (
-    <div className="fixed inset-x-0 top-0 z-[100] flex items-center justify-center gap-3 border-b border-amber-500/30 bg-amber-500/15 px-4 py-2 text-sm text-amber-200 backdrop-blur">
-      <ShieldAlert className="h-4 w-4 shrink-0" />
+    <div role="alert" aria-live="assertive" aria-atomic="true" className="fixed inset-x-0 top-0 z-[100] flex items-center justify-center gap-3 border-b border-amber-500/30 bg-amber-500/15 px-4 py-2 text-sm text-amber-200 backdrop-blur">
+      <ShieldAlert className="h-4 w-4 shrink-0" aria-hidden="true" />
       <span className="truncate">
         Viewing as <strong className="text-amber-100">{info.name}</strong> ({info.email}) —{' '}
         <span className="tabular-nums">
@@ -83,7 +83,7 @@ export function ImpersonationBanner() {
         disabled={exiting}
         className="inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-500/20 px-3 py-1 text-xs font-semibold text-amber-100 transition-colors hover:bg-amber-500/30 disabled:opacity-50"
       >
-        <LogOut className="h-3.5 w-3.5" />
+        <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
         {exiting ? 'Exiting…' : 'Exit impersonation'}
       </button>
     </div>

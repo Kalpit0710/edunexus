@@ -85,8 +85,8 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-[#020202] text-white selection:bg-blue-500/30 font-sans relative">
-      {/* Animated Dynamic Background */}
-      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+      {/* Animated Dynamic Background — purely decorative */}
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden" aria-hidden="true">
         <motion.div 
           animate={{ 
             scale: [1, 1.1, 1],
@@ -108,7 +108,7 @@ export default function LandingPage() {
       </div>
 
       {/* Navbar */}
-      <nav className="fixed top-0 inset-x-0 z-50 border-b border-white/[0.05] bg-[#020202]/70 backdrop-blur-xl">
+      <nav aria-label="Main" className="fixed top-0 inset-x-0 z-50 border-b border-white/[0.05] bg-[#020202]/70 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <BrandLogo size={32} className="h-8 w-8" priority />
@@ -130,9 +130,9 @@ export default function LandingPage() {
         </div>
       </nav>
 
-      <main className="relative z-10 pt-16">
+      <main className="relative z-10 pt-16" id="main-content">
         {/* Hero Section */}
-        <section ref={targetRef} className="relative min-h-[90vh] flex flex-col items-center justify-center px-6 text-center pt-20 pb-32">
+        <section ref={targetRef} aria-label="Hero" className="relative min-h-[90vh] flex flex-col items-center justify-center px-6 text-center pt-20 pb-32">
           <motion.div style={{ opacity, y }} className="flex flex-col items-center w-full max-w-5xl z-10 relative">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
@@ -140,7 +140,7 @@ export default function LandingPage() {
               transition={{ duration: 0.5, type: 'spring' }}
               className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-300 text-xs font-semibold uppercase tracking-wider mb-8 backdrop-blur-md"
             >
-              <Sparkles className="h-4 w-4" /> The Future of School Management
+              <Sparkles className="h-4 w-4" aria-hidden="true" /> The Future of School Management
             </motion.div>
             
             <motion.h1
@@ -187,7 +187,7 @@ export default function LandingPage() {
             transition={{ duration: 1, delay: 0.8 }}
             className="absolute bottom-10 inset-x-0 z-0"
           >
-            <div className="max-w-4xl mx-auto px-6 border-t border-white/[0.05] pt-8 flex flex-wrap justify-center gap-8 md:gap-24 text-center">
+            <div id="stats" className="max-w-4xl mx-auto px-6 border-t border-white/[0.05] pt-8 flex flex-wrap justify-center gap-8 md:gap-24 text-center">
               <div>
                 <h4 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-blue-600">99.9%</h4>
                 <p className="text-xs text-zinc-500 uppercase tracking-widest mt-1">Uptime SLA</p>
@@ -205,10 +205,10 @@ export default function LandingPage() {
         </section>
 
         {/* Value Prop Modules Bento Grid */}
-        <section id="features" className="py-32 px-6 max-w-7xl mx-auto relative z-10">
+        <section id="features" aria-labelledby="features-heading" className="py-32 px-6 max-w-7xl mx-auto relative z-10">
           <div className="text-center mb-16">
             <h2 className="text-sm font-semibold text-blue-400 tracking-wider uppercase mb-3">Capabilities</h2>
-            <h3 className="text-4xl md:text-5xl font-black tracking-tight">Everything a school needs.</h3>
+            <h3 id="features-heading" className="text-4xl md:text-5xl font-black tracking-tight">Everything a school needs.</h3>
             <p className="mt-4 text-zinc-400 max-w-2xl mx-auto text-lg">A unified ecosystem that replaces dozens of fragmented tools, saving time and resources.</p>
           </div>
           
@@ -231,7 +231,7 @@ export default function LandingPage() {
               >
                 <div className={`absolute -right-10 -top-10 w-40 h-40 bg-gradient-to-br ${feature.color} blur-[50px] opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
                 <div className={`h-14 w-14 rounded-2xl ${feature.bg} flex items-center justify-center mb-6 border border-white/5 group-hover:scale-110 transition-transform duration-300 relative z-10`}>
-                  <feature.icon className={`h-7 w-7 ${feature.iconColor}`} />
+                  <feature.icon className={`h-7 w-7 ${feature.iconColor}`} aria-hidden="true" />
                 </div>
                 <h4 className="text-xl font-bold mb-3 relative z-10">{feature.title}</h4>
                 <p className="text-zinc-400 leading-relaxed text-sm relative z-10">{feature.desc}</p>
@@ -272,8 +272,8 @@ export default function LandingPage() {
                   <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
                   <div className="rounded-[1.5rem] bg-[#050505] p-6 lg:p-10 border border-white/5 relative z-10 h-full flex flex-col justify-center">
                     
-                    {/* Abstract UI representation */}
-                    <div className="space-y-4 w-full opacity-60">
+                    {/* Abstract UI representation — decorative */}
+                    <div className="space-y-4 w-full opacity-60" aria-hidden="true">
                       <div className="h-8 w-1/3 bg-white/5 rounded-lg mb-8" />
                       <div className="flex gap-4 h-24">
                         <div className="w-2/3 bg-blue-500/10 border border-blue-500/20 rounded-xl" />
@@ -332,11 +332,11 @@ export default function LandingPage() {
         </section>
 
         {/* Roles / Get Started Flow */}
-        <section id="roles" className="py-24 px-6 relative overflow-hidden border-t border-white/[0.05]">
+        <section id="roles" aria-labelledby="roles-heading" className="py-24 px-6 relative overflow-hidden border-t border-white/[0.05]">
           <div className="max-w-7xl mx-auto relative z-10">
             <div className="text-center mb-16">
               <h2 className="text-sm font-semibold text-violet-400 tracking-widest uppercase mb-2">Access Portal</h2>
-              <h3 className="text-3xl md:text-5xl font-black tracking-tight">Choose your journey</h3>
+              <h3 id="roles-heading" className="text-3xl md:text-5xl font-black tracking-tight">Choose your journey</h3>
               <p className="mt-4 text-zinc-400 max-w-2xl mx-auto">A hyper-personalized workspace for every role. Select your portal to proceed.</p>
             </div>
 
@@ -350,7 +350,7 @@ export default function LandingPage() {
                 whileHover={{ y: -8 }}
                 className="flex flex-col p-8 rounded-[2rem] bg-zinc-900/50 backdrop-blur-sm border border-white/[0.08] hover:border-white/[0.2] transition-all"
               >
-                <div className="h-14 w-14 rounded-2xl bg-zinc-800 flex items-center justify-center mb-6">
+                <div className="h-14 w-14 rounded-2xl bg-zinc-800 flex items-center justify-center mb-6" aria-hidden="true">
                   <UserRoundPlus className="h-7 w-7 text-zinc-300" />
                 </div>
                 <h4 className="text-2xl font-bold mb-3">Parents</h4>
@@ -377,7 +377,7 @@ export default function LandingPage() {
                 className="flex flex-col p-8 rounded-[2rem] bg-gradient-to-b from-blue-900/30 to-zinc-900/50 backdrop-blur-sm border border-blue-500/30 hover:border-blue-500/60 transition-all shadow-[0_0_50px_rgba(37,99,235,0.15)] relative overflow-hidden"
               >
                 <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-blue-400 to-blue-600"></div>
-                <div className="h-14 w-14 rounded-2xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center mb-6">
+                <div className="h-14 w-14 rounded-2xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center mb-6" aria-hidden="true">
                   <GraduationCap className="h-7 w-7 text-blue-400" />
                 </div>
                 <h4 className="text-2xl font-bold mb-3 text-blue-50">Teachers & Staff</h4>
@@ -403,7 +403,7 @@ export default function LandingPage() {
                 whileHover={{ y: -8 }}
                 className="flex flex-col p-8 rounded-[2rem] bg-zinc-900/50 backdrop-blur-sm border border-white/[0.08] hover:border-white/[0.2] transition-all"
               >
-                <div className="h-14 w-14 rounded-2xl bg-zinc-800 flex items-center justify-center mb-6">
+                <div className="h-14 w-14 rounded-2xl bg-zinc-800 flex items-center justify-center mb-6" aria-hidden="true">
                   <School className="h-7 w-7 text-zinc-300" />
                 </div>
                 <h4 className="text-2xl font-bold mb-3">Schools</h4>

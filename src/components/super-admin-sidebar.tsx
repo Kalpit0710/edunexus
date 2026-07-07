@@ -46,7 +46,7 @@ export function SuperAdminSidebar() {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4 scrollbar-hide">
+      <nav aria-label="Platform admin navigation" className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4 scrollbar-hide">
         {navItems.map(({ href, label, icon: Icon }) => {
           const active =
             pathname === href ||
@@ -61,8 +61,9 @@ export function SuperAdminSidebar() {
                   ? 'bg-blue-600/15 text-white'
                   : 'text-zinc-400 hover:bg-white/5 hover:text-white'
               )}
+              aria-current={active ? 'page' : undefined}
             >
-              <Icon className="h-[18px] w-[18px] shrink-0" />
+              <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
               {label}
             </Link>
           )
@@ -81,9 +82,10 @@ export function SuperAdminSidebar() {
         <button
           onClick={handleLogout}
           title="Sign out"
+          aria-label="Sign out"
           className="text-zinc-500 transition-colors hover:text-red-400"
         >
-          <LogOut className="h-[18px] w-[18px]" />
+          <LogOut className="h-[18px] w-[18px]" aria-hidden="true" />
         </button>
       </div>
     </aside>

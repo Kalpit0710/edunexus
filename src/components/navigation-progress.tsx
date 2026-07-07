@@ -95,14 +95,14 @@ export function NavigationProgress() {
   return (
     <>
       {/* Top progress bar */}
-      <div className="pointer-events-none fixed inset-x-0 top-0 z-[100] h-0.5 overflow-hidden bg-blue-500/15">
+      <div role="status" aria-label="Page loading" aria-live="polite" className="pointer-events-none fixed inset-x-0 top-0 z-[100] h-0.5 overflow-hidden bg-blue-500/15">
         <div className="animate-nav-progress absolute top-0 h-full rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.7)]" />
       </div>
 
       {/* Spinner + text pill */}
       <div className="pointer-events-none fixed left-1/2 top-3 z-[100] -translate-x-1/2">
         <div className="flex items-center gap-2 rounded-full border border-white/10 bg-[#0a0a0a]/90 px-3.5 py-1.5 text-xs font-medium text-zinc-200 shadow-lg backdrop-blur">
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-400" />
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-400" aria-hidden="true" />
           Loading…
         </div>
       </div>

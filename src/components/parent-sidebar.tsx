@@ -104,7 +104,7 @@ export function ParentSidebar() {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1 scrollbar-hide">
+      <nav aria-label="Parent navigation" className="flex-1 overflow-y-auto px-3 py-4 space-y-1 scrollbar-hide">
         {navItems.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(href)
           return (
@@ -117,6 +117,7 @@ export function ParentSidebar() {
                   ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20'
                   : 'text-zinc-400 hover:bg-white/5 hover:text-white border border-transparent'
               )}
+              aria-current={active ? 'page' : undefined}
             >
               <Icon className={cn('h-4 w-4 shrink-0 transition-colors', active ? 'text-blue-400' : 'text-zinc-500')} />
               {label}
@@ -138,9 +139,10 @@ export function ParentSidebar() {
           <button
             onClick={handleLogout}
             title="Sign out"
+            aria-label="Sign out"
             className="text-zinc-500 hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-500/10"
           >
-            <LogOut className="h-4 w-4" />
+            <LogOut className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
       </div>

@@ -88,7 +88,7 @@ export function SchoolAdminSidebar() {
         <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-white/[0.06] bg-[#0a0a0a]">
             {/* School brand */}
             <div className="flex items-center gap-3 border-b border-white/[0.06] px-5 py-4">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-blue-500/30 bg-blue-600/10 text-blue-400 shadow-[0_0_12px_rgba(59,130,246,0.2)]">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-blue-500/30 bg-blue-600/10 text-blue-400 shadow-[0_0_12px_rgba(59,130,246,0.2)]" aria-hidden="true">
                     <School className="h-5 w-5" />
                 </div>
                 <div className="min-w-0">
@@ -98,7 +98,7 @@ export function SchoolAdminSidebar() {
             </div>
 
             {/* Nav */}
-            <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5 scrollbar-hide">
+            <nav aria-label="School admin navigation" className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5 scrollbar-hide">
                 {navItems.map(({ href, label, icon: Icon, feature }) => {
                     const unlocked = hasFeature(feature)
 
@@ -128,11 +128,12 @@ export function SchoolAdminSidebar() {
                                     ? 'bg-white/10 text-white'
                                     : 'text-zinc-400 hover:bg-white/5 hover:text-white'
                             )}
+                            aria-current={active ? 'page' : undefined}
                         >
                             <Icon className={cn('h-4 w-4 shrink-0 transition-colors', active ? 'text-blue-400' : 'text-zinc-500')} />
                             {label}
                             {active && (
-                                <span className="ml-auto h-1.5 w-1.5 rounded-full bg-blue-400" />
+                                <span aria-hidden="true" className="ml-auto h-1.5 w-1.5 rounded-full bg-blue-400" />
                             )}
                         </Link>
                     )
@@ -152,9 +153,10 @@ export function SchoolAdminSidebar() {
                     <button
                         onClick={handleLogout}
                         title="Sign out"
+                        aria-label="Sign out"
                         className="text-zinc-500 hover:text-red-400 transition-colors p-1 rounded-lg hover:bg-red-500/10"
                     >
-                        <LogOut className="h-4 w-4" />
+                        <LogOut className="h-4 w-4" aria-hidden="true" />
                     </button>
                 </div>
             </div>
