@@ -52,7 +52,7 @@ export default function ParentResultsPage() {
     } finally {
       setLoading(false)
     }
-  }, [user?.email, school?.id, activeChildId])
+  }, [user?.email, school?.id, school?.lock_results_on_fee, activeChildId])
 
   useEffect(() => {
     loadResults()
@@ -69,7 +69,7 @@ export default function ParentResultsPage() {
         </div>
         {card && !feeLocked && (
           <Link
-            href={`/report-card/${child?.id}/print` as never}
+            href={`/report-card/${child?.id}/print`}
             target="_blank"
             className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-3 py-2 text-sm font-medium text-white hover:bg-purple-700"
           >

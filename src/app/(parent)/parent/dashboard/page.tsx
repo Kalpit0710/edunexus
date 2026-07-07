@@ -11,16 +11,20 @@ import {
   getChildAttendanceTrend,
   getChildFeeStatus,
   getChildPerformanceTrend,
+  getParentChildQrCard,
   type ParentChildData,
   type ChildAttendanceSummary,
   type ChildAttendanceTrendPoint,
   type ChildFeeStatus,
   type ChildPerformanceTrendPoint,
+  type ParentChildQrCardData,
 } from '../actions'
 import { Skeleton } from '@/components/ui/skeleton'
 import { GraduationCap, CalendarCheck, IndianRupee, Receipt, AlertCircle, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
+import type { Route } from 'next'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, LineChart, Line, CartesianGrid } from 'recharts'
+import QRCode from 'qrcode'
 
 export default function ParentDashboardPage() {
   const { user, school, activeChildId } = useAuthStore()
@@ -31,6 +35,8 @@ export default function ParentDashboardPage() {
   const [feeStatus, setFeeStatus] = useState<ChildFeeStatus | null>(null)
   const [attendanceTrend, setAttendanceTrend] = useState<ChildAttendanceTrendPoint[]>([])
   const [performanceTrend, setPerformanceTrend] = useState<ChildPerformanceTrendPoint[]>([])
+  const [qrCard, setQrCard] = useState<ParentChildQrCardData | null>(null)
+  const [qrImage, setQrImage] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -58,6 +64,19 @@ export default function ParentDashboardPage() {
       setFeeStatus(fee)
       setAttendanceTrend(attTrend)
       setPerformanceTrend(perfTrend)
+
+      const qrPayload = await getParentChildQrCard(childData.id, school.id)
+      setQrCard(qrPayload)
+      if (qrPayload?.qrText) {
+        const image = await QRCode.toDataURL(qrPayload.qrText, {
+          margin: 1,
+          width: 220,
+          color: { dark: '#111827', light: '#ffffff' },
+        })
+        setQrImage(image)
+      } else {
+        setQrImage(null)
+      }
     } catch (err) {
       setError(getErrorMessage(err))
       toast.error('Unable to load your dashboard. Please try again.')
@@ -132,6 +151,32 @@ export default function ParentDashboardPage() {
                 </span>
               )}
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick ID QR */}
+      <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-semibold text-white">Student ID QR</p>
+            <p className="text-xs text-zinc-500">Show this on phone for quick identity and school scan.</p>
+          </div>
+        </div>
+        <div className="mt-3 flex items-center gap-4">
+          <div className="rounded-xl border border-white/10 bg-white p-2">
+            {qrImage ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={qrImage} alt={`${child.fullName} QR`} className="h-28 w-28 rounded-md" />
+            ) : (
+              <div className="flex h-28 w-28 items-center justify-center rounded-md bg-zinc-100 text-xs text-zinc-500">
+                QR unavailable
+              </div>
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-zinc-200">{qrCard?.studentName ?? child.fullName}</p>
+            <p className="mt-1 text-xs text-zinc-500">Tip: keep this open at the school gate/office counter.</p>
           </div>
         </div>
       </div>
@@ -251,7 +296,7 @@ export default function ParentDashboardPage() {
             </div>
           </div>
         </Link>
-        <Link href={'/parent/calendar' as any}>
+        <Link href={'/parent/calendar' as Route}>
           <div className="flex items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4 hover:bg-white/[0.06] hover:border-white/[0.12] transition-all cursor-pointer">
             <span className="text-2xl">📅</span>
             <div>
@@ -260,7 +305,7 @@ export default function ParentDashboardPage() {
             </div>
           </div>
         </Link>
-        <Link href={'/parent/transport' as any}>
+        <Link href={'/parent/transport' as Route}>
           <div className="flex items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4 hover:bg-white/[0.06] hover:border-white/[0.12] transition-all cursor-pointer">
             <span className="text-2xl">🚌</span>
             <div>

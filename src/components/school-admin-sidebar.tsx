@@ -28,10 +28,13 @@ import {
     Package,
     ShoppingCart,
     Bell,
+    QrCode,
+    CreditCard,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { usePlan } from '@/hooks/use-plan'
 import { type Feature } from '@/lib/plan-features'
+import type { Route } from 'next'
 
 const navItems: { href: string; label: string; icon: typeof LayoutDashboard; feature: Feature }[] = [
     { href: '/school-admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, feature: 'dashboard' },
@@ -52,6 +55,8 @@ const navItems: { href: string; label: string; icon: typeof LayoutDashboard; fea
     { href: '/school-admin/transport', label: 'Transport', icon: Bus, feature: 'students' },
     { href: '/school-admin/reports', label: 'Reports', icon: BarChart2, feature: 'reports' },
     { href: '/school-admin/promotion', label: 'Promotion', icon: ArrowUpCircle, feature: 'students' },
+    { href: '/school-admin/id-cards', label: 'ID Cards', icon: CreditCard, feature: 'students' },
+    { href: '/school-admin/qr-scan', label: 'QR Scan', icon: QrCode, feature: 'attendance' },
     { href: '/school-admin/settings', label: 'Settings', icon: Settings, feature: 'settings' },
 ]
 
@@ -101,7 +106,7 @@ export function SchoolAdminSidebar() {
                         return (
                             <Link
                                 key={href}
-                                href={`/school-admin/upgrade?feature=${feature}` as any}
+                                href={`/school-admin/upgrade?feature=${feature}` as Route}
                                 title={`${label} is not included in your plan — upgrade to unlock`}
                                 className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-600 transition-all duration-150 hover:bg-white/5 hover:text-zinc-400"
                             >
@@ -116,7 +121,7 @@ export function SchoolAdminSidebar() {
                     return (
                         <Link
                             key={href}
-                            href={href as any}
+                            href={href as Route}
                             className={cn(
                                 'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150',
                                 active

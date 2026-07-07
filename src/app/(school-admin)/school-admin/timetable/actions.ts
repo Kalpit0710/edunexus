@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient as getSupabase } from '@/lib/supabase/server'
+import type { Database } from '@/types/database.types'
 import { requirePermission } from '@/lib/auth/permissions'
 import {
   detectTeacherConflicts,
@@ -9,6 +10,40 @@ import {
   type ConflictEntry,
   type TeacherConflict,
 } from '@/lib/timetable-utils'
+
+type ServerDbClient = Awaited<ReturnType<typeof getSupabase>>
+type TeacherLite = { employee_id?: string | null; user_profiles?: { full_name?: string | null } | null }
+type SetupPeriodRow = Pick<Database['public']['Tables']['timetable_periods']['Row'], 'id' | 'name' | 'start_time' | 'end_time' | 'display_order' | 'is_break'>
+type SetupClassRow = Pick<Database['public']['Tables']['classes']['Row'], 'id' | 'name' | 'display_order'> & {
+  sections: Array<{ id: string; name: string | null; is_active: boolean | null }> | null
+}
+type SetupTeacherRow = Pick<Database['public']['Tables']['teachers']['Row'], 'id' | 'employee_id'> & {
+  user_profiles: { full_name: string | null } | null
+}
+type SetupAssignmentRow = Pick<Database['public']['Tables']['teacher_section_assignments']['Row'], 'teacher_id' | 'section_id' | 'subject_id'>
+type SectionGridEntryRow = Pick<Database['public']['Tables']['timetable_entries']['Row'], 'id' | 'day_of_week' | 'period_id' | 'subject_id' | 'teacher_id' | 'room'> & {
+  subjects: { name: string | null } | null
+  teachers: (Pick<Database['public']['Tables']['teachers']['Row'], 'id' | 'employee_id'> & { user_profiles: { full_name: string | null } | null }) | null
+}
+type SectionGridSubjectRow = Pick<Database['public']['Tables']['subjects']['Row'], 'id' | 'name'>
+type PeriodOverlapRow = Pick<Database['public']['Tables']['timetable_periods']['Row'], 'id' | 'name' | 'start_time' | 'end_time'>
+type ConflictOtherRow = {
+  teacher_id: string | null
+  room: string | null
+  sections: ({ name: string | null; classes: { name: string | null } | null }) | null
+}
+type ConflictEntryRow = Pick<Database['public']['Tables']['timetable_entries']['Row'], 'id' | 'section_id' | 'day_of_week' | 'period_id' | 'teacher_id'> & {
+  timetable_periods: { name: string | null } | null
+  sections: ({ name: string | null; classes: { name: string | null } | null }) | null
+  teachers: (Pick<Database['public']['Tables']['teachers']['Row'], 'employee_id'> & { user_profiles: { full_name: string | null } | null }) | null
+}
+type TeacherGridRow = Pick<Database['public']['Tables']['timetable_entries']['Row'], 'day_of_week' | 'period_id' | 'room'> & {
+  subjects: { name: string | null } | null
+  sections: ({ name: string | null; classes: { name: string | null } | null }) | null
+}
+type CopyRow = Pick<Database['public']['Tables']['timetable_entries']['Row'], 'period_id' | 'subject_id' | 'teacher_id' | 'room'>
+type DuplicateSectionRow = Pick<Database['public']['Tables']['sections']['Row'], 'id' | 'class_id'>
+type DuplicateSourceRow = Pick<Database['public']['Tables']['timetable_entries']['Row'], 'day_of_week' | 'period_id' | 'subject_id' | 'teacher_id' | 'room'>
 
 export interface PeriodRow {
   id: string
@@ -92,45 +127,41 @@ export interface EntryInput {
   room: string | null
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function teacherName(t: any): string {
+function teacherName(t: TeacherLite | null | undefined): string {
   return t?.user_profiles?.full_name ?? t?.employee_id ?? 'Teacher'
 }
 
 /** Periods, classes (with sections) and the teacher roster for the editor. */
 export async function getTimetableSetup(schoolId: string): Promise<TimetableSetup> {
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
 
   const [{ data: periods }, { data: classes }, { data: teachers }, { data: school }, { data: assignments }] =
     await Promise.all([
-      db
+      supabase
         .from('timetable_periods')
         .select('id, name, start_time, end_time, display_order, is_break')
         .eq('school_id', schoolId)
         .order('display_order', { ascending: true }),
-      db
+      supabase
         .from('classes')
         .select('id, name, display_order, is_active, sections ( id, name, is_active )')
         .eq('school_id', schoolId)
         .eq('is_active', true)
         .order('display_order', { ascending: true }),
-      db
+      supabase
         .from('teachers')
         .select('id, employee_id, is_active, user_profiles ( full_name )')
         .eq('school_id', schoolId)
         .eq('is_active', true),
-      db.from('schools').select('working_days').eq('id', schoolId).maybeSingle(),
-      db
+      supabase.from('schools').select('working_days').eq('id', schoolId).maybeSingle(),
+      supabase
         .from('teacher_section_assignments')
         .select('teacher_id, section_id, subject_id')
         .eq('school_id', schoolId),
     ])
 
   return {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    periods: ((periods ?? []) as any[]).map((p) => ({
+    periods: ((periods ?? []) as SetupPeriodRow[]).map((p) => ({
       id: p.id,
       name: p.name,
       startTime: p.start_time,
@@ -138,8 +169,7 @@ export async function getTimetableSetup(schoolId: string): Promise<TimetableSetu
       displayOrder: p.display_order,
       isBreak: p.is_break,
     })),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    classes: ((classes ?? []) as any[]).map((c) => ({
+    classes: ((classes ?? []) as SetupClassRow[]).map((c) => ({
       id: c.id,
       name: c.name,
       displayOrder: c.display_order,
@@ -147,12 +177,10 @@ export async function getTimetableSetup(schoolId: string): Promise<TimetableSetu
         .filter((s) => s.is_active)
         .map((s) => ({ id: s.id, name: s.name })),
     })),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    teachers: ((teachers ?? []) as any[])
+    teachers: ((teachers ?? []) as SetupTeacherRow[])
       .map((t) => ({ id: t.id, name: teacherName(t) }))
       .sort((a, b) => a.name.localeCompare(b.name)),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    assignments: ((assignments ?? []) as any[]).map((a) => ({
+    assignments: ((assignments ?? []) as SetupAssignmentRow[]).map((a) => ({
       teacherId: a.teacher_id,
       sectionId: a.section_id,
       subjectId: a.subject_id,
@@ -164,10 +192,8 @@ export async function getTimetableSetup(schoolId: string): Promise<TimetableSetu
 /** The grid for one section: existing entries + subjects for its class. */
 export async function getSectionGrid(schoolId: string, sectionId: string): Promise<SectionGrid> {
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
 
-  const { data: section } = await db
+  const { data: section } = await supabase
     .from('sections')
     .select('class_id')
     .eq('id', sectionId)
@@ -177,13 +203,13 @@ export async function getSectionGrid(schoolId: string, sectionId: string): Promi
   const classId: string | null = section?.class_id ?? null
 
   const [{ data: entries }, { data: subjects }] = await Promise.all([
-    db
+    supabase
       .from('timetable_entries')
       .select('id, day_of_week, period_id, subject_id, teacher_id, room, subjects ( name ), teachers ( id, employee_id, user_profiles ( full_name ) )')
       .eq('school_id', schoolId)
       .eq('section_id', sectionId),
     classId
-      ? db
+      ? supabase
           .from('subjects')
           .select('id, name')
           .eq('school_id', schoolId)
@@ -195,8 +221,7 @@ export async function getSectionGrid(schoolId: string, sectionId: string): Promi
 
   return {
     classId,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    entries: ((entries ?? []) as any[]).map((e) => ({
+    entries: ((entries ?? []) as SectionGridEntryRow[]).map((e) => ({
       id: e.id,
       dayOfWeek: e.day_of_week,
       periodId: e.period_id,
@@ -206,8 +231,7 @@ export async function getSectionGrid(schoolId: string, sectionId: string): Promi
       teacherName: e.teachers ? teacherName(e.teachers) : null,
       room: e.room,
     })),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    subjects: ((subjects ?? []) as any[]).map((s) => ({ id: s.id, name: s.name })),
+    subjects: ((subjects ?? []) as SectionGridSubjectRow[]).map((s) => ({ id: s.id, name: s.name })),
   }
 }
 
@@ -228,8 +252,7 @@ function assertPeriod(input: PeriodInput): void {
  * Rows without times (unscheduled) and the period being edited are ignored.
  */
 async function assertNoPeriodOverlap(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  db: any,
+  db: ServerDbClient,
   input: PeriodInput,
   excludeId?: string,
 ): Promise<void> {
@@ -239,8 +262,7 @@ async function assertNoPeriodOverlap(
     .select('id, name, start_time, end_time')
     .eq('school_id', input.schoolId)
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const clash = ((data ?? []) as any[]).find(
+  const clash = ((data ?? []) as PeriodOverlapRow[]).find(
     (p) =>
       p.id !== excludeId && periodsOverlap(input.startTime, input.endTime, p.start_time, p.end_time),
   )
@@ -252,11 +274,9 @@ async function assertNoPeriodOverlap(
 export async function createPeriod(input: PeriodInput): Promise<void> {
   assertPeriod(input)
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
   await requirePermission(supabase, 'timetable.manage')
-  await assertNoPeriodOverlap(db, input)
-  const { error } = await db.from('timetable_periods').insert({
+  await assertNoPeriodOverlap(supabase, input)
+  const { error } = await supabase.from('timetable_periods').insert({
     school_id: input.schoolId,
     name: input.name.trim(),
     start_time: input.startTime || null,
@@ -270,11 +290,9 @@ export async function createPeriod(input: PeriodInput): Promise<void> {
 export async function updatePeriod(id: string, input: PeriodInput): Promise<void> {
   assertPeriod(input)
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
   await requirePermission(supabase, 'timetable.manage')
-  await assertNoPeriodOverlap(db, input, id)
-  const { error } = await db
+  await assertNoPeriodOverlap(supabase, input, id)
+  const { error } = await supabase
     .from('timetable_periods')
     .update({
       name: input.name.trim(),
@@ -292,10 +310,8 @@ export async function updatePeriod(id: string, input: PeriodInput): Promise<void
 /** Deletes a period — its timetable cells (across every section) cascade away. */
 export async function deletePeriod(schoolId: string, id: string): Promise<void> {
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
   await requirePermission(supabase, 'timetable.manage')
-  const { error } = await db.from('timetable_periods').delete().eq('id', id).eq('school_id', schoolId)
+  const { error } = await supabase.from('timetable_periods').delete().eq('id', id).eq('school_id', schoolId)
   if (error) throw new Error(error.message)
 }
 
@@ -310,13 +326,11 @@ export async function upsertEntry(
   input: EntryInput,
 ): Promise<{ conflictSections: string[]; roomConflictSections: string[] }> {
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
   await requirePermission(supabase, 'timetable.manage')
 
   const empty = !input.subjectId && !input.teacherId && !input.room?.trim()
   if (empty) {
-    const { error } = await db
+    const { error } = await supabase
       .from('timetable_entries')
       .delete()
       .eq('school_id', input.schoolId)
@@ -328,7 +342,7 @@ export async function upsertEntry(
   }
 
   const room = input.room?.trim() || null
-  const { error } = await db.from('timetable_entries').upsert(
+  const { error } = await supabase.from('timetable_entries').upsert(
     {
       school_id: input.schoolId,
       section_id: input.sectionId,
@@ -344,7 +358,7 @@ export async function upsertEntry(
   if (error) throw new Error(error.message)
 
   // Other sections sharing this exact day+period (for teacher/room clash checks).
-  const { data: others } = await db
+  const { data: others } = await supabase
     .from('timetable_entries')
     .select('teacher_id, room, sections ( name, classes ( name ) )')
     .eq('school_id', input.schoolId)
@@ -352,9 +366,8 @@ export async function upsertEntry(
     .eq('period_id', input.periodId)
     .neq('section_id', input.sectionId)
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rows = (others ?? []) as any[]
-  const label = (r: { sections?: { name?: string; classes?: { name?: string } } }) =>
+  const rows = (others ?? []) as ConflictOtherRow[]
+  const label = (r: ConflictOtherRow) =>
     `${r.sections?.classes?.name ?? ''} ${r.sections?.name ?? ''}`.trim()
 
   const conflictSections = input.teacherId
@@ -378,9 +391,7 @@ export async function getSlotOccupancy(
   excludeSectionId: string,
 ): Promise<{ teacherIds: string[]; rooms: string[]; labelByTeacher: Record<string, string> }> {
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
-  const { data } = await db
+  const { data } = await supabase
     .from('timetable_entries')
     .select('teacher_id, room, sections ( name, classes ( name ) )')
     .eq('school_id', schoolId)
@@ -391,8 +402,7 @@ export async function getSlotOccupancy(
   const teacherIds = new Set<string>()
   const rooms = new Set<string>()
   const labelByTeacher: Record<string, string> = {}
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const r of (data ?? []) as any[]) {
+  for (const r of (data ?? []) as ConflictOtherRow[]) {
     const label = `${r.sections?.classes?.name ?? ''} ${r.sections?.name ?? ''}`.trim()
     if (r.teacher_id) {
       teacherIds.add(r.teacher_id)
@@ -407,16 +417,13 @@ export async function getSlotOccupancy(
 
 export async function getAllConflicts(schoolId: string): Promise<TeacherConflict[]> {
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
-  const { data } = await db
+  const { data } = await supabase
     .from('timetable_entries')
     .select('id, section_id, day_of_week, period_id, teacher_id, timetable_periods ( name ), sections ( name, classes ( name ) ), teachers ( employee_id, user_profiles ( full_name ) )')
     .eq('school_id', schoolId)
     .not('teacher_id', 'is', null)
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const entries: ConflictEntry[] = ((data ?? []) as any[]).map((e) => ({
+  const entries: ConflictEntry[] = ((data ?? []) as ConflictEntryRow[]).map((e) => ({
     entryId: e.id,
     sectionId: e.section_id,
     sectionLabel: `${e.sections?.classes?.name ?? ''} ${e.sections?.name ?? ''}`.trim(),
@@ -442,16 +449,13 @@ export interface TeacherViewEntry {
 
 export async function getTeacherGrid(schoolId: string, teacherId: string): Promise<TeacherViewEntry[]> {
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
-  const { data } = await db
+  const { data } = await supabase
     .from('timetable_entries')
     .select('day_of_week, period_id, room, subjects ( name ), sections ( name, classes ( name ) )')
     .eq('school_id', schoolId)
     .eq('teacher_id', teacherId)
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return ((data ?? []) as any[]).map((e) => ({
+  return ((data ?? []) as TeacherGridRow[]).map((e) => ({
     dayOfWeek: e.day_of_week,
     periodId: e.period_id,
     sectionLabel: `${e.sections?.classes?.name ?? ''} ${e.sections?.name ?? ''}`.trim(),
@@ -465,10 +469,8 @@ export async function getTeacherGrid(schoolId: string, teacherId: string): Promi
 export async function setWorkingDays(schoolId: string, days: number[]): Promise<number[]> {
   const clean = normalizeWorkingDays(days)
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
   await requirePermission(supabase, 'timetable.manage')
-  const { error } = await db
+  const { error } = await supabase
     .from('schools')
     .update({ working_days: clean, updated_at: new Date().toISOString() })
     .eq('id', schoolId)
@@ -487,25 +489,22 @@ export async function copyDay(
 ): Promise<void> {
   if (fromDay === toDay) throw new Error('Pick two different days.')
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
 
-  const { data: source } = await db
+  const { data: source } = await supabase
     .from('timetable_entries')
     .select('period_id, subject_id, teacher_id, room')
     .eq('school_id', schoolId)
     .eq('section_id', sectionId)
     .eq('day_of_week', fromDay)
 
-  await db
+  await supabase
     .from('timetable_entries')
     .delete()
     .eq('school_id', schoolId)
     .eq('section_id', sectionId)
     .eq('day_of_week', toDay)
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rows = ((source ?? []) as any[]).map((e) => ({
+  const rows = ((source ?? []) as CopyRow[]).map((e) => ({
     school_id: schoolId,
     section_id: sectionId,
     day_of_week: toDay,
@@ -515,7 +514,7 @@ export async function copyDay(
     room: e.room,
   }))
   if (rows.length > 0) {
-    const { error } = await db.from('timetable_entries').insert(rows)
+    const { error } = await supabase.from('timetable_entries').insert(rows)
     if (error) throw new Error(error.message)
   }
 }
@@ -523,9 +522,7 @@ export async function copyDay(
 /** Remove every slot on a given day for one section. */
 export async function clearDay(schoolId: string, sectionId: string, day: number): Promise<void> {
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
-  const { error } = await db
+  const { error } = await supabase
     .from('timetable_entries')
     .delete()
     .eq('school_id', schoolId)
@@ -545,17 +542,14 @@ export async function duplicateSectionTimetable(
 ): Promise<void> {
   if (fromSectionId === toSectionId) throw new Error('Pick a different target section.')
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
 
-  const { data: sects } = await db
+  const { data: sects } = await supabase
     .from('sections')
     .select('id, class_id')
     .eq('school_id', schoolId)
     .in('id', [fromSectionId, toSectionId])
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const list = (sects ?? []) as any[]
+  const list = (sects ?? []) as DuplicateSectionRow[]
   const from = list.find((s) => s.id === fromSectionId)
   const to = list.find((s) => s.id === toSectionId)
   if (!from || !to) throw new Error('Section not found.')
@@ -563,16 +557,15 @@ export async function duplicateSectionTimetable(
     throw new Error('Both sections must belong to the same class so subjects match.')
   }
 
-  const { data: source } = await db
+  const { data: source } = await supabase
     .from('timetable_entries')
     .select('day_of_week, period_id, subject_id, teacher_id, room')
     .eq('school_id', schoolId)
     .eq('section_id', fromSectionId)
 
-  await db.from('timetable_entries').delete().eq('school_id', schoolId).eq('section_id', toSectionId)
+  await supabase.from('timetable_entries').delete().eq('school_id', schoolId).eq('section_id', toSectionId)
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rows = ((source ?? []) as any[]).map((e) => ({
+  const rows = ((source ?? []) as DuplicateSourceRow[]).map((e) => ({
     school_id: schoolId,
     section_id: toSectionId,
     day_of_week: e.day_of_week,
@@ -582,7 +575,7 @@ export async function duplicateSectionTimetable(
     room: e.room,
   }))
   if (rows.length > 0) {
-    const { error } = await db.from('timetable_entries').insert(rows)
+    const { error } = await supabase.from('timetable_entries').insert(rows)
     if (error) throw new Error(error.message)
   }
 }

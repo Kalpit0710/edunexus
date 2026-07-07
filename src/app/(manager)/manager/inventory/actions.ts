@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient as createServerSupabaseClient } from '@/lib/supabase/server'
+import type { Database } from '@/types/database.types'
 import { requirePermission } from '@/lib/auth/permissions'
 import {
   calculateInventoryCartTotal,
@@ -14,6 +15,26 @@ import {
 import { requireActor } from '@/lib/auth/require-actor'
 import { sendEmail } from '@/lib/email'
 import { InventoryReceiptEmail } from '@/emails/InventoryReceiptEmail'
+
+type ServerDbClient = Awaited<ReturnType<typeof createServerSupabaseClient>>
+type InventoryItemRow = Database['public']['Tables']['inventory_items']['Row']
+type InventoryItemUpdate = Database['public']['Tables']['inventory_items']['Update']
+type ClassRow = Pick<Database['public']['Tables']['classes']['Row'], 'id' | 'name'>
+type InventorySaleRow = Database['public']['Tables']['inventory_sales']['Row']
+type StudentPosJoinedRow = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'full_name' | 'admission_number' | 'class_id'> & {
+  classes: { name: string } | null
+  sections: { name: string } | null
+}
+type ParentEmailRow = Pick<Database['public']['Tables']['parents']['Row'], 'full_name' | 'email'>
+type StudentSchoolRow = Pick<Database['public']['Tables']['students']['Row'], 'full_name'> & {
+  schools: { name: string } | null
+}
+type SalesSummaryRow = Pick<InventorySaleRow, 'id' | 'total_amount'>
+interface CreateInventorySaleRpcResult {
+  sale_id: string
+  bill_number: string
+  total_amount: number | string
+}
 
 export interface InventoryItemInput {
   name: string
@@ -48,7 +69,7 @@ export interface InventoryStockAdjustmentInput {
 }
 
 async function getActorProfileId(
-  db: any,
+  db: ServerDbClient,
   schoolId: string,
   providedProfileId?: string
 ): Promise<string | null> {
@@ -77,9 +98,8 @@ export async function getInventoryItems(
   }
 ) {
   const supabase = await createServerSupabaseClient()
-  const db = supabase as any
 
-  let query = db
+  let query = supabase
     .from('inventory_items')
     .select('*')
     .eq('school_id', schoolId)
@@ -113,8 +133,7 @@ export interface PosClass {
 /** Classes for the school, for the POS class/book-set filter. */
 export async function getPosClasses(schoolId: string): Promise<PosClass[]> {
   const supabase = await createServerSupabaseClient()
-  const db = supabase as any
-  const { data, error } = await db
+  const { data, error } = await supabase
     .from('classes')
     .select('id, name')
     .eq('school_id', schoolId)
@@ -143,8 +162,7 @@ export async function searchStudentForPos(
   const q = query.trim()
   if (!q) return null
   const supabase = await createServerSupabaseClient()
-  const db = supabase as any
-  const { data } = await db
+  const { data } = await supabase
     .from('students')
     .select('id, full_name, admission_number, class_id, classes(name), sections(name)')
     .eq('school_id', schoolId)
@@ -153,13 +171,14 @@ export async function searchStudentForPos(
     .limit(1)
     .maybeSingle()
   if (!data) return null
+  const row = data as StudentPosJoinedRow
   return {
-    id: data.id,
-    fullName: data.full_name,
-    admissionNumber: data.admission_number,
-    classId: data.class_id ?? null,
-    className: data.classes?.name ?? '',
-    sectionName: data.sections?.name ?? '',
+    id: row.id,
+    fullName: row.full_name,
+    admissionNumber: row.admission_number,
+    classId: row.class_id ?? null,
+    className: row.classes?.name ?? '',
+    sectionName: row.sections?.name ?? '',
   }
 }
 
@@ -175,8 +194,7 @@ export async function searchStudentsForPos(
   const q = query.trim()
   if (!q) return []
   const supabase = await createServerSupabaseClient()
-  const db = supabase as any
-  const { data, error } = await db
+  const { data, error } = await supabase
     .from('students')
     .select('id, full_name, admission_number, class_id, classes(name), sections(name)')
     .eq('school_id', schoolId)
@@ -185,7 +203,7 @@ export async function searchStudentsForPos(
     .order('full_name', { ascending: true })
     .limit(limit)
   if (error) throw new Error(error.message)
-  return (data ?? []).map((row: any) => ({
+  return ((data ?? []) as StudentPosJoinedRow[]).map((row) => ({
     id: row.id,
     fullName: row.full_name,
     admissionNumber: row.admission_number,
@@ -195,14 +213,40 @@ export async function searchStudentsForPos(
   }))
 }
 
+export async function getStudentForPosById(
+  schoolId: string,
+  studentId: string,
+): Promise<PosStudent | null> {
+  const supabase = await createServerSupabaseClient()
+  const { data, error } = await supabase
+    .from('students')
+    .select('id, full_name, admission_number, class_id, classes(name), sections(name)')
+    .eq('school_id', schoolId)
+    .eq('is_active', true)
+    .eq('id', studentId)
+    .maybeSingle()
+
+  if (error) throw new Error(error.message)
+  if (!data) return null
+
+  const row = data as StudentPosJoinedRow
+  return {
+    id: row.id,
+    fullName: row.full_name,
+    admissionNumber: row.admission_number,
+    classId: row.class_id ?? null,
+    className: row.classes?.name ?? '',
+    sectionName: row.sections?.name ?? '',
+  }
+}
+
 /**
  * The active inventory items that make up a class's book set (items tagged with
  * that `class_id`). Returns [] when the class has no items configured yet.
  */
 export async function getClassInventorySet(schoolId: string, classId: string) {
   const supabase = await createServerSupabaseClient()
-  const db = supabase as any
-  const { data, error } = await db
+  const { data, error } = await supabase
     .from('inventory_items')
     .select('*')
     .eq('school_id', schoolId)
@@ -220,8 +264,7 @@ export async function getClassInventorySet(schoolId: string, classId: string) {
  */
 export async function getClassPosCatalog(schoolId: string, classId: string) {
   const supabase = await createServerSupabaseClient()
-  const db = supabase as any
-  const { data, error } = await db
+  const { data, error } = await supabase
     .from('inventory_items')
     .select('*')
     .eq('school_id', schoolId)
@@ -237,13 +280,12 @@ export async function createInventoryItem(schoolId: string, input: InventoryItem
   if (input.unitPrice < 0) throw new Error('Unit price cannot be negative.')
 
   const supabase = await createServerSupabaseClient()
-  const db = supabase as any
   await requireActor(supabase, ['school_admin', 'manager', 'cashier'])
   await requirePermission(supabase, 'inventory.manage')
 
-  const actorProfileId = await getActorProfileId(db, schoolId, input.createdByProfileId)
+  const actorProfileId = await getActorProfileId(supabase, schoolId, input.createdByProfileId)
 
-  const { data, error } = await db
+  const { data, error } = await supabase
     .from('inventory_items')
     .insert({
       school_id: schoolId,
@@ -289,7 +331,6 @@ export async function bulkCreateInventoryItems(
   rows: InventoryBulkRow[],
 ): Promise<{ inserted: number }> {
   const supabase = await createServerSupabaseClient()
-  const db = supabase as any
   await requireActor(supabase, ['school_admin', 'manager', 'cashier'])
   await requirePermission(supabase, 'inventory.manage')
 
@@ -297,10 +338,10 @@ export async function bulkCreateInventoryItems(
 
   const validCategories: InventoryCategory[] = ['book', 'uniform', 'stationery', 'sports', 'lab', 'other']
 
-  const { data: classRows } = await db.from('classes').select('id').eq('school_id', schoolId)
-  const validClassIds = new Set((classRows ?? []).map((c: { id: string }) => c.id))
+  const { data: classRows } = await supabase.from('classes').select('id').eq('school_id', schoolId)
+  const validClassIds = new Set(((classRows ?? []) as Pick<ClassRow, 'id'>[]).map((c) => c.id))
 
-  const actorProfileId = await getActorProfileId(db, schoolId)
+  const actorProfileId = await getActorProfileId(supabase, schoolId)
 
   const payload = rows.map((r, i) => {
     const name = (r.name ?? '').trim()
@@ -329,7 +370,7 @@ export async function bulkCreateInventoryItems(
     }
   })
 
-  const { error } = await db.from('inventory_items').insert(payload)
+  const { error } = await supabase.from('inventory_items').insert(payload)
   if (error) throw new Error(error.message)
   return { inserted: payload.length }
 }
@@ -339,7 +380,7 @@ export async function updateInventoryItem(
   itemId: string,
   updates: Partial<InventoryItemInput>
 ) {
-  const payload: Record<string, unknown> = {}
+  const payload: InventoryItemUpdate = {}
 
   if (updates.name !== undefined) payload.name = updates.name.trim()
   if (updates.category !== undefined) payload.category = updates.category
@@ -358,11 +399,10 @@ export async function updateInventoryItem(
   }
 
   const supabase = await createServerSupabaseClient()
-  const db = supabase as any
   await requireActor(supabase, ['school_admin', 'manager', 'cashier'])
   await requirePermission(supabase, 'inventory.manage')
 
-  const { data, error } = await db
+  const { data, error } = await supabase
     .from('inventory_items')
     .update(payload)
     .eq('school_id', schoolId)
@@ -380,11 +420,10 @@ export async function setInventoryItemActive(
   isActive: boolean
 ): Promise<void> {
   const supabase = await createServerSupabaseClient()
-  const db = supabase as any
   await requireActor(supabase, ['school_admin', 'manager', 'cashier'])
   await requirePermission(supabase, 'inventory.manage')
 
-  const { error } = await db
+  const { error } = await supabase
     .from('inventory_items')
     .update({ is_active: isActive })
     .eq('school_id', schoolId)
@@ -398,11 +437,10 @@ export async function adjustInventoryStock(
   input: InventoryStockAdjustmentInput
 ) {
   const supabase = await createServerSupabaseClient()
-  const db = supabase as any
   await requireActor(supabase, ['school_admin', 'manager', 'cashier'])
   await requirePermission(supabase, 'inventory.manage')
 
-  const { data: currentItem, error: currentError } = await db
+  const { data: currentItem, error: currentError } = await supabase
     .from('inventory_items')
     .select('stock_quantity')
     .eq('school_id', schoolId)
@@ -420,15 +458,23 @@ export async function adjustInventoryStock(
     throw new Error(validationErrors.join(' '))
   }
 
-  const actorProfileId = await getActorProfileId(db, schoolId, input.adjustedByProfileId)
+  const actorProfileId = await getActorProfileId(supabase, schoolId, input.adjustedByProfileId)
 
-  const { data, error } = await db.rpc('adjust_stock', {
+  const rpcArgs: {
+    p_item_id: string
+    p_quantity: number
+    p_type: StockAdjustmentType
+    p_reason?: string
+    p_adjusted_by?: string
+  } = {
     p_item_id: input.itemId,
     p_quantity: input.quantity,
     p_type: input.type,
-    p_reason: input.reason ?? null,
-    p_adjusted_by: actorProfileId,
-  })
+  }
+  if (input.reason?.trim()) rpcArgs.p_reason = input.reason.trim()
+  if (actorProfileId) rpcArgs.p_adjusted_by = actorProfileId
+
+  const { data, error } = await supabase.rpc('adjust_stock', rpcArgs)
 
   if (error) throw new Error(error.message)
   return data
@@ -439,7 +485,6 @@ export async function createInventorySale(
   input: InventorySaleInput
 ): Promise<{ saleId: string; billNumber: string; totalAmount: number }> {
   const supabase = await createServerSupabaseClient()
-  const db = supabase as any
   await requireActor(supabase, ['school_admin', 'manager', 'cashier'])
   await requirePermission(supabase, 'inventory.manage')
 
@@ -454,7 +499,7 @@ export async function createInventorySale(
     throw new Error(saleItemErrors.join(' '))
   }
 
-  const actorProfileId = await getActorProfileId(db, schoolId, input.soldByProfileId)
+  const actorProfileId = await getActorProfileId(supabase, schoolId, input.soldByProfileId)
 
   const rpcItems = input.items.map(item => ({
     item_id: item.itemId,
@@ -462,30 +507,50 @@ export async function createInventorySale(
     unit_price: item.unitPrice ?? null,
   }))
 
-  const { data, error } = await db.rpc('create_inventory_sale', {
+  const saleRpcArgs: {
+    p_school_id: string
+    p_student_id?: string
+    p_items: Array<{ item_id: string; quantity: number; unit_price: number | null }>
+    p_payment_mode: InventorySaleInput['paymentMode']
+    p_sold_by?: string
+  } = {
     p_school_id: schoolId,
-    p_student_id: input.studentId ?? null,
     p_items: rpcItems,
     p_payment_mode: input.paymentMode,
-    p_sold_by: actorProfileId,
-  })
+  }
+  if (input.studentId) saleRpcArgs.p_student_id = input.studentId
+  if (actorProfileId) saleRpcArgs.p_sold_by = actorProfileId
+
+  const { data, error } = await supabase.rpc('create_inventory_sale', saleRpcArgs)
 
   if (error) throw new Error(error.message)
+  const saleResult = data as unknown as CreateInventorySaleRpcResult
 
   if (input.studentId) {
     try {
-      const { data: parent } = await db.from('parents').select('first_name, email').eq('student_id', input.studentId).eq('is_primary', true).maybeSingle()
-      const { data: student } = await db.from('students').select('full_name, schools(name)').eq('id', input.studentId).single()
+      const { data: parent } = await supabase
+        .from('parents')
+        .select('full_name, email')
+        .eq('student_id', input.studentId)
+        .eq('is_primary', true)
+        .maybeSingle()
+      const { data: student } = await supabase
+        .from('students')
+        .select('full_name, schools(name)')
+        .eq('id', input.studentId)
+        .single()
+      const parentRow = parent as ParentEmailRow | null
+      const studentRow = student as StudentSchoolRow | null
       
-      if (parent?.email && student) {
+      if (parentRow?.email && studentRow) {
         await sendEmail({
-          to: parent.email,
-          subject: `Purchase Receipt from ${student.schools?.name || 'EduNexus'}`,
+          to: parentRow.email,
+          subject: `Purchase Receipt from ${studentRow.schools?.name || 'EduNexus'}`,
           react: InventoryReceiptEmail({
-            customerName: parent.first_name,
-            schoolName: student.schools?.name || 'EduNexus',
-            billNumber: data.bill_number,
-            totalAmount: `₹${Number(data.total_amount).toFixed(2)}`,
+            customerName: parentRow.full_name,
+            schoolName: studentRow.schools?.name || 'EduNexus',
+            billNumber: saleResult.bill_number,
+            totalAmount: `₹${Number(saleResult.total_amount).toFixed(2)}`,
             paymentMode: input.paymentMode,
             date: new Date().toLocaleDateString()
           }),
@@ -499,9 +564,9 @@ export async function createInventorySale(
   }
 
   return {
-    saleId: data.sale_id,
-    billNumber: data.bill_number,
-    totalAmount: Number(data.total_amount),
+    saleId: saleResult.sale_id,
+    billNumber: saleResult.bill_number,
+    totalAmount: Number(saleResult.total_amount),
   }
 }
 
@@ -514,9 +579,8 @@ export async function getInventorySales(
   }
 ) {
   const supabase = await createServerSupabaseClient()
-  const db = supabase as any
 
-  let query = db
+  let query = supabase
     .from('inventory_sales')
     .select('*, students(full_name, admission_number), inventory_sale_items(quantity, unit_price, total_price)')
     .eq('school_id', schoolId)
@@ -533,9 +597,8 @@ export async function getInventorySales(
 
 export async function getLowStockItems(schoolId: string, limit = 50) {
   const supabase = await createServerSupabaseClient()
-  const db = supabase as any
 
-  const { data, error } = await db
+  const { data, error } = await supabase
     .from('inventory_items')
     .select('*')
     .eq('school_id', schoolId)
@@ -545,23 +608,22 @@ export async function getLowStockItems(schoolId: string, limit = 50) {
 
   if (error) throw new Error(error.message)
 
-  return (data ?? []).filter((item: any) =>
+  return ((data ?? []) as InventoryItemRow[]).filter((item) =>
     isLowStock(Number(item.stock_quantity), Number(item.low_stock_alert))
   )
 }
 
 export async function getInventorySummary(schoolId: string) {
   const supabase = await createServerSupabaseClient()
-  const db = supabase as any
 
   const [itemsResult, salesResult] = await Promise.all([
-    db
+    supabase
       .from('inventory_items')
       .select('stock_quantity, unit_price, low_stock_alert')
       .eq('school_id', schoolId)
       .eq('is_active', true)
       .limit(5000),
-    db
+    supabase
       .from('inventory_sales')
       .select('id, total_amount')
       .eq('school_id', schoolId)
@@ -571,20 +633,20 @@ export async function getInventorySummary(schoolId: string) {
   if (itemsResult.error) throw new Error(itemsResult.error.message)
   if (salesResult.error) throw new Error(salesResult.error.message)
 
-  const items = itemsResult.data ?? []
-  const sales = salesResult.data ?? []
+  const items = (itemsResult.data ?? []) as Pick<InventoryItemRow, 'stock_quantity' | 'unit_price' | 'low_stock_alert'>[]
+  const sales = (salesResult.data ?? []) as SalesSummaryRow[]
 
   const stockValue = items.reduce(
-    (sum: number, item: any) => sum + Number(item.stock_quantity) * Number(item.unit_price),
+    (sum, item) => sum + Number(item.stock_quantity) * Number(item.unit_price),
     0
   )
 
-  const lowStockCount = items.filter((item: any) =>
+  const lowStockCount = items.filter((item) =>
     isLowStock(Number(item.stock_quantity), Number(item.low_stock_alert))
   ).length
 
   const salesTotal = calculateInventoryCartTotal(
-    sales.map((sale: any) => ({
+    sales.map((sale) => ({
       itemId: sale.id,
       quantity: 1,
       unitPrice: Number(sale.total_amount),

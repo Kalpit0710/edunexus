@@ -25,9 +25,111 @@ import {
   type GradingRule,
   type GrandTotalRule,
 } from '@/lib/report-card-utils'
+import type { Database, Json } from '@/types/database.types'
 
 const WRITE_ROLES = ['school_admin', 'teacher', 'manager']
 const ADMIN_ROLES = ['school_admin', 'manager']
+type DbClient = Awaited<ReturnType<typeof createServerSupabaseClient>>
+
+type UserProfileIdRow = Pick<Database['public']['Tables']['user_profiles']['Row'], 'id'>
+type GradingRuleQueryRow = Pick<
+  Database['public']['Tables']['grading_rules']['Row'],
+  'min_marks' | 'max_marks' | 'grade_name' | 'class_id'
+>
+type CoScholasticAreaNameRow = Pick<Database['public']['Tables']['co_scholastic_areas']['Row'], 'name'>
+type SetupClassRow = Pick<
+  Database['public']['Tables']['classes']['Row'],
+  'id' | 'name' | 'report_card_type' | 'display_order'
+>
+type SetupSectionRow = Pick<Database['public']['Tables']['sections']['Row'], 'id' | 'name' | 'class_id'>
+type SetupAcademicYearRow = Pick<
+  Database['public']['Tables']['academic_years']['Row'],
+  'id' | 'is_current' | 'start_date'
+>
+type SubjectClassRow = Pick<Database['public']['Tables']['subjects']['Row'], 'id' | 'name' | 'code'>
+type SubjectConfigQueryRow = Pick<
+  Database['public']['Tables']['report_subject_configs']['Row'],
+  'id' | 'subject_id' | 'max_marks' | 'components' | 'display_order'
+>
+type StudentListRow = Pick<
+  Database['public']['Tables']['students']['Row'],
+  'id' | 'full_name' | 'admission_number' | 'roll_number' | 'section_id'
+>
+type StudentReportQueryRow = Pick<
+  Database['public']['Tables']['students']['Row'],
+  'id' | 'full_name' | 'admission_number' | 'roll_number' | 'class_id' | 'date_of_birth'
+> & {
+  classes: { name: string | null; report_card_type: string | null } | null
+  sections: { name: string | null } | null
+}
+type ScholasticMarkQueryRow = Pick<
+  Database['public']['Tables']['report_scholastic_marks']['Row'],
+  'student_id' | 'subject_id' | 'term1' | 'term2'
+>
+type CoScholasticMarkQueryRow = Pick<
+  Database['public']['Tables']['report_co_scholastic_marks']['Row'],
+  'area' | 'term1' | 'term2'
+>
+type StudentMetaQueryRow = Pick<
+  Database['public']['Tables']['report_student_meta']['Row'],
+  'term1_attendance' | 'term2_attendance' | 'remarks' | 'result_status'
+>
+type ReportSchoolSettingsRow = Pick<
+  Database['public']['Tables']['schools']['Row'],
+  'result_statuses' | 'co_scholastic_grades' | 'report_grand_total_rule' | 'scholastic_component_labels'
+>
+type PrintableSchoolRow = Pick<
+  Database['public']['Tables']['schools']['Row'],
+  | 'name'
+  | 'address'
+  | 'city'
+  | 'state'
+  | 'pincode'
+  | 'phone'
+  | 'email'
+  | 'logo_url'
+  | 'principal_signature_url'
+  | 'lock_results_on_fee'
+  | 'report_card_title'
+  | 'pass_percentage'
+  | 'currency_symbol'
+  | 'locale'
+  | 'report_grand_total_rule'
+  | 'scholastic_component_labels'
+>
+type PrintableStudentQueryRow = Pick<
+  Database['public']['Tables']['students']['Row'],
+  'id' | 'full_name' | 'admission_number' | 'roll_number' | 'class_id' | 'section_id' | 'school_id' | 'date_of_birth' | 'photo_url'
+> & {
+  schools: PrintableSchoolRow | null
+  classes: { name: string | null; report_card_type: string | null } | null
+  sections: { name: string | null } | null
+}
+type SubjectConfigMarksRow = Pick<
+  Database['public']['Tables']['report_subject_configs']['Row'],
+  'subject_id' | 'max_marks' | 'components'
+>
+type ParentRelationRow = Pick<Database['public']['Tables']['parents']['Row'], 'full_name' | 'relation'>
+type ClassTeacherSignatureRow = { teachers: { signature_url: string | null } | null }
+type CoScholasticAreaListRow = Pick<
+  Database['public']['Tables']['co_scholastic_areas']['Row'],
+  'id' | 'name' | 'display_order'
+>
+type CoScholasticAreaOrderRow = Pick<Database['public']['Tables']['co_scholastic_areas']['Row'], 'display_order'>
+
+function readStringArray(value: unknown, fallback: string[]): string[] {
+  if (!Array.isArray(value)) return fallback
+  const typed = value.filter((entry): entry is string => typeof entry === 'string')
+  return typed.length ? typed : fallback
+}
+
+function readStringRecord(value: unknown): Record<string, string> {
+  if (!value || typeof value !== 'object') return {}
+  return Object.entries(value as Record<string, unknown>).reduce<Record<string, string>>((acc, [key, entry]) => {
+    if (typeof entry === 'string') acc[key] = entry
+    return acc
+  }, {})
+}
 
 // ── shared shapes ─────────────────────────────────────────────────────────────
 
@@ -89,8 +191,7 @@ export interface PublicationRow {
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function actorProfileId(db: any, schoolId: string): Promise<string | null> {
+async function actorProfileId(db: DbClient, schoolId: string): Promise<string | null> {
   const { data: userResult } = await db.auth.getUser()
   if (!userResult?.user) return null
   const { data: profile } = await db
@@ -99,7 +200,7 @@ async function actorProfileId(db: any, schoolId: string): Promise<string | null>
     .eq('auth_user_id', userResult.user.id)
     .eq('school_id', schoolId)
     .maybeSingle()
-  return profile?.id ?? null
+  return (profile as UserProfileIdRow | null)?.id ?? null
 }
 
 function normalizeMaxMarks(raw: unknown): StandardMaxMarks {
@@ -153,8 +254,7 @@ function assertScholasticMarksValid(
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function fetchGradingRules(db: any, schoolId: string, classId?: string): Promise<GradingRule[]> {
+async function fetchGradingRules(db: DbClient, schoolId: string, classId?: string): Promise<GradingRule[]> {
   let query = db
     .from('grading_rules')
     .select('min_marks, max_marks, grade_name, class_id')
@@ -162,8 +262,7 @@ async function fetchGradingRules(db: any, schoolId: string, classId?: string): P
     .is('deleted_at', null)
   if (classId) query = query.or(`class_id.eq.${classId},class_id.is.null`)
   const { data } = await query
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return ((data ?? []) as any[]).map((r) => ({
+  return ((data ?? []) as GradingRuleQueryRow[]).map((r) => ({
     min_marks: Number(r.min_marks),
     max_marks: Number(r.max_marks),
     grade_name: r.grade_name,
@@ -171,8 +270,7 @@ async function fetchGradingRules(db: any, schoolId: string, classId?: string): P
 }
 
 /** Active, ordered co-scholastic area names for a school (empty = use defaults). */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function fetchCoScholasticAreaNames(db: any, schoolId: string): Promise<string[]> {
+async function fetchCoScholasticAreaNames(db: DbClient, schoolId: string): Promise<string[]> {
   const { data } = await db
     .from('co_scholastic_areas')
     .select('name')
@@ -181,16 +279,14 @@ async function fetchCoScholasticAreaNames(db: any, schoolId: string): Promise<st
     .is('deleted_at', null)
     .order('display_order', { ascending: true })
     .order('name', { ascending: true })
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return ((data ?? []) as any[]).map((r) => String(r.name))
+  return ((data ?? []) as CoScholasticAreaNameRow[]).map((r) => String(r.name))
 }
 
 // ── setup / selectors ─────────────────────────────────────────────────────────
 
 export async function getReportSetup(schoolId: string): Promise<ReportSetup> {
   const supabase = await createServerSupabaseClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
 
   const [{ data: classes }, { data: sections }, { data: years }, gradingRules] = await Promise.all([
     db
@@ -215,22 +311,19 @@ export async function getReportSetup(schoolId: string): Promise<ReportSetup> {
     fetchGradingRules(db, schoolId),
   ])
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sectionsByClass = new Map<string, { id: string; name: string }[]>()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const s of (sections ?? []) as any[]) {
+  for (const s of (sections ?? []) as SetupSectionRow[]) {
+    if (!s.class_id) continue
     const list = sectionsByClass.get(s.class_id) ?? []
     list.push({ id: s.id, name: s.name })
     sectionsByClass.set(s.class_id, list)
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const yearList = (years ?? []) as any[]
+  const yearList = (years ?? []) as SetupAcademicYearRow[]
   const currentYear = yearList.find((y) => y.is_current) ?? yearList[0] ?? null
 
   return {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    classes: ((classes ?? []) as any[]).map((c) => ({
+    classes: ((classes ?? []) as SetupClassRow[]).map((c) => ({
       id: c.id,
       name: c.name,
       reportCardType: (c.report_card_type === 'lower' ? 'lower' : 'standard') as ReportCardType,
@@ -246,8 +339,7 @@ export async function getClassSubjectConfigs(
   classId: string,
 ): Promise<SubjectConfigRow[]> {
   const supabase = await createServerSupabaseClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
 
   const [{ data: subjects }, { data: configs }] = await Promise.all([
     db
@@ -267,13 +359,10 @@ export async function getClassSubjectConfigs(
       .is('deleted_at', null),
   ])
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const configBySubject = new Map<string, any>()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const c of (configs ?? []) as any[]) configBySubject.set(c.subject_id, c)
+  const configBySubject = new Map<string, SubjectConfigQueryRow>()
+  for (const c of (configs ?? []) as SubjectConfigQueryRow[]) configBySubject.set(c.subject_id, c)
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return ((subjects ?? []) as any[]).map((s, idx) => {
+  return ((subjects ?? []) as SubjectClassRow[]).map((s, idx) => {
     const cfg = configBySubject.get(s.id)
     return {
       subjectId: s.id,
@@ -296,8 +385,7 @@ export async function saveSubjectConfig(
 ): Promise<void> {
   const supabase = await createServerSupabaseClient()
   await requireActor(supabase, ADMIN_ROLES)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
 
   const { data: existing } = await db
     .from('report_subject_configs')
@@ -312,8 +400,8 @@ export async function saveSubjectConfig(
     school_id: schoolId,
     class_id: classId,
     subject_id: subjectId,
-    max_marks: maxMarks,
-    components,
+    max_marks: maxMarks as unknown as Json,
+    components: components as unknown as Json,
   }
 
   if (existing?.id) {
@@ -333,8 +421,7 @@ export async function getClassStudents(
   sectionId?: string,
 ): Promise<StudentRow[]> {
   const supabase = await createServerSupabaseClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
 
   let query = db
     .from('students')
@@ -350,8 +437,7 @@ export async function getClassStudents(
 
   const { data, error } = await query
   if (error) throw new Error(error.message)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return ((data ?? []) as any[]).map((s) => ({
+  return ((data ?? []) as StudentListRow[]).map((s) => ({
     id: s.id,
     fullName: s.full_name,
     admissionNumber: s.admission_number,
@@ -397,8 +483,7 @@ export async function getStudentReportData(
   studentId: string,
 ): Promise<StudentReportData | null> {
   const supabase = await createServerSupabaseClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
 
   const { data: student } = await db
     .from('students')
@@ -410,11 +495,12 @@ export async function getStudentReportData(
     .eq('id', studentId)
     .maybeSingle()
 
-  if (!student) return null
+  const studentRow = student as StudentReportQueryRow | null
+  if (!studentRow) return null
 
-  const classId: string | null = student.class_id
+  const classId: string | null = studentRow.class_id
   const reportCardType: ReportCardType =
-    student.classes?.report_card_type === 'lower' ? 'lower' : 'standard'
+    studentRow.classes?.report_card_type === 'lower' ? 'lower' : 'standard'
 
   const [configs, scholasticRes, coScholasticRes, metaRes, gradingRules, publication, schoolRes] =
     await Promise.all([
@@ -444,8 +530,7 @@ export async function getStudentReportData(
         .maybeSingle(),
     ])
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const scholastic: ScholasticMarkRow[] = ((scholasticRes.data ?? []) as any[]).map((m) => ({
+  const scholastic: ScholasticMarkRow[] = ((scholasticRes.data ?? []) as ScholasticMarkQueryRow[]).map((m) => ({
     subjectId: m.subject_id,
     term1: (m.term1 ?? {}) as MarksMap,
     term2: (m.term2 ?? {}) as MarksMap,
@@ -454,31 +539,33 @@ export async function getStudentReportData(
   const coAreaNames = await fetchCoScholasticAreaNames(db, schoolId)
   const areaNames = coAreaNames.length ? coAreaNames : [...CO_SCHOLASTIC_AREAS]
   const coScholastic: CoScholasticMarkRow[] = areaNames.map((area) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const found = ((coScholasticRes.data ?? []) as any[]).find((m) => m.area === area)
+    const found = ((coScholasticRes.data ?? []) as CoScholasticMarkQueryRow[]).find((m) => m.area === area)
     return { area, term1: found?.term1 ?? null, term2: found?.term2 ?? null }
   })
 
+  const metaData = metaRes.data as StudentMetaQueryRow | null
+  const schoolData = schoolRes.data as ReportSchoolSettingsRow | null
+
   const meta: StudentMeta = {
-    term1Attendance: metaRes.data?.term1_attendance ?? null,
-    term2Attendance: metaRes.data?.term2_attendance ?? null,
-    remarks: metaRes.data?.remarks ?? null,
-    resultStatus: metaRes.data?.result_status ?? null,
+    term1Attendance: metaData?.term1_attendance ?? null,
+    term2Attendance: metaData?.term2_attendance ?? null,
+    remarks: metaData?.remarks ?? null,
+    resultStatus: metaData?.result_status ?? null,
   }
 
   return {
     student: {
-      id: student.id,
-      fullName: student.full_name,
-      admissionNumber: student.admission_number,
-      rollNumber: student.roll_number,
+      id: studentRow.id,
+      fullName: studentRow.full_name,
+      admissionNumber: studentRow.admission_number,
+      rollNumber: studentRow.roll_number,
       classId,
-      className: student.classes?.name ?? '',
-      sectionName: student.sections?.name ?? null,
+      className: studentRow.classes?.name ?? '',
+      sectionName: studentRow.sections?.name ?? null,
       reportCardType,
       fatherName: null,
       motherName: null,
-      dateOfBirth: student.date_of_birth ?? null,
+      dateOfBirth: studentRow.date_of_birth ?? null,
     },
     configs,
     scholastic,
@@ -486,23 +573,10 @@ export async function getStudentReportData(
     meta,
     gradingRules,
     publication,
-    resultStatuses:
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ((schoolRes.data as any)?.result_statuses as string[] | undefined) ?? [
-        'Passed',
-        'Failed',
-        'Promoted',
-        'Detained',
-      ],
-    coScholasticGrades:
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ((schoolRes.data as any)?.co_scholastic_grades as string[] | undefined) ?? ['A', 'B', 'C', 'D', 'E'],
-    componentLabels:
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ((schoolRes.data as any)?.scholastic_component_labels ?? {}) as Record<string, string>,
-    grandTotalRule:
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ((schoolRes.data as any)?.report_grand_total_rule === 'sum' ? 'sum' : 'average') as GrandTotalRule,
+    resultStatuses: readStringArray(schoolData?.result_statuses, ['Passed', 'Failed', 'Promoted', 'Detained']),
+    coScholasticGrades: readStringArray(schoolData?.co_scholastic_grades, ['A', 'B', 'C', 'D', 'E']),
+    componentLabels: readStringRecord(schoolData?.scholastic_component_labels),
+    grandTotalRule: schoolData?.report_grand_total_rule === 'sum' ? 'sum' : 'average',
   }
 }
 
@@ -519,8 +593,7 @@ export async function saveScholasticMark(
   const supabase = await createServerSupabaseClient()
   await requireActor(supabase, WRITE_ROLES)
   await requirePermission(supabase, 'exams.enter_marks')
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
   const enteredBy = await actorProfileId(db, schoolId)
 
   // Validate against the subject's configured maxima before persisting.
@@ -569,8 +642,7 @@ export async function saveCoScholasticMark(
 ): Promise<void> {
   const supabase = await createServerSupabaseClient()
   await requireActor(supabase, WRITE_ROLES)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
   const enteredBy = await actorProfileId(db, schoolId)
 
   const { error } = await db.from('report_co_scholastic_marks').upsert(
@@ -594,8 +666,7 @@ export async function saveStudentMeta(
 ): Promise<void> {
   const supabase = await createServerSupabaseClient()
   await requireActor(supabase, WRITE_ROLES)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
   const enteredBy = await actorProfileId(db, schoolId)
 
   const { error } = await db.from('report_student_meta').upsert(
@@ -613,6 +684,123 @@ export async function saveStudentMeta(
   if (error) throw new Error(error.message)
 }
 
+export interface SuggestReportCommentInput {
+  schoolId: string
+  studentId: string
+  overallPercentage: number
+  overallGrade: string | null
+  strengths: string[]
+  improvements: string[]
+  term1Attendance: string | null
+  term2Attendance: string | null
+  currentRemarks: string | null
+}
+
+interface GeminiCandidatePart {
+  text?: string
+}
+
+interface GeminiCandidateContent {
+  parts?: GeminiCandidatePart[]
+}
+
+interface GeminiCandidate {
+  content?: GeminiCandidateContent
+}
+
+interface GeminiGenerateResponse {
+  candidates?: GeminiCandidate[]
+}
+
+export async function suggestReportComment(input: SuggestReportCommentInput): Promise<string> {
+  const supabase = await createServerSupabaseClient()
+  const actor = await requireActor(supabase, WRITE_ROLES)
+  await requirePermission(supabase, 'exams.enter_marks')
+  if (!actor.school_id || actor.school_id !== input.schoolId) {
+    throw new Error('Not permitted for this school.')
+  }
+
+  const db = supabase
+  const { data: student } = await db
+    .from('students')
+    .select('id, full_name, class_id, classes(name), sections(name)')
+    .eq('id', input.studentId)
+    .eq('school_id', input.schoolId)
+    .maybeSingle()
+
+  const studentRow = student as (Pick<Database['public']['Tables']['students']['Row'], 'id' | 'full_name' | 'class_id'> & {
+    classes: { name: string | null } | null
+    sections: { name: string | null } | null
+  }) | null
+
+  if (!studentRow) {
+    throw new Error('Student not found.')
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY
+  if (!apiKey) {
+    throw new Error('AI comments are not configured. Set GEMINI_API_KEY on the server.')
+  }
+
+  const model = process.env.GEMINI_MODEL ?? 'gemini-flash-latest'
+
+  const strengths = input.strengths.length
+    ? input.strengths.join('; ')
+    : 'No specific strength signal was provided.'
+  const improvements = input.improvements.length
+    ? input.improvements.join('; ')
+    : 'No specific improvement signal was provided.'
+
+  const prompt = [
+    'You are writing a school report card teacher remark.',
+    'Write one concise and warm paragraph (max 65 words) in plain English.',
+    'Tone: constructive, specific, parent-friendly, and professional.',
+    'Avoid exaggerated praise, negative labels, or sensitive assumptions.',
+    'Do not mention AI, model, or system prompts.',
+    '',
+    `Student: ${studentRow.full_name}`,
+    `Class: ${studentRow.classes?.name ?? 'Unknown'} ${studentRow.sections?.name ?? ''}`.trim(),
+    `Overall: ${Number(input.overallPercentage).toFixed(2)}%${input.overallGrade ? `, Grade ${input.overallGrade}` : ''}`,
+    `Term 1 Attendance: ${input.term1Attendance ?? 'N/A'}`,
+    `Term 2 Attendance: ${input.term2Attendance ?? 'N/A'}`,
+    `Strength areas: ${strengths}`,
+    `Needs support in: ${improvements}`,
+    `Current draft remark: ${input.currentRemarks?.trim() || 'None'}`,
+    '',
+    'Return only the final remark text.',
+  ].join('\n')
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-goog-api-key': apiKey,
+      },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.5,
+          maxOutputTokens: 180,
+        },
+      }),
+    },
+  )
+
+  if (!response.ok) {
+    throw new Error(`AI comment generation failed (${response.status}).`)
+  }
+
+  const payload = (await response.json()) as GeminiGenerateResponse
+  const text = payload.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('\n').trim() ?? ''
+  if (!text) {
+    throw new Error('AI comment generation returned an empty response.')
+  }
+
+  return text.slice(0, 500)
+}
+
 // ── publication ───────────────────────────────────────────────────────────────
 
 export async function getClassPublication(
@@ -620,8 +808,7 @@ export async function getClassPublication(
   classId: string,
 ): Promise<PublicationRow | null> {
   const supabase = await createServerSupabaseClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
   const { data } = await db
     .from('report_publications')
     .select('status, result_visible, published_at')
@@ -647,12 +834,11 @@ export async function publishClassReport(
   const supabase = await createServerSupabaseClient()
   const actor = await requireActor(supabase, ADMIN_ROLES)
   await requirePermission(supabase, 'exams.publish')
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
 
   const { error } = await db.rpc('publish_class_report', {
     p_class_id: classId,
-    p_academic_year_id: academicYearId,
+    p_academic_year_id: academicYearId as unknown as string,
     p_result_visible: resultVisible,
     p_lock: lock,
   })
@@ -675,12 +861,11 @@ export async function unlockClassReport(
 ): Promise<void> {
   const supabase = await createServerSupabaseClient()
   const actor = await requireActor(supabase, ADMIN_ROLES)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
 
   const { error } = await db.rpc('unlock_class_report', {
     p_class_id: classId,
-    p_academic_year_id: academicYearId,
+    p_academic_year_id: academicYearId as unknown as string,
   })
   if (error) throw new Error(error.message)
 
@@ -714,8 +899,7 @@ export async function getClassResultsOverview(
   sectionId?: string,
 ): Promise<ClassResultRow[]> {
   const supabase = await createServerSupabaseClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
 
   const [students, configs, gradingRules, { data: marksData }, { data: classRow }, { data: schoolRow }] =
     await Promise.all([
@@ -738,10 +922,8 @@ export async function getClassResultsOverview(
 
   const configBySubject = new Map(configs.map((c) => [c.subjectId, c]))
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const marksByStudent = new Map<string, any[]>()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const m of (marksData ?? []) as any[]) {
+  const marksByStudent = new Map<string, ScholasticMarkQueryRow[]>()
+  for (const m of (marksData ?? []) as ScholasticMarkQueryRow[]) {
     const list = marksByStudent.get(m.student_id) ?? []
     list.push(m)
     marksByStudent.set(m.student_id, list)
@@ -754,9 +936,11 @@ export async function getClassResultsOverview(
       if (!cfg) {
         return { term1Total: 0, term2Total: 0, grandTotal: 0, maxGrandTotal: 0, percentage: 0 }
       }
+      const term1 = (m.term1 ?? {}) as MarksMap
+      const term2 = (m.term2 ?? {}) as MarksMap
       return reportCardType === 'lower'
-        ? calcLowerSubjectResult(m.term1 ?? {}, m.term2 ?? {}, cfg.components)
-        : calcStandardSubjectResult(m.term1 ?? {}, m.term2 ?? {}, cfg.maxMarks, grandTotalRule)
+        ? calcLowerSubjectResult(term1, term2, cfg.components)
+        : calcStandardSubjectResult(term1, term2, cfg.maxMarks, grandTotalRule)
     })
     const overall = calcOverallResult(subjectResults)
     return {
@@ -873,8 +1057,7 @@ export async function getPrintableReportCard(studentId: string): Promise<Printab
   if (!profile) return null
 
   const admin = await createAdminClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = admin as any
+  const db = admin as DbClient
 
   const { data: student } = await db
     .from('students')
@@ -885,10 +1068,11 @@ export async function getPrintableReportCard(studentId: string): Promise<Printab
     )
     .eq('id', studentId)
     .maybeSingle()
-  if (!student) return null
+  const studentRow = student as PrintableStudentQueryRow | null
+  if (!studentRow) return null
 
-  const schoolId: string = student.school_id
-  const classId: string | null = student.class_id
+  const schoolId: string = studentRow.school_id
+  const classId: string | null = studentRow.class_id
   const staffRoles = ['school_admin', 'teacher', 'manager', 'cashier']
   const isStaff = staffRoles.includes(profile.role) && profile.school_id === schoolId
 
@@ -926,14 +1110,13 @@ export async function getPrintableReportCard(studentId: string): Promise<Printab
     // navigating directly to the printable route. Only applied when the school
     // has opted in (lock_results_on_fee); a parent with outstanding dues is then
     // treated as not authorised to view the report card.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if ((student.schools as any)?.lock_results_on_fee) {
+    if (studentRow.schools?.lock_results_on_fee) {
       const { balance } = await computeStudentFeeBalance(db, schoolId, studentId, classId)
       if (balance > 0) return null
     }
   }
 
-  return buildPrintableReportCard(db, student, publication)
+  return buildPrintableReportCard(db, studentRow, publication)
 }
 
 /**
@@ -942,10 +1125,8 @@ export async function getPrintableReportCard(studentId: string): Promise<Printab
  * class export so both render identically.
  */
 async function buildPrintableReportCard(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  db: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  student: any,
+  db: DbClient,
+  student: PrintableStudentQueryRow,
   publication: PublicationRow | null,
 ): Promise<PrintableReportCard> {
   const schoolId: string = student.school_id
@@ -994,14 +1175,10 @@ async function buildPrintableReportCard(
         .maybeSingle(),
     ])
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const cfgBySubject = new Map<string, any>()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const c of (configs ?? []) as any[]) cfgBySubject.set(c.subject_id, c)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const markBySubject = new Map<string, any>()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const m of (marks ?? []) as any[]) markBySubject.set(m.subject_id, m)
+  const cfgBySubject = new Map<string, SubjectConfigMarksRow>()
+  for (const c of (configs ?? []) as SubjectConfigMarksRow[]) cfgBySubject.set(c.subject_id, c)
+  const markBySubject = new Map<string, ScholasticMarkQueryRow>()
+  for (const m of (marks ?? []) as ScholasticMarkQueryRow[]) markBySubject.set(m.subject_id, m)
 
   const sectionId: string | null = student.section_id ?? null
   const [gradingRules, { data: yearRow }, { data: parentRows }, { data: classTeacherRow }] =
@@ -1031,13 +1208,13 @@ async function buildPrintableReportCard(
     ])
   const academicSession: string | null = (yearRow?.name as string | undefined) ?? null
   const findParent = (rel: string): string | null =>
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ((parentRows ?? []) as any[]).find((p) => String(p.relation ?? '').toLowerCase() === rel)?.full_name ?? null
+    ((parentRows ?? []) as ParentRelationRow[]).find(
+      (p) => String(p.relation ?? '').toLowerCase() === rel,
+    )?.full_name ?? null
   const fatherName = findParent('father')
   const motherName = findParent('mother')
   const classTeacherSignatureUrl: string | null =
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ((classTeacherRow as any)?.teachers?.signature_url as string | undefined) ?? null
+    ((classTeacherRow as ClassTeacherSignatureRow | null)?.teachers?.signature_url as string | undefined) ?? null
 
   const grandTotalRule: GrandTotalRule =
     student.schools?.report_grand_total_rule === 'sum' ? 'sum' : 'average'
@@ -1045,8 +1222,7 @@ async function buildPrintableReportCard(
   const coAreaNames = await fetchCoScholasticAreaNames(db, schoolId)
   const areaNames = coAreaNames.length ? coAreaNames : [...CO_SCHOLASTIC_AREAS]
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const subjectRows: PrintableSubjectRow[] = ((subjects ?? []) as any[]).map((s) => {
+  const subjectRows: PrintableSubjectRow[] = ((subjects ?? []) as SubjectClassRow[]).map((s) => {
     const cfg = cfgBySubject.get(s.id)
     const maxMarks = normalizeMaxMarks(cfg?.max_marks)
     const components = normalizeComponents(cfg?.components)
@@ -1084,8 +1260,7 @@ async function buildPrintableReportCard(
   )
 
   const coScholastic: CoScholasticMarkRow[] = areaNames.map((area) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const found = ((coData ?? []) as any[]).find((m) => m.area === area)
+    const found = ((coData ?? []) as CoScholasticMarkQueryRow[]).find((m) => m.area === area)
     return { area, term1: found?.term1 ?? null, term2: found?.term2 ?? null }
   })
 
@@ -1127,8 +1302,7 @@ async function buildPrintableReportCard(
       grade: resolveGrade(overallRaw.percentage, gradingRules),
     },
     signatures: {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      principalUrl: ((student.schools as any)?.principal_signature_url as string | null) ?? null,
+      principalUrl: student.schools?.principal_signature_url ?? null,
       classTeacherUrl: classTeacherSignatureUrl,
     },
     reportTitle: (student.schools?.report_card_title as string | undefined) || 'Progress Report',
@@ -1175,8 +1349,7 @@ export async function getClassPrintableReportCards(
   const schoolId = profile.school_id as string
 
   const admin = await createAdminClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = admin as any
+  const db = admin as DbClient
 
   // Resolve the class publication once — it is identical for every student.
   let publication: PublicationRow | null = null
@@ -1204,8 +1377,7 @@ export async function getClassPrintableReportCards(
   if (sectionId) query = query.eq('section_id', sectionId)
 
   const { data: students } = await query
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rows = (students ?? []) as any[]
+  const rows = ((students ?? []) as unknown) as PrintableStudentQueryRow[]
   return Promise.all(rows.map((s) => buildPrintableReportCard(db, s, publication)))
 }
 
@@ -1219,8 +1391,7 @@ export interface CoScholasticAreaRow {
 
 export async function getCoScholasticAreas(schoolId: string): Promise<CoScholasticAreaRow[]> {
   const supabase = await createServerSupabaseClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
   const { data, error } = await db
     .from('co_scholastic_areas')
     .select('id, name, display_order')
@@ -1230,15 +1401,17 @@ export async function getCoScholasticAreas(schoolId: string): Promise<CoScholast
     .order('display_order', { ascending: true })
     .order('name', { ascending: true })
   if (error) throw new Error(error.message)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return ((data ?? []) as any[]).map((r) => ({ id: r.id, name: r.name, displayOrder: r.display_order }))
+  return ((data ?? []) as CoScholasticAreaListRow[]).map((r) => ({
+    id: r.id,
+    name: r.name,
+    displayOrder: r.display_order,
+  }))
 }
 
 export async function addCoScholasticArea(schoolId: string, name: string): Promise<void> {
   const supabase = await createServerSupabaseClient()
   await requireActor(supabase, ADMIN_ROLES)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
   const trimmed = name.trim()
   if (!trimmed) throw new Error('Area name is required.')
   const { data: last } = await db
@@ -1249,7 +1422,7 @@ export async function addCoScholasticArea(schoolId: string, name: string): Promi
     .order('display_order', { ascending: false })
     .limit(1)
     .maybeSingle()
-  const nextOrder = (last?.display_order ?? -1) + 1
+  const nextOrder = (((last as CoScholasticAreaOrderRow | null)?.display_order ?? -1) + 1)
   const { error } = await db
     .from('co_scholastic_areas')
     .insert({ school_id: schoolId, name: trimmed, display_order: nextOrder })
@@ -1259,8 +1432,7 @@ export async function addCoScholasticArea(schoolId: string, name: string): Promi
 export async function deleteCoScholasticArea(id: string): Promise<void> {
   const supabase = await createServerSupabaseClient()
   await requireActor(supabase, ADMIN_ROLES)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
   const { error } = await db
     .from('co_scholastic_areas')
     .update({ deleted_at: new Date().toISOString(), is_active: false })

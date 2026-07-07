@@ -83,7 +83,20 @@ export async function updateSession(request: NextRequest) {
 
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser()
+
+  // Local/dev self-heal: stale browser cookies can trigger
+  // `refresh_token_not_found`. Clear auth cookies once so subsequent requests
+  // run as clean unauthenticated traffic instead of repeatedly throwing.
+  if (userError?.code === 'refresh_token_not_found') {
+    request.cookies.getAll().forEach((c) => {
+      if (c.name.startsWith('sb-')) {
+        supabaseResponse.cookies.delete(c.name)
+      }
+    })
+    supabaseResponse.cookies.delete(ACTIVITY_COOKIE)
+  }
 
   const pathname = request.nextUrl.pathname
   const isPublicRoute = PUBLIC_ROUTES.some(

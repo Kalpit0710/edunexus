@@ -354,13 +354,14 @@ export async function assignTeacherToSection(
 ): Promise<void> {
   const supabase = await getSupabase()
   await requirePermission(supabase, 'teachers.manage')
-  const { error } = await supabase.from('teacher_section_assignments').insert({
+  const payload: Database['public']['Tables']['teacher_section_assignments']['Insert'] = {
     school_id: schoolId,
     teacher_id: teacherId,
     section_id: sectionId,
     subject_id: subjectId,
     is_class_teacher: isClassTeacher,
-  } as any)
+  }
+  const { error } = await supabase.from('teacher_section_assignments').insert(payload)
   if (error) throw new Error(error.message)
 }
 

@@ -25,7 +25,16 @@ export function AppInitializer() {
         async function init() {
             if (!alreadyHydrated) setLoading(true)
             try {
-                const { data: { user: authUser } } = await supabase.auth.getUser()
+                const {
+                    data: { user: authUser },
+                    error: authUserError,
+                } = await supabase.auth.getUser()
+
+                if (authUserError?.code === 'refresh_token_not_found') {
+                    await supabase.auth.signOut()
+                    return
+                }
+
                 if (!authUser) return
 
                 // Fetch user profile

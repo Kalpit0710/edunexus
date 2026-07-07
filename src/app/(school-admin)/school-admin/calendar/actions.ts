@@ -1,6 +1,12 @@
 'use server'
 
 import { createClient as getSupabase } from '@/lib/supabase/server'
+import type { Database } from '@/types/database.types'
+
+type HolidayQueryRow = Pick<
+  Database['public']['Tables']['holidays']['Row'],
+  'id' | 'title' | 'category' | 'start_date' | 'end_date' | 'description'
+>
 
 export type HolidayCategory = 'holiday' | 'event' | 'exam' | 'break'
 
@@ -23,6 +29,13 @@ export interface HolidayInput {
 }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+const HOLIDAY_CATEGORIES: HolidayCategory[] = ['holiday', 'event', 'exam', 'break']
+
+function normalizeHolidayCategory(value: string): HolidayCategory {
+  return HOLIDAY_CATEGORIES.includes(value as HolidayCategory)
+    ? (value as HolidayCategory)
+    : 'holiday'
+}
 
 function assertHoliday(input: HolidayInput): void {
   if (!input.title.trim()) throw new Error('Title is required.')
@@ -35,8 +48,7 @@ function assertHoliday(input: HolidayInput): void {
 
 export async function getHolidays(schoolId: string): Promise<HolidayRow[]> {
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
   const { data } = await db
     .from('holidays')
     .select('id, title, category, start_date, end_date, description')
@@ -44,11 +56,10 @@ export async function getHolidays(schoolId: string): Promise<HolidayRow[]> {
     .is('deleted_at', null)
     .order('start_date', { ascending: true })
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return ((data ?? []) as any[]).map((h) => ({
+  return ((data ?? []) as HolidayQueryRow[]).map((h) => ({
     id: h.id,
     title: h.title,
-    category: h.category,
+    category: normalizeHolidayCategory(h.category),
     startDate: h.start_date,
     endDate: h.end_date,
     description: h.description,
@@ -58,8 +69,7 @@ export async function getHolidays(schoolId: string): Promise<HolidayRow[]> {
 export async function createHoliday(input: HolidayInput): Promise<void> {
   assertHoliday(input)
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
   const { error } = await db.from('holidays').insert({
     school_id: input.schoolId,
     title: input.title.trim(),
@@ -74,8 +84,7 @@ export async function createHoliday(input: HolidayInput): Promise<void> {
 export async function updateHoliday(id: string, input: HolidayInput): Promise<void> {
   assertHoliday(input)
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
   const { error } = await db
     .from('holidays')
     .update({
@@ -93,8 +102,7 @@ export async function updateHoliday(id: string, input: HolidayInput): Promise<vo
 
 export async function deleteHoliday(schoolId: string, id: string): Promise<void> {
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
   const { error } = await db
     .from('holidays')
     .update({ deleted_at: new Date().toISOString() })

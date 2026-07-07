@@ -2,6 +2,44 @@
 
 import { createClient as getSupabase } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/auth/permissions'
+import type { Database } from '@/types/database.types'
+
+type DbClient = Awaited<ReturnType<typeof getSupabase>>
+type BusStopQueryRow = Pick<
+  Database['public']['Tables']['bus_stops']['Row'],
+  'id' | 'name' | 'pickup_time' | 'drop_time' | 'stop_order'
+>
+type BusQueryRow = Pick<
+  Database['public']['Tables']['buses']['Row'],
+  | 'id'
+  | 'bus_number'
+  | 'registration_number'
+  | 'model'
+  | 'capacity'
+  | 'route_name'
+  | 'driver_name'
+  | 'driver_phone'
+  | 'driver_license'
+  | 'attendant_name'
+  | 'attendant_phone'
+  | 'notes'
+> & {
+  bus_stops: BusStopQueryRow[] | null
+}
+type StudentWithClassQueryRow = Pick<
+  Database['public']['Tables']['students']['Row'],
+  'id' | 'full_name' | 'admission_number'
+> & {
+  classes: { name: string | null } | null
+}
+type AssignmentQueryRow = Pick<
+  Database['public']['Tables']['student_transport']['Row'],
+  'id' | 'student_id' | 'bus_id' | 'stop_id' | 'pickup_point' | 'fee_amount'
+> & {
+  students: ({ full_name: string | null; admission_number: string | null; classes: { name: string | null } | null }) | null
+  buses: { bus_number: string | null } | null
+  bus_stops: { name: string | null } | null
+}
 
 export interface StopRow {
   id: string
@@ -81,8 +119,7 @@ export interface StopInput {
 
 export async function getTransportData(schoolId: string): Promise<TransportData> {
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
 
   const [{ data: buses }, { data: assignments }, { data: students }] = await Promise.all([
     db
@@ -105,8 +142,7 @@ export async function getTransportData(schoolId: string): Promise<TransportData>
       .limit(2000),
   ])
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const assignmentRows: AssignmentRow[] = ((assignments ?? []) as any[]).map((a) => ({
+  const assignmentRows: AssignmentRow[] = ((assignments ?? []) as AssignmentQueryRow[]).map((a) => ({
     id: a.id,
     studentId: a.student_id,
     studentName: a.students?.full_name ?? '—',
@@ -124,8 +160,7 @@ export async function getTransportData(schoolId: string): Promise<TransportData>
   for (const a of assignmentRows) countByBus.set(a.busId, (countByBus.get(a.busId) ?? 0) + 1)
 
   return {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    buses: ((buses ?? []) as any[]).map((b) => ({
+    buses: ((buses ?? []) as BusQueryRow[]).map((b) => ({
       id: b.id,
       busNumber: b.bus_number,
       registrationNumber: b.registration_number,
@@ -139,9 +174,8 @@ export async function getTransportData(schoolId: string): Promise<TransportData>
       attendantPhone: b.attendant_phone,
       notes: b.notes,
       assignedCount: countByBus.get(b.id) ?? 0,
-      stops: ((b.bus_stops ?? []) as StopRow[])
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .map((s: any) => ({
+      stops: ((b.bus_stops ?? []) as BusStopQueryRow[])
+        .map((s) => ({
           id: s.id,
           name: s.name,
           pickupTime: s.pickup_time,
@@ -151,8 +185,7 @@ export async function getTransportData(schoolId: string): Promise<TransportData>
         .sort((x, y) => x.stopOrder - y.stopOrder),
     })),
     assignments: assignmentRows,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    students: ((students ?? []) as any[]).map((s) => ({
+    students: ((students ?? []) as StudentWithClassQueryRow[]).map((s) => ({
       id: s.id,
       name: s.full_name,
       admissionNumber: s.admission_number,
@@ -169,8 +202,7 @@ function assertBus(input: BusInput): void {
 export async function createBus(input: BusInput): Promise<void> {
   assertBus(input)
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
   await requirePermission(supabase, 'transport.manage')
   const { error } = await db.from('buses').insert({
     school_id: input.schoolId,
@@ -194,8 +226,7 @@ export async function createBus(input: BusInput): Promise<void> {
 export async function updateBus(id: string, input: BusInput): Promise<void> {
   assertBus(input)
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
   await requirePermission(supabase, 'transport.manage')
 
   // Don't allow shrinking capacity below the number already seated.
@@ -231,8 +262,7 @@ export async function updateBus(id: string, input: BusInput): Promise<void> {
 
 export async function deleteBus(schoolId: string, id: string): Promise<void> {
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
   await requirePermission(supabase, 'transport.manage')
 
   const { count } = await db
@@ -257,8 +287,7 @@ export async function deleteBus(schoolId: string, id: string): Promise<void> {
 export async function addStop(input: StopInput): Promise<void> {
   if (!input.name.trim()) throw new Error('Stop name is required.')
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
   await requirePermission(supabase, 'transport.manage')
   const { error } = await db.from('bus_stops').insert({
     school_id: input.schoolId,
@@ -273,8 +302,7 @@ export async function addStop(input: StopInput): Promise<void> {
 
 export async function deleteStop(schoolId: string, id: string): Promise<void> {
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
   await requirePermission(supabase, 'transport.manage')
   const { error } = await db.from('bus_stops').delete().eq('id', id).eq('school_id', schoolId)
   if (error) throw new Error(error.message)
@@ -293,15 +321,14 @@ export async function assignStudent(input: {
   if (!input.studentId) throw new Error('Select a student.')
   if (!input.busId) throw new Error('Select a bus.')
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
   await requirePermission(supabase, 'transport.manage')
   const { error } = await db.rpc('assign_student_transport', {
     p_school_id: input.schoolId,
     p_student_id: input.studentId,
     p_bus_id: input.busId,
-    p_stop_id: input.stopId,
-    p_pickup_point: input.pickupPoint?.trim() || null,
+    p_stop_id: input.stopId as unknown as string,
+    p_pickup_point: (input.pickupPoint?.trim() || null) as unknown as string,
     p_fee: input.fee,
   })
   if (error) throw new Error(error.message)
@@ -309,8 +336,7 @@ export async function assignStudent(input: {
 
 export async function unassignStudent(schoolId: string, assignmentId: string): Promise<void> {
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
   await requirePermission(supabase, 'transport.manage')
   const { error } = await db.from('student_transport').delete().eq('id', assignmentId).eq('school_id', schoolId)
   if (error) throw new Error(error.message)

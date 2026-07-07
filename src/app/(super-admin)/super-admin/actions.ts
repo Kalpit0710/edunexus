@@ -3,6 +3,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { createClient as getSupabase } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
+import type { Database } from '@/types/database.types'
 import {
   DEFAULT_PLAN_PRICE,
   SUBSCRIPTION_PLANS,
@@ -17,7 +18,7 @@ import { logAudit } from '@/lib/audit'
 
 /** Service-role client (bypasses RLS) for cross-tenant platform operations. */
 function getAdminClient() {
-  return createClient(
+  return createClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { autoRefreshToken: false, persistSession: false } }
@@ -314,7 +315,9 @@ export async function updateSchool(id: string, payload: UpdateSchoolPayload): Pr
   const actor = await requireSuperAdmin()
   const admin = getAdminClient()
 
-  const update: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  const update: Database['public']['Tables']['schools']['Update'] = {
+    updated_at: new Date().toISOString(),
+  }
   if (payload.name !== undefined) update.name = payload.name
   if (payload.email !== undefined) update.email = payload.email
   if (payload.phone !== undefined) update.phone = payload.phone
@@ -464,6 +467,13 @@ export interface PlatformUserRow {
   school_code: string | null
 }
 
+type PlatformUserQueryRow = Pick<
+  Database['public']['Tables']['user_profiles']['Row'],
+  'id' | 'auth_user_id' | 'full_name' | 'email' | 'phone' | 'role' | 'is_active' | 'created_at' | 'school_id'
+> & {
+  schools: { name: string | null; code: string | null } | { name: string | null; code: string | null }[] | null
+}
+
 /** Every user profile across all schools (plus super admins). */
 export async function getAllUsers(): Promise<PlatformUserRow[]> {
   await requireSuperAdmin()
@@ -476,7 +486,7 @@ export async function getAllUsers(): Promise<PlatformUserRow[]> {
 
   if (error) throw new Error(error.message)
 
-  return ((data ?? []) as any[]).map((u) => {
+  return ((data ?? []) as PlatformUserQueryRow[]).map((u) => {
     const school = Array.isArray(u.schools) ? u.schools[0] : u.schools
     return {
       id: u.id,
@@ -558,6 +568,29 @@ export interface AuditLogRow {
   school_name: string | null
 }
 
+type AuditLogQueryRow = Pick<
+  Database['public']['Tables']['audit_logs']['Row'],
+  | 'id'
+  | 'school_id'
+  | 'actor_email'
+  | 'actor_role'
+  | 'action'
+  | 'entity_type'
+  | 'entity_id'
+  | 'entity_label'
+  | 'metadata'
+  | 'created_at'
+> & {
+  schools: { name: string | null } | { name: string | null }[] | null
+}
+
+function normalizeAuditMetadata(
+  value: Database['public']['Tables']['audit_logs']['Row']['metadata'],
+): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  return value as Record<string, unknown>
+}
+
 /** Recent platform audit entries (most recent first). */
 export async function getAuditLogs(limit = 200): Promise<AuditLogRow[]> {
   await requireSuperAdmin()
@@ -574,7 +607,7 @@ export async function getAuditLogs(limit = 200): Promise<AuditLogRow[]> {
     throw new Error(error.message)
   }
 
-  return ((data ?? []) as any[]).map((r) => {
+  return ((data ?? []) as AuditLogQueryRow[]).map((r) => {
     const school = Array.isArray(r.schools) ? r.schools[0] : r.schools
     return {
       id: r.id,
@@ -585,7 +618,7 @@ export async function getAuditLogs(limit = 200): Promise<AuditLogRow[]> {
       entity_type: r.entity_type,
       entity_id: r.entity_id,
       entity_label: r.entity_label,
-      metadata: r.metadata,
+      metadata: normalizeAuditMetadata(r.metadata),
       created_at: r.created_at,
       school_name: school?.name ?? null,
     }
@@ -609,6 +642,11 @@ export interface SchoolOverview {
     created_at: string
   }[]
 }
+
+type RecentActivityRow = Pick<
+  Database['public']['Tables']['audit_logs']['Row'],
+  'id' | 'action' | 'entity_label' | 'actor_email' | 'created_at'
+>
 
 /** Aggregated operational snapshot for a single school. */
 export async function getSchoolOverview(schoolId: string): Promise<SchoolOverview> {
@@ -649,7 +687,7 @@ export async function getSchoolOverview(schoolId: string): Promise<SchoolOvervie
     totalCollected,
     todayCollected,
     attendanceTodayPct,
-    recentActivity: ((auditRes.data ?? []) as any[]).map((r) => ({
+    recentActivity: ((auditRes.data ?? []) as RecentActivityRow[]).map((r) => ({
       id: r.id,
       action: r.action,
       entity_label: r.entity_label,

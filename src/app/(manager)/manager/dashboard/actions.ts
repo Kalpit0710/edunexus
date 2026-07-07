@@ -2,6 +2,13 @@
 
 import { createClient as createServerSupabaseClient } from '@/lib/supabase/server'
 import { isLowStock } from '@/lib/inventory-utils'
+import type { Database } from '@/types/database.types'
+
+type FeePaymentRow = Pick<Database['public']['Tables']['fee_payments']['Row'], 'student_id' | 'paid_amount' | 'payment_date' | 'payment_mode'>
+type StudentRow = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'class_id'>
+type FeeStructureRow = Pick<Database['public']['Tables']['fee_structures']['Row'], 'class_id' | 'amount' | 'academic_year_id'>
+type InventoryItemRow = Pick<Database['public']['Tables']['inventory_items']['Row'], 'id' | 'stock_quantity' | 'low_stock_alert'>
+type ClassRow = Pick<Database['public']['Tables']['classes']['Row'], 'id' | 'name'>
 
 export interface ManagerDashboardStats {
   todayCollection: number
@@ -19,7 +26,6 @@ export async function getManagerDashboardStats(
   today: string,
 ): Promise<ManagerDashboardStats> {
   const supabase = await createServerSupabaseClient()
-  const db = supabase as any
 
   // Build last 7 dates (oldest → newest)
   const dates: string[] = []
@@ -32,7 +38,7 @@ export async function getManagerDashboardStats(
 
   const [paymentsRes, studentsRes, structuresRes, inventoryRes, pendingPayRes, classesRes] = await Promise.all([
     // Today + last 7 days payments (for trend + today stats)
-    db
+    supabase
       .from('fee_payments')
       .select('student_id, paid_amount, payment_date, payment_mode')
       .eq('school_id', schoolId)
@@ -41,7 +47,7 @@ export async function getManagerDashboardStats(
       .limit(5000),
 
     // Active students
-    db
+    supabase
       .from('students')
       .select('id, class_id')
       .eq('school_id', schoolId)
@@ -49,7 +55,7 @@ export async function getManagerDashboardStats(
       .limit(5000),
 
     // Fee structures for current academic year
-    db
+    supabase
       .from('fee_structures')
       .select('class_id, amount, academic_year_id')
       .eq('school_id', schoolId)
@@ -57,7 +63,7 @@ export async function getManagerDashboardStats(
       .limit(5000),
 
     // Inventory items
-    db
+    supabase
       .from('inventory_items')
       .select('id, stock_quantity, low_stock_alert')
       .eq('school_id', schoolId)
@@ -65,35 +71,35 @@ export async function getManagerDashboardStats(
       .limit(5000),
 
     // All-time payments for pending fee calc
-    db
+    supabase
       .from('fee_payments')
       .select('student_id, paid_amount')
       .eq('school_id', schoolId)
       .limit(10000),
 
-    db
+    supabase
       .from('classes')
       .select('id, name')
       .eq('school_id', schoolId)
       .limit(500),
   ])
 
-  const payments: any[] = paymentsRes.data ?? []
-  const students: any[] = studentsRes.data ?? []
-  const structures: any[] = structuresRes.data ?? []
-  const inventoryItems: any[] = inventoryRes.data ?? []
-  const allPayments: any[] = pendingPayRes.data ?? []
-  const classes: any[] = classesRes.data ?? []
+  const payments = (paymentsRes.data ?? []) as FeePaymentRow[]
+  const students = (studentsRes.data ?? []) as StudentRow[]
+  const structures = (structuresRes.data ?? []) as FeeStructureRow[]
+  const inventoryItems = (inventoryRes.data ?? []) as InventoryItemRow[]
+  const allPayments = (pendingPayRes.data ?? []) as Pick<Database['public']['Tables']['fee_payments']['Row'], 'student_id' | 'paid_amount'>[]
+  const classes = (classesRes.data ?? []) as ClassRow[]
 
   // Today's collection
-  const todayPayments = payments.filter((p: any) => p.payment_date === today)
-  const todayCollection = todayPayments.reduce((s: number, p: any) => s + Number(p.paid_amount), 0)
+  const todayPayments = payments.filter((p) => p.payment_date === today)
+  const todayCollection = todayPayments.reduce((sum, p) => sum + Number(p.paid_amount ?? 0), 0)
   const paymentCount = todayPayments.length
 
   // Weekly trend — group by date
   const trendMap: Record<string, number> = {}
   dates.forEach(d => { trendMap[d] = 0 })
-  payments.forEach((p: any) => {
+  payments.forEach((p) => {
     if (trendMap[p.payment_date] !== undefined) {
       trendMap[p.payment_date]! += Number(p.paid_amount)
     }
@@ -118,7 +124,7 @@ export async function getManagerDashboardStats(
 
   // Pending fee count — students with balance > 0
   // Get current academic year first
-  const { data: yearData } = await db
+  const { data: yearData } = await supabase
     .from('academic_years')
     .select('id')
     .eq('school_id', schoolId)
@@ -129,17 +135,18 @@ export async function getManagerDashboardStats(
   let classFeeMap: Record<string, number> = {}
   let paidMap: Record<string, number> = {}
   if (yearData) {
-    const yearId = yearData.id as string
-    const yearStructures = structures.filter((s: any) => s.academic_year_id === yearId)
+    const yearId = yearData.id
+    const yearStructures = structures.filter((s) => s.academic_year_id === yearId)
     classFeeMap = {}
-    yearStructures.forEach((s: any) => {
+    yearStructures.forEach((s) => {
       classFeeMap[s.class_id] = (classFeeMap[s.class_id] ?? 0) + Number(s.amount)
     })
     paidMap = {}
-    allPayments.forEach((p: any) => {
+    allPayments.forEach((p) => {
       paidMap[p.student_id] = (paidMap[p.student_id] ?? 0) + Number(p.paid_amount)
     })
-    pendingFeeCount = students.filter((s: any) => {
+    pendingFeeCount = students.filter((s) => {
+      if (!s.class_id) return false
       const totalFee = classFeeMap[s.class_id] ?? 0
       const totalPaid = paidMap[s.id] ?? 0
       return totalFee > 0 && (totalFee - totalPaid) > 0
@@ -147,12 +154,13 @@ export async function getManagerDashboardStats(
   }
 
   const classNameMap: Record<string, string> = {}
-  classes.forEach((c: any) => {
+  classes.forEach((c) => {
     classNameMap[c.id] = c.name
   })
 
   const classPendingMap: Record<string, number> = {}
-  students.forEach((s: any) => {
+  students.forEach((s) => {
+    if (!s.class_id) return
     const totalFee = classFeeMap[s.class_id] ?? 0
     const totalPaid = paidMap[s.id] ?? 0
 
@@ -171,7 +179,7 @@ export async function getManagerDashboardStats(
 
   // Inventory stats
   const inventoryItemCount = inventoryItems.length
-  const lowStockCount = inventoryItems.filter((item: any) =>
+  const lowStockCount = inventoryItems.filter((item) =>
     isLowStock(Number(item.stock_quantity), Number(item.low_stock_alert))
   ).length
 

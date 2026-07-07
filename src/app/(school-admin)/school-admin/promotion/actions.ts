@@ -81,6 +81,7 @@ export interface PromoteStudentsInput {
 export interface PromoteStudentsResult {
   promoted: number
   graduated: number
+  arrearsCarried: number
 }
 
 /**
@@ -122,7 +123,17 @@ export async function promoteStudents(input: PromoteStudentsInput): Promise<Prom
   })
   if (error) throw new Error(error.message)
 
-  const result = (data ?? { promoted: 0, graduated: 0 }) as unknown as PromoteStudentsResult
+  const rpcResult = (data ?? { promoted: 0, graduated: 0, arrears_carried: 0 }) as {
+    promoted?: number
+    graduated?: number
+    arrears_carried?: number
+  }
+
+  const result: PromoteStudentsResult = {
+    promoted: Number(rpcResult.promoted ?? 0),
+    graduated: Number(rpcResult.graduated ?? 0),
+    arrearsCarried: Number(rpcResult.arrears_carried ?? 0),
+  }
 
   await logAudit({
     schoolId: input.schoolId,
@@ -131,7 +142,7 @@ export async function promoteStudents(input: PromoteStudentsInput): Promise<Prom
     action: 'students.promoted',
     entityType: 'school',
     entityId: input.schoolId,
-    entityLabel: `Promoted ${result.promoted}, graduated ${result.graduated}`,
+    entityLabel: `Promoted ${result.promoted}, graduated ${result.graduated}, arrears ${result.arrearsCarried}`,
   })
 
   return result

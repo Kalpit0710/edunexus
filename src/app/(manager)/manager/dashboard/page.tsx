@@ -15,6 +15,7 @@ import {
   IndianRupee, Receipt, AlertCircle, Package, TrendingUp,
   ShoppingCart, ArrowRight, Users
 } from 'lucide-react'
+import type { Route } from 'next'
 
 const PAYMENT_MODE_LABELS: Record<string, string> = {
   cash: 'Cash', cheque: 'Cheque', upi: 'UPI',
@@ -59,45 +60,45 @@ export default function ManagerDashboardPage() {
       label: "Today's Collection",
       value: `₹${stats.todayCollection.toLocaleString('en-IN')}`,
       icon: IndianRupee,
-      href: '/manager/dashboard',
+      href: '/manager/dashboard' as Route,
       accent: '#10b981',
     },
     {
       label: 'Transactions Today',
       value: stats.paymentCount,
       icon: Receipt,
-      href: '/manager/dashboard',
+      href: '/manager/dashboard' as Route,
       accent: '#3b82f6',
     },
     {
       label: 'Pending Fee Students',
       value: stats.pendingFeeCount,
       icon: AlertCircle,
-      href: '/school-admin/fees/pending',
+      href: '/school-admin/fees/pending' as Route,
       accent: stats.pendingFeeCount > 0 ? '#ef4444' : '#6b7280',
     },
     {
       label: 'Inventory Items',
       value: stats.inventoryItemCount,
       icon: Package,
-      href: '/manager/inventory',
+      href: '/manager/inventory' as Route,
       accent: '#8b5cf6',
     },
     {
       label: 'Low Stock Alerts',
       value: stats.lowStockCount,
       icon: AlertCircle,
-      href: '/manager/inventory',
+      href: '/manager/inventory' as Route,
       accent: stats.lowStockCount > 0 ? '#f59e0b' : '#6b7280',
     },
   ]
 
   const quickActions = [
-    { href: '/school-admin/fees/collect', label: 'Collect Fee', icon: IndianRupee },
-    { href: '/manager/inventory/pos', label: 'Inventory POS', icon: ShoppingCart },
-    { href: '/school-admin/fees/pending', label: 'Pending Fees', icon: AlertCircle },
-    { href: '/manager/inventory', label: 'Inventory', icon: Package },
-    { href: '/school-admin/students', label: 'Students', icon: Users },
+    { href: '/school-admin/fees/collect' as Route, label: 'Collect Fee', icon: IndianRupee },
+    { href: '/manager/inventory/pos' as Route, label: 'Inventory POS', icon: ShoppingCart },
+    { href: '/school-admin/fees/pending' as Route, label: 'Pending Fees', icon: AlertCircle },
+    { href: '/manager/inventory' as Route, label: 'Inventory', icon: Package },
+    { href: '/school-admin/students' as Route, label: 'Students', icon: Users },
   ]
 
   if (error) {
@@ -137,7 +138,7 @@ export default function ManagerDashboardPage() {
                 {stats.lowStockCount} item{stats.lowStockCount > 1 ? 's are' : ' is'} running low on stock.
               </p>
             </div>
-            <Link href={'/manager/inventory' as any} className="shrink-0">
+            <Link href={'/manager/inventory' as Route} className="shrink-0">
               <Button className="rounded-full bg-amber-500 text-[#0a0a0a] hover:bg-amber-400 text-sm font-semibold">
                 Review Stock
               </Button>
@@ -151,7 +152,7 @@ export default function ManagerDashboardPage() {
         {loading
           ? Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-2xl bg-white/5" />)
           : statCards.map(card => (
-            <Link key={card.label} href={card.href as any}>
+            <Link key={card.label} href={card.href}>
               <div className="group relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.03] p-5 hover:bg-white/[0.05] hover:border-white/[0.12] transition-all duration-200 cursor-pointer hover:-translate-y-0.5">
                 <div
                   className="pointer-events-none absolute -right-4 -top-4 h-24 w-24 rounded-full blur-2xl opacity-20 transition-opacity group-hover:opacity-40"
@@ -290,7 +291,7 @@ export default function ManagerDashboardPage() {
         <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-3">Quick Actions</p>
         <div className="flex flex-wrap gap-2">
           {quickActions.map(action => (
-            <Link key={action.href} href={action.href as any}>
+            <Link key={action.href} href={action.href}>
               <Button
                 variant="outline"
                 className="gap-2 rounded-full border-white/[0.08] bg-white/[0.04] text-zinc-300 hover:text-white hover:bg-white/[0.08] hover:border-white/[0.14] transition-all text-sm"

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import Link from 'next/link'
+import type { Route } from 'next'
 import {
   IndianRupee, CalendarCheck, Users, GraduationCap,
   BookOpen, Rocket, AlertCircle, TrendingUp, ArrowRight
@@ -58,20 +59,20 @@ export default function SchoolAdminDashboardPage() {
   }, [loadDashboard])
 
   const statCards = [
-    { label: 'Total Students', value: stats.totalStudents, icon: Users, href: '/school-admin/students', accent: '#3b82f6' },
-    { label: 'Active Teachers', value: stats.activeTeachers, icon: GraduationCap, href: '/school-admin/teachers', accent: '#8b5cf6' },
-    { label: 'Classes', value: stats.classCount, icon: BookOpen, href: '/school-admin/settings', accent: '#f59e0b' },
-    { label: "Today's Collection", value: `₹${stats.todayCollection.toLocaleString('en-IN')}`, icon: IndianRupee, href: '/school-admin/fees/collect', accent: '#10b981' },
-    { label: "Today's Attendance", value: `${stats.todayAttendancePct}%`, icon: CalendarCheck, href: '/school-admin/attendance', accent: '#06b6d4' },
-    { label: 'Pending Fees', value: `₹${stats.totalPendingFees.toLocaleString('en-IN')}`, icon: AlertCircle, href: '/school-admin/fees/pending', accent: stats.totalPendingFees > 0 ? '#ef4444' : '#6b7280' },
+    { label: 'Total Students', value: stats.totalStudents, icon: Users, href: '/school-admin/students' as Route, accent: '#3b82f6' },
+    { label: 'Active Teachers', value: stats.activeTeachers, icon: GraduationCap, href: '/school-admin/teachers' as Route, accent: '#8b5cf6' },
+    { label: 'Classes', value: stats.classCount, icon: BookOpen, href: '/school-admin/settings' as Route, accent: '#f59e0b' },
+    { label: "Today's Collection", value: `₹${stats.todayCollection.toLocaleString('en-IN')}`, icon: IndianRupee, href: '/school-admin/fees/collect' as Route, accent: '#10b981' },
+    { label: "Today's Attendance", value: `${stats.todayAttendancePct}%`, icon: CalendarCheck, href: '/school-admin/attendance' as Route, accent: '#06b6d4' },
+    { label: 'Pending Fees', value: `₹${stats.totalPendingFees.toLocaleString('en-IN')}`, icon: AlertCircle, href: '/school-admin/fees/pending' as Route, accent: stats.totalPendingFees > 0 ? '#ef4444' : '#6b7280' },
   ]
 
   const quickActions = ([
-    { href: '/school-admin/attendance', label: 'Mark Attendance', icon: CalendarCheck, feature: 'attendance' as Feature },
-    { href: '/school-admin/fees/collect', label: 'Collect Fee', icon: IndianRupee, feature: 'fees' as Feature },
-    { href: '/school-admin/fees/pending', label: 'Pending Fees', icon: AlertCircle, feature: 'fees' as Feature },
-    { href: '/school-admin/students', label: 'Manage Students', icon: Users, feature: 'students' as Feature },
-    { href: '/school-admin/teachers', label: 'Manage Teachers', icon: GraduationCap, feature: 'teachers' as Feature },
+    { href: '/school-admin/attendance' as Route, label: 'Mark Attendance', icon: CalendarCheck, feature: 'attendance' as Feature },
+    { href: '/school-admin/fees/collect' as Route, label: 'Collect Fee', icon: IndianRupee, feature: 'fees' as Feature },
+    { href: '/school-admin/fees/pending' as Route, label: 'Pending Fees', icon: AlertCircle, feature: 'fees' as Feature },
+    { href: '/school-admin/students' as Route, label: 'Manage Students', icon: Users, feature: 'students' as Feature },
+    { href: '/school-admin/teachers' as Route, label: 'Manage Teachers', icon: GraduationCap, feature: 'teachers' as Feature },
   ]).filter((a) => hasFeature(a.feature))
 
   if (error) {
@@ -96,7 +97,7 @@ export default function SchoolAdminDashboardPage() {
             </h1>
             <p className="text-sm text-zinc-400 mt-1">{school?.name ?? 'Your school'}</p>
           </div>
-          <Link href={'/school-admin/reports' as any} className={hasFeature('reports') ? '' : 'hidden'}>
+          <Link href={'/school-admin/reports' as Route} className={hasFeature('reports') ? '' : 'hidden'}>
             <Button
               variant="outline"
               className="gap-2 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10 hover:border-white/20 transition-all"
@@ -122,7 +123,7 @@ export default function SchoolAdminDashboardPage() {
                 Complete the guided setup to configure classes, academic years, and import students.
               </p>
             </div>
-            <Link href={'/school-admin/onboarding' as any} className="shrink-0">
+            <Link href={'/school-admin/onboarding' as Route} className="shrink-0">
               <Button className="rounded-full bg-blue-600 text-white hover:bg-blue-500 text-sm shadow-lg shadow-blue-600/20">
                 Start Setup
               </Button>
@@ -136,7 +137,7 @@ export default function SchoolAdminDashboardPage() {
         {loading
           ? Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-2xl bg-white/5" />)
           : statCards.map(card => (
-            <Link key={card.label} href={card.href as any}>
+            <Link key={card.label} href={card.href}>
               <div className="group relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.03] p-5 hover:bg-white/[0.05] hover:border-white/[0.12] transition-all duration-200 cursor-pointer hover:-translate-y-0.5">
                 <div className="pointer-events-none absolute -right-4 -top-4 h-24 w-24 rounded-full blur-2xl opacity-20 transition-opacity group-hover:opacity-40"
                   style={{ backgroundColor: card.accent }} />
@@ -217,7 +218,7 @@ export default function SchoolAdminDashboardPage() {
         <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-3">Quick Actions</p>
         <div className="flex flex-wrap gap-2">
           {quickActions.map(action => (
-            <Link key={action.href} href={action.href as any}>
+            <Link key={action.href} href={action.href}>
               <Button
                 variant="outline"
                 className="gap-2 rounded-full border-white/[0.08] bg-white/[0.04] text-zinc-300 hover:text-white hover:bg-white/[0.08] hover:border-white/[0.14] transition-all text-sm"

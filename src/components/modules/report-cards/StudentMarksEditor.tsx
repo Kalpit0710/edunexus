@@ -10,6 +10,7 @@ import {
   saveScholasticMark,
   saveCoScholasticMark,
   saveStudentMeta,
+  suggestReportComment,
   type StudentReportData,
 } from '@/app/(school-admin)/school-admin/report-cards/actions'
 import {
@@ -41,7 +42,7 @@ import {
 import { InlineLoader } from '@/components/loaders/page-loaders'
 import { DataLoadError } from '@/components/shared/DataLoadError'
 import { usePermissions } from '@/hooks/use-permissions'
-import { ArrowLeft, Save, Printer, Lock } from 'lucide-react'
+import { ArrowLeft, Save, Printer, Lock, Sparkles } from 'lucide-react'
 
 type SubjectMarks = Record<string, { term1: Record<string, string>; term2: Record<string, string> }>
 
@@ -61,6 +62,7 @@ export function StudentMarksEditor({ studentId, backHref }: StudentMarksEditorPr
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [aiSuggesting, setAiSuggesting] = useState(false)
 
   // editable state
   const [subjectMarks, setSubjectMarks] = useState<SubjectMarks>({})
@@ -222,6 +224,46 @@ export function StudentMarksEditor({ studentId, backHref }: StudentMarksEditorPr
       toast.error(getErrorMessage(e))
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleAiSuggestRemark() {
+    if (!schoolId || !data) return
+
+    const subjectSummaries = data.configs
+      .map((cfg) => {
+        const res = subjectResult(cfg.subjectId)
+        if (!res) return null
+        return { name: cfg.subjectName, percentage: res.percentage }
+      })
+      .filter((entry): entry is { name: string; percentage: number } => entry !== null)
+      .sort((a, b) => b.percentage - a.percentage)
+
+    const strengths = subjectSummaries.slice(0, 3).map((row) => `${row.name} (${row.percentage.toFixed(1)}%)`)
+    const improvements = [...subjectSummaries]
+      .reverse()
+      .slice(0, 2)
+      .map((row) => `${row.name} (${row.percentage.toFixed(1)}%)`)
+
+    setAiSuggesting(true)
+    try {
+      const suggestion = await suggestReportComment({
+        schoolId,
+        studentId,
+        overallPercentage: overall.percentage,
+        overallGrade,
+        strengths,
+        improvements,
+        term1Attendance: meta.term1Attendance || null,
+        term2Attendance: meta.term2Attendance || null,
+        currentRemarks: meta.remarks || null,
+      })
+      setMeta((m) => ({ ...m, remarks: suggestion }))
+      toast.success('AI remark suggestion added. Review before saving.')
+    } catch (e) {
+      toast.error(getErrorMessage(e))
+    } finally {
+      setAiSuggesting(false)
     }
   }
 
@@ -420,7 +462,19 @@ export function StudentMarksEditor({ studentId, backHref }: StudentMarksEditorPr
             </Select>
           </div>
           <div className="space-y-1.5 sm:col-span-2">
-            <Label>Class teacher remarks</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label>Class teacher remarks</Label>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleAiSuggestRemark}
+                disabled={locked || aiSuggesting || !canEdit}
+              >
+                <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                {aiSuggesting ? 'Generating…' : 'Suggest with AI'}
+              </Button>
+            </div>
             <Textarea
               value={meta.remarks}
               rows={2}

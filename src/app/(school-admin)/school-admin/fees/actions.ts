@@ -7,6 +7,7 @@ import { sendEmail } from '@/lib/email'
 import { logAudit } from '@/lib/audit'
 import { validateCollectFeeInput } from '@/lib/fee-utils'
 import { FeeReceiptEmail } from '@/emails/FeeReceiptEmail'
+import type { Database } from '@/types/database.types'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -79,6 +80,61 @@ export interface CollectFeeInput {
   remarks?: string
 }
 
+type FeeCategoryDbRow = Database['public']['Tables']['fee_categories']['Row']
+type FeeStructureDbRow = Database['public']['Tables']['fee_structures']['Row']
+type AcademicYearDbRow = Pick<Database['public']['Tables']['academic_years']['Row'], 'id' | 'name' | 'is_current'>
+type StudentDbRow = Database['public']['Tables']['students']['Row']
+type FeePaymentDbRow = Database['public']['Tables']['fee_payments']['Row']
+type FeePaymentItemDbRow = Database['public']['Tables']['fee_payment_items']['Row']
+
+type FeeStructureJoinedRow = FeeStructureDbRow & {
+  classes: { name: string } | null
+  fee_categories: { name: string } | null
+  academic_years: { name: string } | null
+}
+
+type FeeStructureDeletedJoinedRow = Pick<FeeStructureDbRow, 'id' | 'amount' | 'deleted_at'> & {
+  classes: { name: string } | null
+  fee_categories: { name: string } | null
+}
+
+type StudentSearchJoinedRow = Pick<StudentDbRow, 'id' | 'full_name' | 'admission_number' | 'class_id' | 'section_id' | 'photo_url'> & {
+  classes: { name: string } | null
+  sections: { name: string } | null
+}
+
+type StudentForFeeStructureRow = Pick<StudentDbRow, 'id' | 'full_name' | 'admission_number' | 'class_id' | 'section_id'> & {
+  classes: { name: string } | null
+  sections: { name: string } | null
+}
+
+type FeeStructureForStudentRow = FeeStructureDbRow & {
+  fee_categories: { name: string } | null
+}
+
+type PaymentWithItemsJoinedRow = FeePaymentDbRow & {
+  fee_payment_items: Array<FeePaymentItemDbRow & { fee_categories: { name: string } | null }> | null
+}
+
+type PaymentWithStudentJoinedRow = FeePaymentDbRow & {
+  students: Pick<StudentDbRow, 'full_name' | 'admission_number'> | null
+}
+
+type PaymentWithStudentClassJoinedRow = FeePaymentDbRow & {
+  students: (Pick<StudentDbRow, 'full_name' | 'admission_number'> & { classes: { name: string } | null }) | null
+}
+
+interface PendingFeeRpcRow {
+  student_id: string
+  student_name: string
+  admission_number: string | null
+  class_name: string | null
+  section_name: string | null
+  total_fee: number | string
+  total_paid: number | string
+  balance: number | string
+}
+
 // ─── Category Actions ─────────────────────────────────────────────────────────
 
 export async function getFeeCategories(schoolId: string): Promise<FeeCategoryRow[]> {
@@ -99,21 +155,18 @@ export async function createFeeCategory(
 ): Promise<FeeCategoryRow> {
   const supabase = await createServerSupabaseClient()
   await requirePermission(supabase, 'fees.configure')
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
-  const { data, error } = await db
+  const { data, error } = await supabase
     .from('fee_categories')
     .insert({ school_id: schoolId, name: name.trim(), description: description?.trim() || null })
     .select()
     .single()
   if (error) throw new Error(error.message)
-  return data as FeeCategoryRow
+  return data as FeeCategoryDbRow
 }
 
 export async function toggleCategoryStatus(categoryId: string, isActive: boolean): Promise<void> {
   const supabase = await createServerSupabaseClient()
-  const db = supabase as any
-  const { error } = await db
+  const { error } = await supabase
     .from('fee_categories')
     .update({ is_active: isActive })
     .eq('id', categoryId)
@@ -139,7 +192,7 @@ export async function getFeeStructures(schoolId: string, academicYearId?: string
   }
   const { data, error } = await query
   if (error) throw new Error(error.message)
-  return ((data ?? []) as any[]).map(r => ({
+  return ((data ?? []) as FeeStructureJoinedRow[]).map(r => ({
     ...r,
     class_name: r.classes?.name,
     category_name: r.fee_categories?.name,
@@ -158,7 +211,7 @@ export async function getDeletedFeeStructures(
     throw new Error('Item not found or not permitted.')
   }
 
-  const admin = (await createAdminClient()) as any
+  const admin = await createAdminClient()
   let query = admin
     .from('fee_structures')
     .select(`
@@ -175,13 +228,13 @@ export async function getDeletedFeeStructures(
   const { data, error } = await query
   if (error) throw new Error(error.message)
 
-  return ((data ?? []) as any[]).map(r => {
+  return ((data ?? []) as FeeStructureDeletedJoinedRow[]).map(r => {
     const cls = r.classes?.name ?? 'Unknown class'
     const cat = r.fee_categories?.name ?? 'Unknown category'
     return {
-      id: r.id as string,
+      id: r.id,
       label: `${cls} · ${cat} · ₹${Number(r.amount).toLocaleString('en-IN')}`,
-      deletedAt: r.deleted_at as string,
+      deletedAt: String(r.deleted_at),
     }
   })
 }
@@ -196,9 +249,7 @@ export async function createFeeStructure(
 ): Promise<void> {
   const supabase = await createServerSupabaseClient()
   await requirePermission(supabase, 'fees.configure')
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
-  const { error } = await db.from('fee_structures').insert({
+  const { error } = await supabase.from('fee_structures').insert({
     school_id: schoolId,
     class_id: classId,
     category_id: categoryId,
@@ -212,9 +263,7 @@ export async function createFeeStructure(
 export async function updateFeeStructureAmount(structureId: string, amount: number): Promise<void> {
   const supabase = await createServerSupabaseClient()
   await requirePermission(supabase, 'fees.configure')
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
-  const { error } = await db
+  const { error } = await supabase
     .from('fee_structures')
     .update({ amount })
     .eq('id', structureId)
@@ -226,7 +275,7 @@ export async function deleteFeeStructure(structureId: string): Promise<void> {
   const actor = await requireActor(supabase, ['school_admin'])
   if (!actor.school_id) throw new Error('Your account is not linked to any school.')
 
-  const admin = (await createAdminClient()) as any
+  const admin = await createAdminClient()
 
   const { data: row, error: readErr } = await admin
     .from('fee_structures')
@@ -261,7 +310,7 @@ export async function restoreFeeStructure(structureId: string): Promise<void> {
   const actor = await requireActor(supabase, ['school_admin'])
   if (!actor.school_id) throw new Error('Your account is not linked to any school.')
 
-  const admin = (await createAdminClient()) as any
+  const admin = await createAdminClient()
 
   const { data: row, error: readErr } = await admin
     .from('fee_structures')
@@ -301,7 +350,7 @@ export async function getAcademicYearsForFees(schoolId: string): Promise<Academi
     .eq('school_id', schoolId)
     .order('start_date', { ascending: false })
   if (error) throw new Error(error.message)
-  return (data ?? []) as AcademicYearRow[]
+  return (data ?? []) as AcademicYearDbRow[]
 }
 
 // ─── Payment (POS) Actions ────────────────────────────────────────────────────
@@ -310,8 +359,8 @@ export interface FeeStudentResult {
   id: string
   full_name: string
   admission_number: string
-  class_id: string
-  section_id: string
+  class_id: string | null
+  section_id: string | null
   class_name: string
   section_name: string
   photo_url: string | null
@@ -333,15 +382,16 @@ export async function searchStudentForFee(
     .limit(1)
     .maybeSingle()
   if (!data) return null
+  const row = data as StudentSearchJoinedRow
   return {
-    id: (data as any).id,
-    full_name: (data as any).full_name,
-    admission_number: (data as any).admission_number,
-    class_id: (data as any).class_id,
-    section_id: (data as any).section_id,
-    class_name: (data as any).classes?.name ?? '',
-    section_name: (data as any).sections?.name ?? '',
-    photo_url: (data as any).photo_url ?? null,
+    id: row.id,
+    full_name: row.full_name,
+    admission_number: row.admission_number,
+    class_id: row.class_id ?? null,
+    section_id: row.section_id ?? null,
+    class_name: row.classes?.name ?? '',
+    section_name: row.sections?.name ?? '',
+    photo_url: row.photo_url ?? null,
   }
 }
 
@@ -363,22 +413,51 @@ export async function searchStudentsForFeeLive(
     .limit(limit)
   
   if (error) throw new Error(error.message)
-  return (data ?? []).map((row: any) => ({
+    return ((data ?? []) as StudentSearchJoinedRow[]).map((row) => ({
     id: row.id,
     full_name: row.full_name,
     admission_number: row.admission_number,
-    class_id: row.class_id,
-    section_id: row.section_id,
+      class_id: row.class_id ?? null,
+      section_id: row.section_id ?? null,
     class_name: row.classes?.name ?? '',
     section_name: row.sections?.name ?? '',
     photo_url: row.photo_url ?? null,
   }))
 }
 
+export async function getStudentForFeeById(
+  schoolId: string,
+  studentId: string,
+): Promise<FeeStudentResult | null> {
+  const supabase = await createServerSupabaseClient()
+  const { data, error } = await supabase
+    .from('students')
+    .select('id, full_name, admission_number, class_id, section_id, photo_url, classes(name), sections(name)')
+    .eq('school_id', schoolId)
+    .eq('is_active', true)
+    .eq('id', studentId)
+    .maybeSingle()
+
+  if (error) throw new Error(error.message)
+  if (!data) return null
+
+  const row = data as StudentSearchJoinedRow
+  return {
+    id: row.id,
+    full_name: row.full_name,
+    admission_number: row.admission_number,
+    class_id: row.class_id ?? null,
+    section_id: row.section_id ?? null,
+    class_name: row.classes?.name ?? '',
+    section_name: row.sections?.name ?? '',
+    photo_url: row.photo_url ?? null,
+  }
+}
+
 export async function getStudentFeeStructure(
   schoolId: string,
   studentId: string,
-): Promise<{ student: any; structures: FeeStructureRow[]; currentYear: AcademicYearRow | null }> {
+): Promise<{ student: StudentForFeeStructureRow | null; structures: FeeStructureRow[]; currentYear: AcademicYearRow | null }> {
   const supabase = await createServerSupabaseClient()
 
   const [studentRes, yearRes] = await Promise.all([
@@ -396,22 +475,23 @@ export async function getStudentFeeStructure(
       .single(),
   ])
 
-  const student = studentRes.data
-  const currentYear = yearRes.data as AcademicYearRow | null
+  const student = (studentRes.data as StudentForFeeStructureRow | null)
+  const currentYear = (yearRes.data as AcademicYearDbRow | null)
 
   if (!student || !currentYear) return { student, structures: [], currentYear }
+  if (!student.class_id) return { student, structures: [], currentYear }
 
   const { data: structs, error } = await supabase
     .from('fee_structures')
     .select('*, fee_categories(name)')
     .eq('school_id', schoolId)
-    .eq('class_id', (student as any).class_id)
+    .eq('class_id', student.class_id)
     .eq('academic_year_id', currentYear.id)
     .eq('is_active', true)
 
   if (error) throw new Error(error.message)
 
-  const structures: FeeStructureRow[] = ((structs ?? []) as any[]).map(r => ({
+  const structures: FeeStructureRow[] = ((structs ?? []) as FeeStructureForStudentRow[]).map(r => ({
     ...r,
     category_name: r.fee_categories?.name,
   }))
@@ -430,11 +510,9 @@ export async function collectFeePayment(
 
   const supabase = await createServerSupabaseClient()
   await requirePermission(supabase, 'fees.collect')
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
   const totalAmount = input.items.reduce((s, i) => s + i.amount, 0)
 
-  const { data: payment, error: payErr } = await db
+  const { data: payment, error: payErr } = await supabase
     .from('fee_payments')
     .insert({
       school_id: schoolId,
@@ -452,8 +530,8 @@ export async function collectFeePayment(
     .single()
   if (payErr) throw new Error(payErr.message)
 
-  const paymentId = (payment as any).id as string
-  const { error: itemErr } = await db.from('fee_payment_items').insert(
+  const paymentId = payment.id
+  const { error: itemErr } = await supabase.from('fee_payment_items').insert(
     input.items.map(i => ({
       payment_id: paymentId,
       category_id: i.categoryId,
@@ -482,14 +560,14 @@ export async function collectFeePayment(
 
   // Send Fee Receipt Email
   try {
-    const { data: parent } = await db
+    const { data: parent } = await supabase
       .from('parents')
-      .select('first_name, email')
+      .select('full_name, email')
       .eq('student_id', input.studentId)
       .eq('is_primary', true)
       .maybeSingle()
 
-    const { data: student } = await db
+    const { data: student } = await supabase
       .from('students')
       .select('full_name, schools(name)')
       .eq('id', input.studentId)
@@ -501,7 +579,7 @@ export async function collectFeePayment(
         to: pEmail,
         subject: `Fee Receipt - ${student.full_name}`,
         react: FeeReceiptEmail({
-          parentName: parent.first_name,
+          parentName: parent.full_name,
           studentName: student.full_name,
           schoolName: student.schools?.name || 'EduNexus',
           receiptNumber: receiptNumber,
@@ -543,9 +621,9 @@ export async function getPaymentsByStudent(
     .order('payment_date', { ascending: false })
     .limit(limit)
   if (error) throw new Error(error.message)
-  return ((data ?? []) as any[]).map(r => ({
+  return ((data ?? []) as PaymentWithItemsJoinedRow[]).map(r => ({
     ...r,
-    items: (r.fee_payment_items ?? []).map((item: any) => ({
+    items: (r.fee_payment_items ?? []).map((item) => ({
       ...item,
       category_name: item.fee_categories?.name,
     })),
@@ -565,7 +643,7 @@ export async function getDailyCollectionReport(
     .order('created_at', { ascending: false })
   if (error) throw new Error(error.message)
 
-  const payments: FeePaymentRow[] = ((data ?? []) as any[]).map(r => ({
+  const payments: FeePaymentRow[] = ((data ?? []) as PaymentWithStudentJoinedRow[]).map(r => ({
     ...r,
     student_name: r.students?.full_name ?? 'Unknown',
     student_admission_number: r.students?.admission_number,
@@ -593,12 +671,12 @@ export async function getPendingFees(schoolId: string): Promise<PendingFeeRow[]>
   // Aggregation happens in the DB (get_pending_fees RPC) so we no longer pull
   // every student + every payment into Node and join them in memory. The RPC
   // returns only students with a positive balance, already sorted by balance.
-  const { data, error } = await (supabase as any).rpc('get_pending_fees', {
+  const { data, error } = await supabase.rpc('get_pending_fees', {
     p_school_id: schoolId,
   })
   if (error) throw new Error(error.message)
 
-  return ((data ?? []) as any[]).map(r => ({
+  return ((data ?? []) as PendingFeeRpcRow[]).map(r => ({
     studentId: r.student_id,
     studentName: r.student_name,
     admissionNumber: r.admission_number ?? '',
@@ -636,7 +714,7 @@ export async function getAllPayments(
   const { data, error } = await query
   if (error) throw new Error(error.message)
 
-  return ((data ?? []) as any[]).map(r => ({
+  return ((data ?? []) as PaymentWithStudentClassJoinedRow[]).map(r => ({
     ...r,
     student_name: r.students?.full_name ?? 'Unknown',
     student_admission_number: r.students?.admission_number,

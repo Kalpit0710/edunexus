@@ -90,7 +90,9 @@ export default function PromotionPage() {
         mappings,
         confirm: 'PROMOTE',
       })
-      toast.success(`Promoted ${res.promoted} students · graduated ${res.graduated}.`)
+      toast.success(
+        `Promoted ${res.promoted} students · graduated ${res.graduated} · carried arrears for ${res.arrearsCarried} students.`
+      )
       setConfirmText('')
       await load()
     } catch (e) {
@@ -201,7 +203,8 @@ export default function PromotionPage() {
                   <p className="mt-1 text-muted-foreground">
                     Promotions clear each student’s section (re-assign in Students afterwards).
                     Graduated students become inactive but are not deleted. This action runs in a
-                    single transaction.
+                    single transaction. Outstanding balances are carried to the promoted year as
+                    <span className="font-medium"> Previous Arrears</span>.
                   </p>
                 </div>
               </div>

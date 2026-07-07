@@ -75,6 +75,16 @@ export async function computeStudentFeeBalance(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   totalFee += ((fines ?? []) as any[]).reduce((s, l) => s + Number(l.fine_amount), 0)
 
+  // Promotion carry-forward arrears are billed as "Previous Arrears".
+  const { data: arrears } = await db
+    .from('student_fee_arrears')
+    .select('amount')
+    .eq('student_id', studentId)
+    .eq('school_id', schoolId)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  totalFee += ((arrears ?? []) as any[]).reduce((s, a) => s + Number(a.amount), 0)
+
   // Sum every payment for this student — never a limited slice.
   const { data: payments } = await db
     .from('fee_payments')

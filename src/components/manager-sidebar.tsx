@@ -2,11 +2,12 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import type { Route } from 'next'
 import { useAuthStore } from '@/stores/auth.store'
 import { createClient } from '@/lib/supabase/client'
 import { getInitials } from '@/lib/utils'
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, LogOut, Briefcase, Package, ShoppingCart, Users, IndianRupee, ClockAlert, Bell } from 'lucide-react'
+import { LayoutDashboard, LogOut, Briefcase, Package, ShoppingCart, Users, IndianRupee, ClockAlert, Bell, QrCode } from 'lucide-react'
 import { toast } from 'sonner'
 
 const navItems = [
@@ -17,6 +18,7 @@ const navItems = [
     { href: '/manager/inventory', label: 'Inventory', icon: Package },
     { href: '/manager/inventory/pos', label: 'Point of Sale', icon: ShoppingCart },
     { href: '/manager/notifications', label: 'Notifications', icon: Bell },
+    { href: '/manager/qr-scan', label: 'QR Scan', icon: QrCode },
 ]
 
 export function ManagerSidebar() {
@@ -62,7 +64,7 @@ export function ManagerSidebar() {
                     return (
                         <Link
                             key={href}
-                            href={href as any}
+                            href={href as Route}
                             className={cn(
                                 'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150',
                                 active

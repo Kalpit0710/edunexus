@@ -1,6 +1,19 @@
 'use server'
 
 import { createClient as getSupabase } from '@/lib/supabase/server'
+import type { Database } from '@/types/database.types'
+
+type ServerDbClient = Awaited<ReturnType<typeof getSupabase>>
+type TeacherAssignmentJoinedRow = {
+  section_id: string | null
+  sections: ({ id: string; name: string | null; class_id: string | null; classes: { id: string; name: string | null } | null }) | null
+  subjects: ({ id: string; name: string | null; class_id: string | null }) | null
+}
+type HomeworkJoinedRow = Database['public']['Tables']['homework']['Row'] & {
+  classes: { name: string | null } | null
+  sections: { name: string | null } | null
+  subjects: { name: string | null } | null
+}
 
 export interface HomeworkSectionOption {
   classId: string
@@ -50,8 +63,7 @@ export interface HomeworkInput {
 
 /** Resolve the signed-in teacher's profile + teachers.id within the school. */
 async function resolveTeacher(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  db: any,
+  db: ServerDbClient,
   schoolId: string,
   authUserId: string,
   email: string | null,
@@ -87,26 +99,23 @@ async function resolveTeacher(
 
 export async function getTeacherHomeworkContext(schoolId: string): Promise<TeacherHomeworkContext> {
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
   const empty: TeacherHomeworkContext = { teacherFound: false, sections: [], subjects: [], homework: [] }
 
   const { data: authData } = await supabase.auth.getUser()
   const authUser = authData?.user
   if (!authUser) return empty
 
-  const teacherId = await resolveTeacher(db, schoolId, authUser.id, authUser.email ?? null)
+  const teacherId = await resolveTeacher(supabase, schoolId, authUser.id, authUser.email ?? null)
   if (!teacherId) return empty
 
-  const { data: assignments } = await db
+  const { data: assignments } = await supabase
     .from('teacher_section_assignments')
     .select('section_id, sections ( id, name, class_id, classes ( id, name ) ), subjects ( id, name, class_id )')
     .eq('teacher_id', teacherId)
 
   const sectionMap = new Map<string, HomeworkSectionOption>()
   const subjectMap = new Map<string, HomeworkSubjectOption>()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const a of (assignments ?? []) as any[]) {
+  for (const a of (assignments ?? []) as TeacherAssignmentJoinedRow[]) {
     const sec = a.sections
     if (sec?.id && sec.class_id) {
       sectionMap.set(sec.id, {
@@ -122,7 +131,7 @@ export async function getTeacherHomeworkContext(schoolId: string): Promise<Teach
     }
   }
 
-  const { data: hwData } = await db
+  const { data: hwData } = await supabase
     .from('homework')
     .select('*, classes ( name ), sections ( name ), subjects ( name )')
     .eq('school_id', schoolId)
@@ -131,8 +140,7 @@ export async function getTeacherHomeworkContext(schoolId: string): Promise<Teach
     .order('homework_date', { ascending: false })
     .limit(100)
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const homework: HomeworkRow[] = ((hwData ?? []) as any[]).map((h) => ({
+  const homework: HomeworkRow[] = ((hwData ?? []) as HomeworkJoinedRow[]).map((h) => ({
     id: h.id,
     class_id: h.class_id,
     section_id: h.section_id,
@@ -165,15 +173,13 @@ function assertHomeworkInput(input: HomeworkInput): void {
 export async function createHomework(input: HomeworkInput): Promise<void> {
   assertHomeworkInput(input)
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
   const { data: authData } = await supabase.auth.getUser()
   const authUser = authData?.user
   if (!authUser) throw new Error('Not signed in.')
 
   const authorName = (authUser.user_metadata?.full_name as string | undefined) ?? 'Teacher'
 
-  const { error } = await db.from('homework').insert({
+  const { error } = await supabase.from('homework').insert({
     school_id: input.schoolId,
     class_id: input.classId,
     section_id: input.sectionId,
@@ -191,9 +197,7 @@ export async function createHomework(input: HomeworkInput): Promise<void> {
 export async function updateHomework(id: string, input: HomeworkInput): Promise<void> {
   assertHomeworkInput(input)
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
-  const { error } = await db
+  const { error } = await supabase
     .from('homework')
     .update({
       class_id: input.classId,
@@ -211,9 +215,7 @@ export async function updateHomework(id: string, input: HomeworkInput): Promise<
 
 export async function deleteHomework(id: string): Promise<void> {
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
-  const { error } = await db
+  const { error } = await supabase
     .from('homework')
     .update({ deleted_at: new Date().toISOString() })
     .eq('id', id)

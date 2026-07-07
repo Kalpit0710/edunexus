@@ -2,6 +2,16 @@
 
 import { createClient as getSupabase } from '@/lib/supabase/server'
 import { normalizeWorkingDays } from '@/lib/timetable-utils'
+import type { Database } from '@/types/database.types'
+
+type ServerDbClient = Awaited<ReturnType<typeof getSupabase>>
+type TeacherProfileRow = Pick<Database['public']['Tables']['user_profiles']['Row'], 'id'>
+type TeacherIdRow = Pick<Database['public']['Tables']['teachers']['Row'], 'id'>
+type PeriodQueryRow = Pick<Database['public']['Tables']['timetable_periods']['Row'], 'id' | 'name' | 'start_time' | 'end_time' | 'is_break'>
+type EntryQueryRow = Pick<Database['public']['Tables']['timetable_entries']['Row'], 'day_of_week' | 'period_id' | 'room'> & {
+  subjects: { name: string | null } | null
+  sections: ({ name: string | null; classes: { name: string | null } | null }) | null
+}
 
 export interface TimetablePeriod {
   id: string
@@ -27,8 +37,7 @@ export interface MyTimetable {
 }
 
 async function resolveTeacherId(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  db: any,
+  db: ServerDbClient,
   schoolId: string,
   authUserId: string,
   email: string | null,
@@ -49,7 +58,7 @@ async function resolveTeacherId(
       .eq('school_id', schoolId)
       .eq('role', 'teacher')
       .maybeSingle()
-    profile = byEmail
+    profile = byEmail as TeacherProfileRow | null
   }
   if (!profile) return null
 
@@ -64,8 +73,6 @@ async function resolveTeacherId(
 
 export async function getMyTimetable(schoolId: string): Promise<MyTimetable> {
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
   const empty: MyTimetable = {
     teacherFound: false,
     periods: [],
@@ -77,36 +84,34 @@ export async function getMyTimetable(schoolId: string): Promise<MyTimetable> {
   const authUser = authData?.user
   if (!authUser) return empty
 
-  const teacherId = await resolveTeacherId(db, schoolId, authUser.id, authUser.email ?? null)
+  const teacherId = await resolveTeacherId(supabase, schoolId, authUser.id, authUser.email ?? null)
   if (!teacherId) return empty
 
   const [{ data: periods }, { data: entries }, { data: school }] = await Promise.all([
-    db
+    supabase
       .from('timetable_periods')
       .select('id, name, start_time, end_time, is_break')
       .eq('school_id', schoolId)
       .order('display_order', { ascending: true }),
-    db
+    supabase
       .from('timetable_entries')
       .select('day_of_week, period_id, room, subjects ( name ), sections ( name, classes ( name ) )')
       .eq('school_id', schoolId)
       .eq('teacher_id', teacherId),
-    db.from('schools').select('working_days').eq('id', schoolId).maybeSingle(),
+    supabase.from('schools').select('working_days').eq('id', schoolId).maybeSingle(),
   ])
 
   return {
     teacherFound: true,
     workingDays: normalizeWorkingDays(school?.working_days),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    periods: ((periods ?? []) as any[]).map((p) => ({
+    periods: ((periods ?? []) as PeriodQueryRow[]).map((p) => ({
       id: p.id,
       name: p.name,
       startTime: p.start_time,
       endTime: p.end_time,
       isBreak: p.is_break,
     })),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    entries: ((entries ?? []) as any[]).map((e) => ({
+    entries: ((entries ?? []) as EntryQueryRow[]).map((e) => ({
       dayOfWeek: e.day_of_week,
       periodId: e.period_id,
       sectionLabel: `${e.sections?.classes?.name ?? ''} ${e.sections?.name ?? ''}`.trim(),

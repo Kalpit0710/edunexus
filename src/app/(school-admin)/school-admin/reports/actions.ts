@@ -10,6 +10,15 @@ import {
     type MarksMap,
     type SubjectResult,
 } from '@/lib/report-card-utils'
+import type { Database } from '@/types/database.types'
+
+type SectionSummaryRow = Pick<Database['public']['Tables']['sections']['Row'], 'id' | 'name' | 'class_id'> & {
+    classes: { name: string } | null
+}
+type StudentGenderRow = Pick<Database['public']['Tables']['students']['Row'], 'gender'>
+type ClassNameRow = Pick<Database['public']['Tables']['classes']['Row'], 'id' | 'name'>
+type FeeStructureAmountRow = Pick<Database['public']['Tables']['fee_structures']['Row'], 'amount'>
+type FeePaymentAmountRow = Pick<Database['public']['Tables']['fee_payments']['Row'], 'paid_amount'>
 
 export interface ClassAttendanceSummary {
     className: string
@@ -84,7 +93,8 @@ export async function getAttendanceSummaryByClass(
     if (!sections?.length) return []
 
     const results: ClassAttendanceSummary[] = []
-    for (const sec of sections as any[]) {
+    const sectionRows = (sections ?? []) as SectionSummaryRow[]
+    for (const sec of sectionRows) {
         const { count: studentCount } = await supabase
             .from('students')
             .select('*', { count: 'exact', head: true })
@@ -144,7 +154,7 @@ export async function getFeeCollectionSummary(
         .from('fee_structures')
         .select('amount')
         .eq('school_id', schoolId)
-        .eq('academic_year_id', (yearData as any).id)
+        .eq('academic_year_id', yearData.id)
         .eq('is_active', true)
 
     const { data: payments } = await supabase
@@ -159,9 +169,11 @@ export async function getFeeCollectionSummary(
         .eq('school_id', schoolId)
         .eq('is_active', true)
 
-    const totalStructureSum = (structures ?? []).reduce((s: number, r: any) => s + Number(r.amount), 0)
+    const totalStructureSum = ((structures ?? []) as FeeStructureAmountRow[])
+        .reduce((sum, row) => sum + Number(row.amount ?? 0), 0)
     const totalFee = totalStructureSum  // approximate: sum of all distinct structures
-    const totalCollected = (payments ?? []).reduce((s: number, r: any) => s + Number(r.paid_amount), 0)
+    const totalCollected = ((payments ?? []) as FeePaymentAmountRow[])
+        .reduce((sum, row) => sum + Number(row.paid_amount ?? 0), 0)
     const totalOutstanding = Math.max(0, totalFee - totalCollected)
     const collectionPercentage = totalFee > 0 ? Math.round((totalCollected / totalFee) * 100) : 0
 
@@ -180,7 +192,8 @@ export async function getStudentEnrollmentStats(schoolId: string): Promise<Enrol
     if (!classes?.length) return []
 
     const results: EnrollmentStat[] = []
-    for (const cls of classes as any[]) {
+    const classRows = (classes ?? []) as ClassNameRow[]
+    for (const cls of classRows) {
         const { data: students } = await supabase
             .from('students')
             .select('gender')
@@ -188,11 +201,12 @@ export async function getStudentEnrollmentStats(schoolId: string): Promise<Enrol
             .eq('class_id', cls.id)
             .eq('is_active', true)
 
-        const male = (students ?? []).filter((s: any) => s.gender === 'male').length
-        const female = (students ?? []).filter((s: any) => s.gender === 'female').length
-        const other = (students ?? []).length - male - female
-        if ((students ?? []).length > 0) {
-            results.push({ className: cls.name, maleCount: male, femaleCount: female, otherCount: other, total: (students ?? []).length })
+        const studentRows = (students ?? []) as StudentGenderRow[]
+        const male = studentRows.filter((s) => s.gender === 'male').length
+        const female = studentRows.filter((s) => s.gender === 'female').length
+        const other = studentRows.length - male - female
+        if (studentRows.length > 0) {
+            results.push({ className: cls.name, maleCount: male, femaleCount: female, otherCount: other, total: studentRows.length })
         }
     }
     return results
@@ -215,7 +229,8 @@ export async function getWeeklyCollectionTrend(
             .eq('school_id', schoolId)
             .eq('payment_date', dateStr)
 
-        const amount = (data ?? []).reduce((s: number, r: any) => s + Number(r.paid_amount), 0)
+        const amount = ((data ?? []) as FeePaymentAmountRow[])
+            .reduce((sum, row) => sum + Number(row.paid_amount ?? 0), 0)
         days.push({ date: dateStr, amount })
     }
     return days
@@ -240,7 +255,8 @@ export async function getFeeMomentumSummary(
             .eq('school_id', schoolId)
             .eq('payment_date', dateStr)
 
-        const amount = (data ?? []).reduce((sum: number, row: any) => sum + Number(row.paid_amount ?? 0), 0)
+        const amount = ((data ?? []) as FeePaymentAmountRow[])
+            .reduce((sum, row) => sum + Number(row.paid_amount ?? 0), 0)
         if (i < 7) {
             currentWeekTotal += amount
         } else {

@@ -277,7 +277,7 @@ export async function deleteStudent(studentId: string) {
     await unlinkParentsForStudent(admin, student.school_id, studentId)
 }
 
-export async function getStudentById(id: string) {
+export async function getStudentById(id: string): Promise<Record<string, unknown>> {
     const supabase = await getSupabase()
     const { data, error } = await supabase
         .from('students')
@@ -299,10 +299,13 @@ export async function getStudentById(id: string) {
         parent_name: parent?.full_name ?? null,
         parent_contact: parent?.phone ?? null,
         parent_email: parent?.email ?? null,
-    } as any
+    }
 }
 
-export async function updateStudent(id: string, payload: any) {
+export async function updateStudent(
+    id: string,
+    payload: Record<string, unknown> | null | undefined,
+) {
     const supabase = await getSupabase()
     const actorProfile = await getActorProfile(supabase)
     if (!actorProfile.school_id) {

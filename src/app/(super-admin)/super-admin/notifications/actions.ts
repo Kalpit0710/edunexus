@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient as getSupabase, createAdminClient } from '@/lib/supabase/server'
+import type { Database } from '@/types/database.types'
 import {
   buildDispatchTargets,
   scopeLabel,
@@ -50,6 +51,14 @@ interface SuperAdminActor {
   fullName: string
 }
 
+type AnnouncementContextRow = Pick<
+  Database['public']['Tables']['announcements']['Row'],
+  'id' | 'title' | 'body' | 'target_audience' | 'created_at' | 'created_by_name'
+> & {
+  classes: { name: string | null } | null
+  schools: { name: string | null; code: string | null } | null
+}
+
 async function requireSuperAdmin(): Promise<SuperAdminActor> {
   const supabase = await getSupabase()
   const {
@@ -94,7 +103,7 @@ export async function getSuperAdminNotificationsContext(): Promise<SuperAdminNot
       .select('id, school_id, name')
       .eq('is_active', true)
       .order('name', { ascending: true }),
-    (admin as any)
+    admin
       .from('announcements')
       .select('id, title, body, target_audience, created_at, created_by_name, classes(name), schools(name, code)')
       .eq('created_by', actor.authUserId)
@@ -106,7 +115,7 @@ export async function getSuperAdminNotificationsContext(): Promise<SuperAdminNot
   return {
     schools: (schools ?? []).map((s) => ({ id: s.id, name: s.name, code: s.code })),
     classes: (classes ?? []).map((c) => ({ id: c.id, schoolId: c.school_id, name: c.name })),
-    notifications: ((rows ?? []) as any[]).map((r) => ({
+    notifications: ((rows ?? []) as AnnouncementContextRow[]).map((r) => ({
       id: r.id,
       title: r.title,
       body: r.body,
@@ -164,7 +173,7 @@ export async function createSuperAdminNotification(input: SuperAdminNotification
     created_by_name: actor.fullName,
   }))
 
-  const { error } = await (admin as any).from('announcements').insert(rows)
+  const { error } = await admin.from('announcements').insert(rows)
   if (error) throw new Error(error.message)
 
   return { inserted: rows.length, scope: scopeLabel(input.scope) }

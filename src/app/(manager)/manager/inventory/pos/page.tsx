@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
 import { getErrorMessage, formatCurrency } from '@/lib/utils'
@@ -14,11 +15,12 @@ import {
 import Link from 'next/link'
 import {
     getInventoryItems, createInventorySale, getPosClasses,
-    searchStudentsForPos, getClassPosCatalog,
+    searchStudentsForPos, getClassPosCatalog, getStudentForPosById,
     type InventorySaleInput, type PosClass, type PosStudent,
 } from '../actions'
 import { usePermissions } from '@/hooks/use-permissions'
 import { LiveSearch } from '@/components/live-search'
+import { StudentQrPickerButton } from '@/components/student-qr-picker-button'
 
 type PaymentMode = InventorySaleInput['paymentMode']
 
@@ -45,8 +47,11 @@ type SearchMode = 'set' | 'item'
 const PAYMENT_MODES: PaymentMode[] = ['cash', 'upi', 'card', 'online']
 
 export default function POSPage() {
+    const searchParams = useSearchParams()
     const { school } = useAuthStore()
     const canSell = usePermissions().can('inventory.manage')
+    const qrHandledStudentIdRef = useRef<string | null>(null)
+    const restoredSnapshotRef = useRef(false)
 
     const [stage, setStage] = useState<Stage>('start')
     const [searchMode, setSearchMode] = useState<SearchMode>('set')
@@ -82,6 +87,63 @@ export default function POSPage() {
         if (!school?.id) return
         getPosClasses(school.id).then(setClasses).catch(() => {})
     }, [school?.id])
+
+    useEffect(() => {
+        if (restoredSnapshotRef.current) return
+        if (typeof window === 'undefined') return
+        const shouldRestore = searchParams.get('qrResume') === '1'
+        if (!shouldRestore) return
+
+        const raw = window.sessionStorage.getItem('pos.qr.snapshot')
+        if (!raw) {
+            restoredSnapshotRef.current = true
+            return
+        }
+
+        try {
+            const snapshot = JSON.parse(raw) as {
+                stage?: Stage
+                searchMode?: SearchMode
+                selectedClassId?: string
+                catalog?: CatalogItem[]
+                catalogLabel?: string
+                cart?: CartLine[]
+                student?: PosStudent | null
+                guest?: boolean
+                paymentMode?: PaymentMode
+            }
+            if (snapshot.stage) setStage(snapshot.stage)
+            if (snapshot.searchMode) setSearchMode(snapshot.searchMode)
+            if (typeof snapshot.selectedClassId === 'string') setSelectedClassId(snapshot.selectedClassId)
+            if (Array.isArray(snapshot.catalog)) setCatalog(snapshot.catalog)
+            if (typeof snapshot.catalogLabel === 'string') setCatalogLabel(snapshot.catalogLabel)
+            if (Array.isArray(snapshot.cart)) setCart(snapshot.cart)
+            if (typeof snapshot.guest === 'boolean') setGuest(snapshot.guest)
+            if (snapshot.paymentMode) setPaymentMode(snapshot.paymentMode)
+            if (snapshot.student !== undefined) setStudent(snapshot.student)
+        } catch {
+            // Ignore malformed restore payload.
+        } finally {
+            restoredSnapshotRef.current = true
+            window.sessionStorage.removeItem('pos.qr.snapshot')
+        }
+    }, [searchParams])
+
+    const savePosSnapshotBeforeQr = useCallback(() => {
+        if (typeof window === 'undefined') return
+        const snapshot = {
+            stage,
+            searchMode,
+            selectedClassId,
+            catalog,
+            catalogLabel,
+            cart,
+            student,
+            guest,
+            paymentMode,
+        }
+        window.sessionStorage.setItem('pos.qr.snapshot', JSON.stringify(snapshot))
+    }, [stage, searchMode, selectedClassId, catalog, catalogLabel, cart, student, guest, paymentMode])
 
     // ── Cart helpers ──────────────────────────────────────────────────────────
     const addToCart = useCallback((item: CatalogItem, qty = 1) => {
@@ -141,7 +203,7 @@ export default function POSPage() {
     )
 
     // ── Start-stage actions ───────────────────────────────────────────────────
-    const loadSet = async (classId: string, forStudent: PosStudent | null, label: string) => {
+    const loadSet = useCallback(async (classId: string, forStudent: PosStudent | null, label: string) => {
         if (!school?.id) return
         setBusy(true)
         try {
@@ -172,15 +234,15 @@ export default function POSPage() {
         } finally {
             setBusy(false)
         }
-    }
+    }, [school?.id])
 
-    const handleSelectStudentSet = async (found: PosStudent) => {
+    const handleSelectStudentSet = useCallback(async (found: PosStudent) => {
         if (!found.classId) {
             toast.error(`${found.fullName} has no class assigned.`)
             return
         }
         await loadSet(found.classId, found, `${found.fullName} (${found.className}${found.sectionName ? '-' + found.sectionName : ''})`)
-    }
+    }, [loadSet])
 
     const handleLoadClass = async () => {
         if (!selectedClassId) { toast.error('Select a class.'); return }
@@ -212,10 +274,39 @@ export default function POSPage() {
     }
 
     // ── Pay-stage: attach a student ───────────────────────────────────────────
-    const handleSelectPayStudent = (found: PosStudent) => {
+    const handleSelectPayStudent = useCallback((found: PosStudent) => {
         setStudent(found)
         setGuest(false)
-    }
+    }, [])
+
+    useEffect(() => {
+        const studentId = searchParams.get('studentId')
+        const qrTarget = searchParams.get('qrTarget')
+        if (!school?.id || !studentId || qrHandledStudentIdRef.current === studentId) return
+
+        qrHandledStudentIdRef.current = studentId
+        void (async () => {
+            try {
+                const found = await getStudentForPosById(school.id, studentId)
+                if (!found) {
+                    toast.error('Scanned student not found in this school.')
+                    return
+                }
+
+                if (qrTarget === 'pay') {
+                    setStage('pay')
+                    handleSelectPayStudent(found)
+                } else {
+                    await handleSelectStudentSet(found)
+                }
+                toast.success(`Selected ${found.fullName} from QR scan.`)
+                const cleanUrl = '/manager/inventory/pos'
+                window.history.replaceState(null, '', cleanUrl)
+            } catch (e) {
+                toast.error(getErrorMessage(e))
+            }
+        })()
+    }, [searchParams, school?.id, handleSelectPayStudent, handleSelectStudentSet])
 
     // ── Checkout ──────────────────────────────────────────────────────────────
     const handleCheckout = async () => {
@@ -341,7 +432,7 @@ export default function POSPage() {
 
                 <div className="relative z-10 w-full max-w-xl space-y-8">
                     <div className="text-center relative">
-                        <Link href={"/manager/inventory" as any}>
+                        <Link href={"/manager/inventory" as never}>
                             <Button variant="ghost" size="sm" className="absolute -top-6 -left-4 gap-1 text-muted-foreground"><ArrowLeft className="w-4 h-4" /> Back</Button>
                         </Link>
                         <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-tr from-emerald-600/20 to-blue-600/20 shadow-inner ring-1 ring-white/10 relative overflow-hidden backdrop-blur-xl">
@@ -376,21 +467,31 @@ export default function POSPage() {
                             <>
                                 <div className="space-y-2">
                                     <Label>Find by student (admission no. or name)</Label>
-                                    <LiveSearch<PosStudent>
-                                        placeholder="Start typing e.g. ADM-1024 or Aarav Sharma"
-                                        fetcher={studentFetcher}
-                                        getKey={(s) => s.id}
-                                        onSelect={handleSelectStudentSet}
-                                        autoFocus
-                                        renderItem={(s) => (
-                                            <span className="flex flex-col">
-                                                <span className="font-medium">{s.fullName}</span>
-                                                <span className="text-xs text-muted-foreground">
-                                                    {s.admissionNumber}{s.className ? ` · ${s.className}${s.sectionName ? '-' + s.sectionName : ''}` : ''}
+                                    <div className="flex gap-2">
+                                        <LiveSearch<PosStudent>
+                                            placeholder="Start typing e.g. ADM-1024 or Aarav Sharma"
+                                            fetcher={studentFetcher}
+                                            getKey={(s) => s.id}
+                                            onSelect={handleSelectStudentSet}
+                                            autoFocus
+                                            className="flex-1"
+                                            renderItem={(s) => (
+                                                <span className="flex flex-col">
+                                                    <span className="font-medium">{s.fullName}</span>
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {s.admissionNumber}{s.className ? ` · ${s.className}${s.sectionName ? '-' + s.sectionName : ''}` : ''}
+                                                    </span>
                                                 </span>
-                                            </span>
-                                        )}
-                                    />
+                                            )}
+                                        />
+                                        <StudentQrPickerButton
+                                            scanPath="/manager/qr-scan"
+                                            returnToPath="/manager/inventory/pos"
+                                            returnParams={{ qrTarget: 'set', qrResume: '1' }}
+                                            onBeforeNavigate={savePosSnapshotBeforeQr}
+                                            label="Scan QR"
+                                        />
+                                    </div>
                                 </div>
                                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
                                     <div className="h-px flex-1 bg-border" /> OR PICK A CLASS <div className="h-px flex-1 bg-border" />
@@ -589,20 +690,30 @@ export default function POSPage() {
                                         </div>
                                     ) : (
                                         <div className="space-y-2">
-                                            <LiveSearch<PosStudent>
-                                                placeholder="Search student — admission no. or name"
-                                                fetcher={studentFetcher}
-                                                getKey={(s) => s.id}
-                                                onSelect={handleSelectPayStudent}
-                                                renderItem={(s) => (
-                                                    <span className="flex flex-col">
-                                                        <span className="font-medium">{s.fullName}</span>
-                                                        <span className="text-xs text-muted-foreground">
-                                                            {s.admissionNumber}{s.className ? ` · ${s.className}${s.sectionName ? '-' + s.sectionName : ''}` : ''}
+                                            <div className="flex gap-2">
+                                                <LiveSearch<PosStudent>
+                                                    placeholder="Search student — admission no. or name"
+                                                    fetcher={studentFetcher}
+                                                    getKey={(s) => s.id}
+                                                    onSelect={handleSelectPayStudent}
+                                                    className="flex-1"
+                                                    renderItem={(s) => (
+                                                        <span className="flex flex-col">
+                                                            <span className="font-medium">{s.fullName}</span>
+                                                            <span className="text-xs text-muted-foreground">
+                                                                {s.admissionNumber}{s.className ? ` · ${s.className}${s.sectionName ? '-' + s.sectionName : ''}` : ''}
+                                                            </span>
                                                         </span>
-                                                    </span>
-                                                )}
-                                            />
+                                                    )}
+                                                />
+                                                <StudentQrPickerButton
+                                                    scanPath="/manager/qr-scan"
+                                                    returnToPath="/manager/inventory/pos"
+                                                    returnParams={{ qrTarget: 'pay', qrResume: '1' }}
+                                                    onBeforeNavigate={savePosSnapshotBeforeQr}
+                                                    label="Scan QR"
+                                                />
+                                            </div>
                                             <button onClick={() => setGuest(true)} className="text-xs text-muted-foreground underline hover:text-foreground">
                                                 No student? Bill as guest
                                             </button>

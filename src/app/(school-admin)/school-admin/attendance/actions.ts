@@ -4,6 +4,7 @@ import { createClient as getSupabase } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/auth/permissions'
 import { sendEmail } from '@/lib/email'
 import { AttendanceAlertEmail } from '@/emails/AttendanceAlertEmail'
+import type { Database } from '@/types/database.types'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -24,6 +25,11 @@ export interface StudentAttendanceRow {
   attendance_id: string | null
   remarks: string | null
 }
+
+type StudentBasicRow = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'full_name' | 'admission_number' | 'roll_number'>
+type AttendanceRecordRow = Pick<Database['public']['Tables']['attendance_records']['Row'], 'id' | 'student_id' | 'status' | 'remarks' | 'date'>
+type StudentForAlertRow = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'full_name'> & { schools: { name: string | null } | null }
+type ParentForAlertRow = Pick<Database['public']['Tables']['parents']['Row'], 'student_id' | 'full_name' | 'email'>
 
 // ── Fetch students + existing attendance for a date ──────────────────────────
 
@@ -59,11 +65,12 @@ export async function getStudentsForAttendance(
 
   if (rErr) throw new Error(rErr.message)
 
+  const attendanceRows = (records ?? []) as AttendanceRecordRow[]
   const recordMap = new Map(
-    ((records ?? []) as any[]).map((r) => [r.student_id, { id: r.id, status: r.status, remarks: r.remarks }])
+    attendanceRows.map((r) => [r.student_id, { id: r.id, status: r.status, remarks: r.remarks }])
   )
 
-  return (students as any[]).map((s) => {
+  return ((students ?? []) as StudentBasicRow[]).map((s) => {
     const rec = recordMap.get(s.id)
     return {
       id: s.id,
@@ -119,8 +126,7 @@ export async function saveAttendance(
   // records for this class/section and re-inserts the submitted rows. This
   // replaces the previous non-atomic delete-then-upsert, which could lose the
   // day's attendance if the insert failed after the delete.
-  const db = supabase as any
-  const { error } = await db.rpc('save_attendance_atomic', {
+  const { error } = await supabase.rpc('save_attendance_atomic', {
     p_school_id: schoolId,
     p_class_id: classId,
     p_section_id: sectionId,
@@ -150,23 +156,23 @@ export async function saveAttendance(
 
       const { data: parents } = await supabase
         .from('parents')
-        .select('student_id, first_name, email')
+        .select('student_id, full_name, email')
         .in('student_id', studentIds)
         .eq('is_primary', true)
 
       if (students && parents) {
         for (const absent of absentStudents) {
-          const student = students.find((s: any) => s.id === absent.student_id)
-          const parent = parents.find((p: any) => p.student_id === absent.student_id)
+          const student = (students as StudentForAlertRow[]).find((s) => s.id === absent.student_id)
+          const parent = (parents as ParentForAlertRow[]).find((p) => p.student_id === absent.student_id)
           
-          if (student && parent && (parent as any).email) {
+          if (student && parent?.email) {
             await sendEmail({
-              to: (parent as any).email,
-              subject: `Attendance Alert: ${(student as any).full_name}`,
+              to: parent.email,
+              subject: `Attendance Alert: ${student.full_name}`,
               react: AttendanceAlertEmail({
-                parentName: (parent as any).first_name,
-                studentName: (student as any).full_name,
-                schoolName: (student as any).schools?.name || 'EduNexus',
+                parentName: parent.full_name,
+                studentName: student.full_name,
+                schoolName: student.schools?.name || 'EduNexus',
                 date: date
               }),
               schoolId,
@@ -233,19 +239,21 @@ export async function getMonthlyAttendanceReport(
 
   if (rErr) throw new Error(rErr.message)
 
+  const attendanceRows = (records ?? []) as AttendanceRecordRow[]
   // Count distinct school days (days that have any record)
-  const schoolDays = new Set(((records ?? []) as any[]).map((r) => r.date)).size
+  const schoolDays = new Set(attendanceRows.map((r) => r.date)).size
 
   // Group records by student
-  type StatusCount = Record<string, number>
+  type StatusCount = Partial<Record<AttendanceStatus, number>>
   const countsMap = new Map<string, StatusCount>()
-  ;((records ?? []) as any[]).forEach((r) => {
+  attendanceRows.forEach((r) => {
     const sc = countsMap.get(r.student_id) ?? {}
-    sc[r.status] = (sc[r.status] ?? 0) + 1
+    const status = r.status as AttendanceStatus
+    sc[status] = (sc[status] ?? 0) + 1
     countsMap.set(r.student_id, sc)
   })
 
-  return (students as any[]).map((s) => {
+  return ((students ?? []) as Array<Pick<Database['public']['Tables']['students']['Row'], 'id' | 'full_name' | 'admission_number'>>).map((s) => {
     const sc = countsMap.get(s.id) ?? {}
     const present = sc['present'] ?? 0
     const absent = sc['absent'] ?? 0
@@ -254,9 +262,9 @@ export async function getMonthlyAttendanceReport(
     const effectiveDays = present + late + (half_day * 0.5)
     const percentage = schoolDays > 0 ? Math.round((effectiveDays / schoolDays) * 100) : 0
     return {
-      student_id: (s as any).id,
-      student_name: (s as any).full_name ?? '',
-      admission_number: (s as any).admission_number ?? '',
+      student_id: s.id,
+      student_name: s.full_name ?? '',
+      admission_number: s.admission_number ?? '',
       present,
       absent,
       late,

@@ -5,9 +5,72 @@ import { schoolToday } from '@/lib/date-utils'
 import { pickTodayHomework, pickUpcomingDue } from '@/lib/digest-utils'
 import { normalizeWorkingDays } from '@/lib/timetable-utils'
 import { normalizeAnnouncementAudience, parentCanSeeAnnouncement } from '@/lib/announcement-utils'
+import type { Database } from '@/types/database.types'
 import type { FeePaymentRow } from '../../(school-admin)/school-admin/fees/actions'
 import { getPrintableReportCard } from '../../(school-admin)/school-admin/report-cards/actions'
+import { getStudentQrTokenForSchool } from '../../(school-admin)/school-admin/id-cards/actions'
 import { computeStudentFeeBalance } from '@/lib/fees/balance'
+
+type ParentLinkedStudent = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'full_name' | 'admission_number' | 'class_id' | 'section_id'> & {
+    classes: { name: string | null } | null
+    sections: { name: string | null } | null
+}
+type ParentStudentLinkRow = {
+    student_id: string
+    is_primary: boolean | null
+    students: ParentLinkedStudent | null
+}
+type AttendanceTrendRow = Pick<Database['public']['Tables']['attendance_records']['Row'], 'date' | 'status'>
+type StudentClassRow = Pick<Database['public']['Tables']['students']['Row'], 'class_id'>
+type AnnouncementRawRow = {
+    id: string
+    title: string
+    body: string
+    created_at: string
+    target_class_id: string | null
+    target_audience: string | null
+}
+type ParentChildHomeworkLink = {
+    id: string
+    students: Pick<Database['public']['Tables']['students']['Row'], 'id' | 'class_id' | 'section_id' | 'school_id'> | null
+}
+type ChildHomeworkQueryRow = {
+    id: string
+    title: string
+    description: string | null
+    homework_date: string
+    due_date: string | null
+    created_by_name: string | null
+    subjects: { name: string | null } | null
+}
+type ParentChildTimetableLink = {
+    id: string
+    students: Pick<Database['public']['Tables']['students']['Row'], 'id' | 'section_id' | 'school_id'> | null
+}
+type TimetablePeriodQueryRow = Pick<Database['public']['Tables']['timetable_periods']['Row'], 'id' | 'name' | 'start_time' | 'end_time' | 'is_break'>
+type TimetableEntryQueryRow = Pick<Database['public']['Tables']['timetable_entries']['Row'], 'day_of_week' | 'period_id' | 'room'> & {
+    subjects: { name: string | null } | null
+    teachers: ({ employee_id: string | null; user_profiles: { full_name: string | null } | null }) | null
+}
+type HolidayQueryRow = Pick<Database['public']['Tables']['holidays']['Row'], 'id' | 'title' | 'category' | 'start_date' | 'end_date' | 'description'>
+type TransportQueryRow = {
+    pickup_point: string | null
+    fee_amount: number | null
+    buses: {
+        bus_number: string
+        route_name: string | null
+        registration_number: string | null
+        driver_name: string | null
+        driver_phone: string | null
+        attendant_name: string | null
+        attendant_phone: string | null
+    } | null
+    bus_stops: {
+        name: string | null
+        pickup_time: string | null
+        drop_time: string | null
+    } | null
+}
 
 export interface ParentChildData {
     id: string
@@ -17,6 +80,12 @@ export interface ParentChildData {
     sectionName: string
     classId: string
     sectionId: string | null
+}
+
+export interface ParentChildQrCardData {
+    studentId: string
+    studentName: string
+    qrText: string
 }
 
 export interface ChildAttendanceSummary {
@@ -116,9 +185,10 @@ async function getLinkedChildrenInternal(context: ParentAccessContext): Promise<
 
     const deduped = new Map<string, ParentChildData & { __primary: boolean }>()
 
-    for (const row of data as any[]) {
+    for (const row of data as ParentStudentLinkRow[]) {
         const student = row.students
         if (!student) continue
+        if (!student.class_id) continue
 
         const mapped: ParentChildData & { __primary: boolean } = {
             id: student.id,
@@ -192,6 +262,36 @@ export async function getParentChildData(
         }
 
         return linkedChildren[0] ?? null
+    } catch {
+        return null
+    }
+}
+
+export async function getParentChildQrCard(
+    studentId: string,
+    schoolId: string,
+): Promise<ParentChildQrCardData | null> {
+    try {
+        const context = await getParentAccessContext(schoolId)
+        if (!context || !(await isStudentLinkedToParent(context, studentId))) {
+            return null
+        }
+
+        const { data: studentData, error } = await context.db
+            .from('students')
+            .select('id, full_name')
+            .eq('id', studentId)
+            .eq('school_id', schoolId)
+            .eq('is_active', true)
+            .maybeSingle()
+
+        if (error || !studentData) return null
+
+        return {
+            studentId: studentData.id,
+            studentName: studentData.full_name,
+            qrText: await getStudentQrTokenForSchool(schoolId, studentData.id),
+        }
     } catch {
         return null
     }
@@ -288,7 +388,7 @@ export async function getChildAttendanceTrend(
             .order('date', { ascending: true })
 
         const monthMap = new Map<string, { present: number; total: number }>()
-        for (const row of (data ?? []) as any[]) {
+        for (const row of (data ?? []) as AttendanceTrendRow[]) {
             const monthKey = String(row.date).slice(0, 7)
             const bucket = monthMap.get(monthKey) ?? { present: 0, total: 0 }
             bucket.total += 1
@@ -342,7 +442,7 @@ export async function getChildFeeStatus(
             .eq('school_id', schoolId)
             .single()
 
-        const classId = (studentData as any)?.class_id ?? null
+        const classId = (studentData as StudentClassRow | null)?.class_id ?? null
 
         // Totals come from the shared guardrail helper so the parent fee view and
         // the report-card fee lock can never disagree. `totalPaid` here is the sum
@@ -409,9 +509,9 @@ export async function getLatestAnnouncements(
         const context = await getParentAccessContext(schoolId)
         if (!context) return []
 
-        // Table may not exist yet; fail closed. Not in generated types, so this
-        // single query uses an untyped client (the rest of the file is typed).
-        const { data, error } = await (context.db as any)
+        // Table may not exist yet; fail closed. This query is cast through
+        // unknown because the generated DB types may lag this table.
+        const { data, error } = await context.db
             .from('announcements')
             .select('id, title, body, created_at, target_class_id, target_audience')
             .eq('school_id', schoolId)
@@ -426,9 +526,9 @@ export async function getLatestAnnouncements(
             effectiveClassId = linkedChildren[0]?.classId ?? null
         }
 
-        return (data as any[])
-            .filter((a: any) => parentCanSeeAnnouncement(a.target_audience, a.target_class_id, effectiveClassId))
-            .map((a: any) => ({
+        return ((data ?? []) as unknown as AnnouncementRawRow[])
+            .filter((a) => parentCanSeeAnnouncement(a.target_audience, a.target_class_id, effectiveClassId))
+            .map((a) => ({
                 id: a.id,
                 title: a.title,
                 body: a.body,
@@ -469,8 +569,7 @@ export async function getChildHomework(
         .eq('student_id', childId)
         .maybeSingle()
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const student = (link as any)?.students
+    const student = (link as ParentChildHomeworkLink | null)?.students
     if (!student || student.school_id !== schoolId || !student.class_id) return []
 
     let query = context.db
@@ -490,8 +589,7 @@ export async function getChildHomework(
     const { data, error } = await query
     if (error || !data) return []
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (data as any[]).map((h) => ({
+    return (data as ChildHomeworkQueryRow[]).map((h) => ({
         id: h.id,
         title: h.title,
         description: h.description,
@@ -540,8 +638,7 @@ export async function getChildTimetable(schoolId: string, childId: string): Prom
         .eq('student_id', childId)
         .maybeSingle()
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const student = (link as any)?.students
+    const student = (link as ParentChildTimetableLink | null)?.students
     if (!student || student.school_id !== schoolId || !student.section_id) return empty
 
     const [{ data: periods }, { data: entries }, { data: school }] = await Promise.all([
@@ -559,18 +656,15 @@ export async function getChildTimetable(schoolId: string, childId: string): Prom
     ])
 
     return {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        workingDays: normalizeWorkingDays((school as any)?.working_days),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        periods: ((periods ?? []) as any[]).map((p) => ({
+        workingDays: normalizeWorkingDays(school?.working_days),
+        periods: ((periods ?? []) as TimetablePeriodQueryRow[]).map((p) => ({
             id: p.id,
             name: p.name,
             startTime: p.start_time,
             endTime: p.end_time,
             isBreak: p.is_break,
         })),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        entries: ((entries ?? []) as any[]).map((e) => ({
+        entries: ((entries ?? []) as TimetableEntryQueryRow[]).map((e) => ({
             dayOfWeek: e.day_of_week,
             periodId: e.period_id,
             subjectName: e.subjects?.name ?? null,
@@ -605,8 +699,7 @@ export async function getSchoolCalendar(schoolId: string): Promise<CalendarEntry
 
     if (error || !data) return []
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (data as any[]).map((h) => ({
+    return (data as HolidayQueryRow[]).map((h) => ({
         id: h.id,
         title: h.title,
         category: h.category,
@@ -656,8 +749,7 @@ export async function getChildTransport(schoolId: string, childId: string): Prom
 
     if (error || !data) return null
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const row = data as any
+    const row = data as TransportQueryRow
     const bus = row.buses
     if (!bus) return null
     const stop = row.bus_stops

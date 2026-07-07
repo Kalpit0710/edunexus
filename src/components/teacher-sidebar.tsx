@@ -2,11 +2,12 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import type { Route } from 'next'
 import { useAuthStore } from '@/stores/auth.store'
 import { createClient } from '@/lib/supabase/client'
 import { getInitials } from '@/lib/utils'
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, LogOut, GraduationCap, CalendarCheck, BookOpen, BookText, CalendarRange, Bell } from 'lucide-react'
+import { LayoutDashboard, LogOut, GraduationCap, CalendarCheck, BookOpen, BookText, CalendarRange, Bell, QrCode } from 'lucide-react'
 import { toast } from 'sonner'
 
 const navItems = [
@@ -16,6 +17,7 @@ const navItems = [
     { href: '/teacher/homework', label: 'Homework', icon: BookText },
     { href: '/teacher/notifications', label: 'Notifications', icon: Bell },
     { href: '/teacher/report-cards', label: 'Report Cards', icon: BookOpen },
+    { href: '/teacher/qr-scan', label: 'QR Scan', icon: QrCode },
 ]
 
 export function TeacherSidebar() {
@@ -54,7 +56,7 @@ export function TeacherSidebar() {
                     return (
                         <Link
                             key={href}
-                            href={href as any}
+                            href={href as Route}
                             className={cn(
                                 'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150',
                                 active

@@ -1,6 +1,26 @@
 'use server'
 
 import { createClient as getSupabase } from '@/lib/supabase/server'
+import type { Database } from '@/types/database.types'
+
+type DbClient = Awaited<ReturnType<typeof getSupabase>>
+type LibraryStudentQueryRow = Pick<
+  Database['public']['Tables']['students']['Row'],
+  'id' | 'full_name' | 'admission_number'
+> & {
+  classes: { name: string | null } | null
+}
+type LibraryBookQueryRow = Pick<
+  Database['public']['Tables']['library_books']['Row'],
+  'id' | 'title' | 'author' | 'isbn' | 'category' | 'shelf_location' | 'copies_total' | 'copies_available'
+>
+type LibraryLoanQueryRow = Pick<
+  Database['public']['Tables']['book_loans']['Row'],
+  'id' | 'book_id' | 'student_id' | 'issued_date' | 'due_date' | 'returned_date' | 'status' | 'fine_amount'
+> & {
+  library_books: { title: string | null } | null
+  students: { full_name: string | null; admission_number: string | null } | null
+}
 
 export interface BookRow {
   id: string
@@ -50,9 +70,13 @@ export interface BookInput {
   copiesTotal: number
 }
 
+function normalizeLoanStatus(value: string): LoanRow['status'] {
+  if (value === 'issued' || value === 'returned' || value === 'lost') return value
+  return 'issued'
+}
+
 async function getActiveStudents(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  db: any,
+  db: DbClient,
   schoolId: string,
 ): Promise<StudentOption[]> {
   const { data } = await db
@@ -63,8 +87,7 @@ async function getActiveStudents(
     .is('deleted_at', null)
     .order('full_name', { ascending: true })
     .limit(2000)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return ((data ?? []) as any[]).map((s) => ({
+  return ((data ?? []) as LibraryStudentQueryRow[]).map((s) => ({
     id: s.id,
     name: s.full_name,
     admissionNumber: s.admission_number,
@@ -74,8 +97,7 @@ async function getActiveStudents(
 
 export async function getLibraryData(schoolId: string): Promise<LibraryData> {
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
 
   const [{ data: books }, { data: loans }, students] = await Promise.all([
     db
@@ -94,8 +116,7 @@ export async function getLibraryData(schoolId: string): Promise<LibraryData> {
   ])
 
   return {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    books: ((books ?? []) as any[]).map((b) => ({
+    books: ((books ?? []) as LibraryBookQueryRow[]).map((b) => ({
       id: b.id,
       title: b.title,
       author: b.author,
@@ -105,8 +126,7 @@ export async function getLibraryData(schoolId: string): Promise<LibraryData> {
       copiesTotal: b.copies_total,
       copiesAvailable: b.copies_available,
     })),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    loans: ((loans ?? []) as any[]).map((l) => ({
+    loans: ((loans ?? []) as LibraryLoanQueryRow[]).map((l) => ({
       id: l.id,
       bookId: l.book_id,
       bookTitle: l.library_books?.title ?? '—',
@@ -116,7 +136,7 @@ export async function getLibraryData(schoolId: string): Promise<LibraryData> {
       issuedDate: l.issued_date,
       dueDate: l.due_date,
       returnedDate: l.returned_date,
-      status: l.status,
+      status: normalizeLoanStatus(l.status),
       fineAmount: Number(l.fine_amount),
     })),
     students,
@@ -133,8 +153,7 @@ function assertBook(input: BookInput): void {
 export async function createBook(input: BookInput): Promise<void> {
   assertBook(input)
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
   const { error } = await db.from('library_books').insert({
     school_id: input.schoolId,
     title: input.title.trim(),
@@ -156,8 +175,7 @@ export async function createBook(input: BookInput): Promise<void> {
 export async function updateBook(id: string, input: BookInput): Promise<void> {
   assertBook(input)
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
 
   const { data: current } = await db
     .from('library_books')
@@ -192,8 +210,7 @@ export async function updateBook(id: string, input: BookInput): Promise<void> {
 
 export async function deleteBook(schoolId: string, id: string): Promise<void> {
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
 
   const { data: outstanding } = await db
     .from('book_loans')
@@ -224,8 +241,7 @@ export async function issueBook(input: {
   if (!input.studentId) throw new Error('Select a student.')
   if (!input.dueDate) throw new Error('A due date is required.')
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
   const { error } = await db.rpc('issue_book', {
     p_school_id: input.schoolId,
     p_book_id: input.bookId,
@@ -242,11 +258,10 @@ export async function returnBook(input: {
   lost: boolean
 }): Promise<void> {
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
   const { error } = await db.rpc('return_book', {
     p_loan_id: input.loanId,
-    p_returned_date: input.returnedDate || null,
+    p_returned_date: (input.returnedDate || null) as unknown as string,
     p_fine: input.fine,
     p_lost: input.lost,
   })

@@ -1,7 +1,7 @@
 'use client'
 
 import { useAuthStore } from '@/stores/auth.store'
-import { Suspense, useState, useEffect, useCallback } from 'react'
+import { Suspense, useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
   getStudentFeeStructure,
@@ -9,6 +9,7 @@ import {
   getNextReceiptSeq,
   searchStudentForFee,
   searchStudentsForFeeLive,
+  getStudentForFeeById,
   type FeeStructureRow,
   type FeeStudentResult,
 } from '../actions'
@@ -23,9 +24,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/utils'
-import { Search, PrinterIcon, CheckCircle, ArrowLeft, GraduationCap, Banknote, UserSearch } from 'lucide-react'
+import { PrinterIcon, CheckCircle, ArrowLeft, GraduationCap, Banknote, UserSearch } from 'lucide-react'
 import Link from 'next/link'
 import { LiveSearch } from '@/components/live-search'
+import { StudentQrPickerButton } from '@/components/student-qr-picker-button'
 
 type PaymentMode = 'cash' | 'cheque' | 'upi' | 'neft' | 'card' | 'online'
 
@@ -42,11 +44,10 @@ function CollectFeePageContent() {
   const { school, user } = useAuthStore()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const qrHandledStudentIdRef = useRef<string | null>(null)
 
   // Step 1: search
-  const [searchInput, setSearchInput] = useState(searchParams.get('q') ?? '')
-  const [searching, setSearching] = useState(false)
-  const [student, setStudent] = useState<any>(null)
+  const [student, setStudent] = useState<FeeStudentResult | null>(null)
   const [structures, setStructures] = useState<FeeStructureRow[]>([])
 
   // Step 2: select items
@@ -60,14 +61,6 @@ function CollectFeePageContent() {
   // Step 3: result
   const [receiptNumber, setReceiptNumber] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-
-  // Pre-fill search from query param
-  useEffect(() => {
-    const q = searchParams.get('q')
-    if (q) {
-      handleSearch(q)
-    }
-  }, [searchParams])
 
   const studentFetcher = useCallback(
     (q: string) => school?.id ? searchStudentsForFeeLive(school.id, q) : Promise.resolve([]),
@@ -86,28 +79,8 @@ function CollectFeePageContent() {
   const referenceRequired = isReferenceRequired(paymentMode)
   const referenceMissing = referenceRequired && !reference.trim()
 
-  const handleSearch = async (overrideQuery?: string) => {
-    const q = overrideQuery ?? searchInput
-    if (!school?.id || !q.trim()) return
-    setSearching(true)
-    setStudent(null)
-    setStructures([])
-    setSelectedItems({})
-    setReceiptNumber(null)
-    try {
-      const found = await searchStudentForFee(school.id, q.trim())
-      if (!found) { toast.error('Student not found'); return }
-      await loadStudentData(found)
-    } catch (e) {
-      toast.error(getErrorMessage(e))
-    } finally {
-      setSearching(false)
-    }
-  }
-
-  const loadStudentData = async (found: FeeStudentResult) => {
+  const loadStudentData = useCallback(async (found: FeeStudentResult) => {
     if (!school?.id) return
-    setSearching(true)
     try {
       const { structures: structs } = await getStudentFeeStructure(school.id, found.id)
       setStudent(found)
@@ -119,10 +92,52 @@ function CollectFeePageContent() {
       setPaidAmount(String(structs.reduce((sum, s) => sum + Number(s.amount), 0)))
     } catch (e) {
       toast.error(getErrorMessage(e))
-    } finally {
-      setSearching(false)
     }
-  }
+  }, [school?.id])
+
+  const handleSearch = useCallback(async (q: string) => {
+    if (!school?.id || !q.trim()) return
+    setStudent(null)
+    setStructures([])
+    setSelectedItems({})
+    setReceiptNumber(null)
+    try {
+      const found = await searchStudentForFee(school.id, q.trim())
+      if (!found) { toast.error('Student not found'); return }
+      await loadStudentData(found)
+    } catch (e) {
+      toast.error(getErrorMessage(e))
+    }
+  }, [school?.id, loadStudentData])
+
+  // Pre-fill search from query param
+  useEffect(() => {
+    const q = searchParams.get('q')
+    if (q) {
+      handleSearch(q)
+    }
+  }, [searchParams, handleSearch])
+
+  useEffect(() => {
+    const studentId = searchParams.get('studentId')
+    if (!school?.id || !studentId || qrHandledStudentIdRef.current === studentId) return
+
+    qrHandledStudentIdRef.current = studentId
+    void (async () => {
+      try {
+        const found = await getStudentForFeeById(school.id, studentId)
+        if (!found) {
+          toast.error('Scanned student not found in this school.')
+          return
+        }
+        await loadStudentData(found)
+        toast.success(`Selected ${found.full_name} from QR scan.`)
+        router.replace('/school-admin/fees/collect')
+      } catch (e) {
+        toast.error(getErrorMessage(e))
+      }
+    })()
+  }, [searchParams, school?.id, loadStudentData, router])
 
   const handleCollect = async () => {
     if (!school?.id || !student || !user?.id) return
@@ -216,7 +231,7 @@ function CollectFeePageContent() {
               <Button onClick={() => {
                 setStudent(null); setStructures([]); setSelectedItems({})
                 setDiscount('0'); setPaymentMode('cash'); setReference('')
-                setRemarks(''); setPaidAmount(''); setReceiptNumber(null); setSearchInput('')
+                setRemarks(''); setPaidAmount(''); setReceiptNumber(null)
               }}>
                 New Payment
               </Button>
@@ -255,7 +270,6 @@ function CollectFeePageContent() {
               setReference('')
               setRemarks('')
               setPaidAmount('')
-              setSearchInput('')
             }}>
               <ArrowLeft className="h-4 w-4" /> Back
             </Button>
@@ -299,6 +313,11 @@ function CollectFeePageContent() {
                   </span>
                 </span>
               )}
+            />
+            <StudentQrPickerButton
+              scanPath="/school-admin/qr-scan"
+              returnToPath="/school-admin/fees/collect"
+              label="Scan Student QR"
             />
           </div>
           {student && (

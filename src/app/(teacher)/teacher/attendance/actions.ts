@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient as getSupabase } from '@/lib/supabase/server'
+import type { Database } from '@/types/database.types'
 import {
   getStudentsForAttendance,
   saveAttendance,
@@ -23,9 +24,25 @@ export interface TeacherAttendanceContext {
   classTeacherSections: TeacherAttendanceSectionOption[]
 }
 
+type DbClient = Awaited<ReturnType<typeof getSupabase>>
+type TeacherProfileIdRow = Pick<Database['public']['Tables']['user_profiles']['Row'], 'id'>
+type TeacherIdRow = Pick<Database['public']['Tables']['teachers']['Row'], 'id'>
+type TeacherSectionAssignmentRow = {
+  is_class_teacher: boolean
+  sections: {
+    id: string
+    name: string | null
+    class_id: string | null
+    classes: { name: string | null } | null
+  } | null
+}
+type TeacherSectionContextRow = {
+  section_id: string
+  sections: { class_id: string | null } | null
+}
+
 async function resolveTeacher(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  db: any,
+  db: DbClient,
   schoolId: string,
   authUserId: string,
   email: string | null,
@@ -49,22 +66,22 @@ async function resolveTeacher(
     profile = profileByEmail
   }
 
-  if (!profile?.id) return null
+  const profileRow = profile as TeacherProfileIdRow | null
+  if (!profileRow?.id) return null
 
   const { data: teacher } = await db
     .from('teachers')
     .select('id')
-    .eq('user_profile_id', profile.id)
+    .eq('user_profile_id', profileRow.id)
     .eq('school_id', schoolId)
     .maybeSingle()
 
-  return teacher?.id ?? null
+  return (teacher as TeacherIdRow | null)?.id ?? null
 }
 
 export async function getTeacherAttendanceContext(schoolId: string): Promise<TeacherAttendanceContext> {
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
   const empty: TeacherAttendanceContext = { teacherFound: false, classTeacherSections: [] }
 
   const { data: authData } = await supabase.auth.getUser()
@@ -83,8 +100,7 @@ export async function getTeacherAttendanceContext(schoolId: string): Promise<Tea
   if (error) throw new Error(error.message)
 
   const sectionMap = new Map<string, TeacherAttendanceSectionOption>()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const a of (assignments ?? []) as any[]) {
+  for (const a of (assignments ?? []) as TeacherSectionAssignmentRow[]) {
     const sec = a.sections
     if (sec?.id && sec.class_id) {
       sectionMap.set(sec.id, {
@@ -107,8 +123,7 @@ async function getSectionContext(
   sectionId: string,
 ): Promise<{ classId: string; authUserId: string }> {
   const supabase = await getSupabase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any
+  const db = supabase
 
   const { data: authData } = await supabase.auth.getUser()
   const authUser = authData?.user
@@ -127,7 +142,7 @@ async function getSectionContext(
 
   if (assignmentError) throw new Error(assignmentError.message)
 
-  const classId = assignment?.sections?.class_id ?? null
+  const classId = (assignment as TeacherSectionContextRow | null)?.sections?.class_id ?? null
   if (!classId) {
     throw new Error('You are not assigned as class teacher for this section.')
   }

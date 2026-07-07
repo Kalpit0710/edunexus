@@ -1847,6 +1847,94 @@ export type Database = {
           },
         ]
       }
+      student_fee_arrears: {
+        Row: {
+          amount: number
+          created_at: string
+          created_from_promotion: boolean
+          id: string
+          label: string
+          school_id: string
+          source_academic_year_id: string | null
+          source_class_id: string | null
+          student_id: string
+          target_academic_year_id: string | null
+          target_class_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_from_promotion?: boolean
+          id?: string
+          label?: string
+          school_id: string
+          source_academic_year_id?: string | null
+          source_class_id?: string | null
+          student_id: string
+          target_academic_year_id?: string | null
+          target_class_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_from_promotion?: boolean
+          id?: string
+          label?: string
+          school_id?: string
+          source_academic_year_id?: string | null
+          source_class_id?: string | null
+          student_id?: string
+          target_academic_year_id?: string | null
+          target_class_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_fee_arrears_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_fee_arrears_source_academic_year_id_fkey"
+            columns: ["source_academic_year_id"]
+            isOneToOne: false
+            referencedRelation: "academic_years"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_fee_arrears_source_class_id_fkey"
+            columns: ["source_class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_fee_arrears_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_fee_arrears_target_academic_year_id_fkey"
+            columns: ["target_academic_year_id"]
+            isOneToOne: false
+            referencedRelation: "academic_years"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_fee_arrears_target_class_id_fkey"
+            columns: ["target_class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_transport: {
         Row: {
           bus_id: string

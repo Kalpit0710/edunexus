@@ -1,8 +1,14 @@
 'use server'
 
 import { createClient as getSupabase } from '@/lib/supabase/server'
+import type { Database } from '@/types/database.types'
 import { normalizeAnnouncementAudience, requiresClassTarget, type AnnouncementAudience } from '@/lib/announcement-utils'
 import { requirePermission } from '@/lib/auth/permissions'
+
+type ClassOptionRow = Pick<Database['public']['Tables']['classes']['Row'], 'id' | 'name'>
+type AnnouncementJoinedRow = Pick<Database['public']['Tables']['announcements']['Row'], 'id' | 'title' | 'body' | 'target_audience' | 'target_class_id' | 'created_by_name' | 'created_at'> & {
+  classes: { name: string } | null
+}
 
 export interface AnnouncementClassOption {
   id: string
@@ -76,8 +82,6 @@ export async function getStaffAnnouncementsContext(schoolId: string): Promise<St
   await requirePermission(supabase, 'communication.view')
   const actor = await resolveActor(supabase)
 
-  const db = supabase as any
-
   const [{ data: classes }, { data: rows }] = await Promise.all([
     supabase
       .from('classes')
@@ -86,7 +90,7 @@ export async function getStaffAnnouncementsContext(schoolId: string): Promise<St
       .eq('is_active', true)
       .order('display_order', { ascending: true })
       .order('name', { ascending: true }),
-    db
+    supabase
       .from('announcements')
       .select('id, title, body, target_audience, target_class_id, created_by_name, created_at, classes ( name )')
       .eq('school_id', schoolId)
@@ -95,7 +99,7 @@ export async function getStaffAnnouncementsContext(schoolId: string): Promise<St
       .limit(100),
   ])
 
-  const announcements: StaffAnnouncementRow[] = ((rows ?? []) as any[]).map((r) => ({
+  const announcements: StaffAnnouncementRow[] = ((rows ?? []) as AnnouncementJoinedRow[]).map((r) => ({
     id: r.id,
     title: r.title,
     body: r.body,
@@ -108,7 +112,7 @@ export async function getStaffAnnouncementsContext(schoolId: string): Promise<St
 
   return {
     role: actor.role,
-    classes: (classes ?? []).map((c) => ({ id: c.id, name: c.name })),
+    classes: ((classes ?? []) as ClassOptionRow[]).map((c) => ({ id: c.id, name: c.name })),
     announcements,
   }
 }
@@ -119,8 +123,7 @@ export async function createStaffAnnouncement(input: StaffAnnouncementInput): Pr
   await requirePermission(supabase, 'communication.send')
   const actor = await resolveActor(supabase)
 
-  const db = supabase as any
-  const { error } = await db.from('announcements').insert({
+  const { error } = await supabase.from('announcements').insert({
     school_id: input.schoolId,
     target_audience: input.targetAudience,
     target_class_id: requiresClassTarget(input.targetAudience) ? input.targetClassId : null,
@@ -138,8 +141,7 @@ export async function updateStaffAnnouncement(id: string, input: StaffAnnounceme
   await requirePermission(supabase, 'communication.send')
   await resolveActor(supabase)
 
-  const db = supabase as any
-  const { error } = await db
+  const { error } = await supabase
     .from('announcements')
     .update({
       target_audience: input.targetAudience,
@@ -160,8 +162,7 @@ export async function deleteStaffAnnouncement(schoolId: string, id: string): Pro
   await requirePermission(supabase, 'communication.send')
   await resolveActor(supabase)
 
-  const db = supabase as any
-  const { error } = await db
+  const { error } = await supabase
     .from('announcements')
     .update({ deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
     .eq('id', id)

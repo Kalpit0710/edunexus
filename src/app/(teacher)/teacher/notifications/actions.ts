@@ -3,6 +3,14 @@
 import { createClient as getSupabase } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/auth/permissions'
 import { normalizeAnnouncementAudience } from '@/lib/announcement-utils'
+import type { Database } from '@/types/database.types'
+
+type TeacherAssignmentClassRow = {
+  sections: ({ class_id: string | null; classes: { name: string | null } | null }) | null
+}
+type TeacherAnnouncementJoinedRow = Pick<Database['public']['Tables']['announcements']['Row'], 'id' | 'title' | 'body' | 'target_class_id' | 'target_audience' | 'created_at'> & {
+  classes: { name: string | null } | null
+}
 
 export interface TeacherClassOption {
   classId: string
@@ -40,8 +48,6 @@ async function resolveTeacherContext(
   } = await supabase.auth.getUser()
   if (!user) return null
 
-  const db = supabase as any
-
   const { data: profile } = await supabase
     .from('user_profiles')
     .select('id, role')
@@ -60,13 +66,13 @@ async function resolveTeacherContext(
 
   if (!teacher) return null
 
-  const { data: assignments } = await db
+  const { data: assignments } = await supabase
     .from('teacher_section_assignments')
     .select('sections!inner(class_id, classes!inner(name))')
     .eq('teacher_id', teacher.id)
 
   const classMap = new Map<string, string>()
-  for (const row of (assignments ?? []) as any[]) {
+  for (const row of (assignments ?? []) as TeacherAssignmentClassRow[]) {
     const classId = row.sections?.class_id as string | undefined
     const className = row.sections?.classes?.name as string | undefined
     if (classId && className) classMap.set(classId, className)
@@ -89,8 +95,7 @@ export async function getTeacherNotificationsContext(schoolId: string): Promise<
   const teacher = await resolveTeacherContext(supabase, schoolId)
   if (!teacher) return { teacherFound: false, classes: [], announcements: [] }
 
-  const db = supabase as any
-  const { data: rows } = await db
+  const { data: rows } = await supabase
     .from('announcements')
     .select('id, title, body, target_class_id, target_audience, created_at, classes(name)')
     .eq('school_id', schoolId)
@@ -100,8 +105,10 @@ export async function getTeacherNotificationsContext(schoolId: string): Promise<
     .order('created_at', { ascending: false })
     .limit(100)
 
-  const announcements: TeacherAnnouncementRow[] = ((rows ?? []) as any[])
-    .filter((r) => normalizeAnnouncementAudience(r.target_audience) === 'class_students' && Boolean(r.target_class_id))
+  const announcements: TeacherAnnouncementRow[] = ((rows ?? []) as TeacherAnnouncementJoinedRow[])
+    .filter((r): r is TeacherAnnouncementJoinedRow & { target_class_id: string } =>
+      normalizeAnnouncementAudience(r.target_audience) === 'class_students' && Boolean(r.target_class_id)
+    )
     .map((r) => ({
       id: r.id,
       title: r.title,
@@ -127,14 +134,13 @@ export async function createTeacherAnnouncement(input: TeacherAnnouncementInput)
   if (!teacher) throw new Error('Teacher profile not found.')
   if (!teacher.classMap.has(input.classId)) throw new Error('You can notify only your assigned classes.')
 
-  const db = supabase as any
   const { data: profile } = await supabase
     .from('user_profiles')
     .select('full_name')
     .eq('auth_user_id', teacher.authUserId)
     .maybeSingle()
 
-  const { error } = await db.from('announcements').insert({
+  const { error } = await supabase.from('announcements').insert({
     school_id: input.schoolId,
     target_audience: 'class_students',
     target_class_id: input.classId,
@@ -155,8 +161,7 @@ export async function updateTeacherAnnouncement(id: string, input: TeacherAnnoun
   if (!teacher) throw new Error('Teacher profile not found.')
   if (!teacher.classMap.has(input.classId)) throw new Error('You can notify only your assigned classes.')
 
-  const db = supabase as any
-  const { error } = await db
+  const { error } = await supabase
     .from('announcements')
     .update({
       target_audience: 'class_students',
@@ -180,8 +185,7 @@ export async function deleteTeacherAnnouncement(schoolId: string, id: string): P
   const teacher = await resolveTeacherContext(supabase, schoolId)
   if (!teacher) throw new Error('Teacher profile not found.')
 
-  const db = supabase as any
-  const { error } = await db
+  const { error } = await supabase
     .from('announcements')
     .update({ deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
     .eq('id', id)

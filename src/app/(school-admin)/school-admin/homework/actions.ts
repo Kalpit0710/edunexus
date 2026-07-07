@@ -2,6 +2,19 @@
 
 import { createClient as getSupabase } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/auth/permissions'
+import type { Database } from '@/types/database.types'
+
+type HomeworkDbRow = Database['public']['Tables']['homework']['Row']
+type HomeworkClassRow = Pick<Database['public']['Tables']['classes']['Row'], 'id' | 'name'>
+type HomeworkSubjectRow = Pick<Database['public']['Tables']['subjects']['Row'], 'id' | 'name' | 'class_id'>
+type HomeworkSectionJoinedRow = Pick<Database['public']['Tables']['sections']['Row'], 'id' | 'name' | 'class_id'> & {
+  classes: { name: string } | null
+}
+type HomeworkJoinedRow = Pick<HomeworkDbRow, 'id' | 'class_id' | 'section_id' | 'subject_id' | 'title' | 'description' | 'homework_date' | 'due_date' | 'created_by_name'> & {
+  classes: { name: string } | null
+  sections: { name: string } | null
+  subjects: { name: string } | null
+}
 
 export interface HomeworkSectionOption {
   classId: string
@@ -65,8 +78,6 @@ export async function getSchoolHomeworkContext(schoolId: string): Promise<School
   const supabase = await getSupabase()
   await requirePermission(supabase, 'teachers.manage')
 
-  const db = supabase as any
-
   const [{ data: classes }, { data: sections }, { data: subjects }, { data: hwData }] = await Promise.all([
     supabase
       .from('classes')
@@ -75,7 +86,7 @@ export async function getSchoolHomeworkContext(schoolId: string): Promise<School
       .eq('is_active', true)
       .order('display_order', { ascending: true })
       .order('name', { ascending: true }),
-    db
+    supabase
       .from('sections')
       .select('id, name, class_id, classes ( name )')
       .eq('school_id', schoolId)
@@ -89,7 +100,7 @@ export async function getSchoolHomeworkContext(schoolId: string): Promise<School
       .is('deleted_at', null)
       .order('display_order', { ascending: true })
       .order('name', { ascending: true }),
-    db
+    supabase
       .from('homework')
       .select('id, class_id, section_id, subject_id, title, description, homework_date, due_date, created_by_name, classes ( name ), sections ( name ), subjects ( name )')
       .eq('school_id', schoolId)
@@ -98,7 +109,7 @@ export async function getSchoolHomeworkContext(schoolId: string): Promise<School
       .limit(200),
   ])
 
-  const homework: HomeworkRow[] = ((hwData ?? []) as any[]).map((h) => ({
+  const homework: HomeworkRow[] = ((hwData ?? []) as HomeworkJoinedRow[]).map((h) => ({
     id: h.id,
     class_id: h.class_id,
     section_id: h.section_id,
@@ -114,14 +125,14 @@ export async function getSchoolHomeworkContext(schoolId: string): Promise<School
   }))
 
   return {
-    classes: (classes ?? []).map((c) => ({ classId: c.id, className: c.name })),
-    sections: ((sections ?? []) as any[]).map((s) => ({
+    classes: ((classes ?? []) as HomeworkClassRow[]).map((c) => ({ classId: c.id, className: c.name })),
+    sections: ((sections ?? []) as HomeworkSectionJoinedRow[]).map((s) => ({
       classId: s.class_id,
       className: s.classes?.name ?? '',
       sectionId: s.id,
       sectionName: s.name,
     })),
-    subjects: (subjects ?? []).map((s) => ({ id: s.id, name: s.name, classId: s.class_id })),
+    subjects: ((subjects ?? []) as HomeworkSubjectRow[]).map((s) => ({ id: s.id, name: s.name, classId: s.class_id })),
     homework,
   }
 }
@@ -142,8 +153,7 @@ export async function createSchoolHomework(input: HomeworkInput): Promise<void> 
     .eq('auth_user_id', user.id)
     .maybeSingle()
 
-  const db = supabase as any
-  const { error } = await db.from('homework').insert({
+  const { error } = await supabase.from('homework').insert({
     school_id: input.schoolId,
     class_id: input.classId,
     section_id: input.sectionId,
@@ -164,8 +174,7 @@ export async function updateSchoolHomework(id: string, input: HomeworkInput): Pr
   const supabase = await getSupabase()
   await requirePermission(supabase, 'teachers.manage')
 
-  const db = supabase as any
-  const { error } = await db
+  const { error } = await supabase
     .from('homework')
     .update({
       class_id: input.classId,
@@ -188,8 +197,7 @@ export async function deleteSchoolHomework(schoolId: string, id: string): Promis
   const supabase = await getSupabase()
   await requirePermission(supabase, 'teachers.manage')
 
-  const db = supabase as any
-  const { error } = await db
+  const { error } = await supabase
     .from('homework')
     .update({ deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
     .eq('id', id)

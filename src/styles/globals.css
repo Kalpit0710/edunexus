@@ -158,3 +158,331 @@
   animation: nav-progress 1.1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
+/* ── ID cards (screen + print) ── */
+.id-card-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 1rem;
+}
+
+.screen-card-view {
+  display: flex;
+  justify-content: center;
+}
+
+/* Screen preview: one full card that flips front -> back on hover/focus. */
+.screen-card-view .id-card-pair {
+  position: relative;
+  display: block;
+  width: min(100%, 360px);
+  aspect-ratio: 1.58 / 1;
+  perspective: 1200px;
+}
+
+.screen-card-view .id-card-template {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+  transition: transform 620ms cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 220ms ease;
+  box-shadow: 0 14px 40px rgba(2, 6, 23, 0.45);
+}
+
+.screen-card-view .id-card-front {
+  transform: rotateY(0deg);
+}
+
+.screen-card-view .id-card-back {
+  transform: rotateY(180deg);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.screen-card-view .id-card-pair:hover .id-card-front,
+.screen-card-view .id-card-pair:focus-within .id-card-front {
+  transform: rotateY(-180deg);
+}
+
+.screen-card-view .id-card-pair:hover .id-card-back,
+.screen-card-view .id-card-pair:focus-within .id-card-back {
+  transform: rotateY(0deg);
+}
+
+.screen-card-view .id-card-back__qr-wrap {
+  width: 118px;
+  height: 118px;
+}
+
+.screen-card-view .id-card-back__qr {
+  width: 104px;
+  height: 104px;
+}
+
+.screen-card-view .id-card-back__token {
+  display: none;
+}
+
+.id-card-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.id-card-template {
+  position: relative;
+  width: 100%;
+  min-height: 220px;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.id-card-front {
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  background: linear-gradient(135deg, #060c1f 0%, #0f1d45 56%, #12357f 100%);
+  color: #eff6ff;
+  padding: 0.75rem;
+}
+
+.id-card-front__hero {
+  position: absolute;
+  right: -24px;
+  top: -22px;
+  width: 120px;
+  height: 120px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.4) 0%, rgba(59, 130, 246, 0.04) 65%, transparent 80%);
+}
+
+.id-card-front__header {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  z-index: 1;
+}
+
+.id-card-front__suite {
+  margin: 0;
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #bfdbfe;
+}
+
+.id-card-front__school {
+  margin: 0.15rem 0 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.id-card-front__code {
+  margin: 0.05rem 0 0;
+  font-size: 0.68rem;
+  color: #dbeafe;
+}
+
+.id-card-front__badge {
+  width: 42px;
+  height: 42px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.id-card-front__body {
+  margin-top: 0.7rem;
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+}
+
+.id-card-front__avatar {
+  width: 70px;
+  height: 70px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(2, 6, 23, 0.8);
+}
+
+.id-card-front__initial {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.id-card-front__kind {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.58rem;
+  color: #bfdbfe;
+}
+
+.id-card-front__name {
+  margin: 0.1rem 0 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.id-card-front__meta {
+  margin: 0.22rem 0 0;
+  font-size: 0.64rem;
+  color: #dbeafe;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.id-card-front__footer {
+  margin-top: 0.72rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.25);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.55rem;
+  color: #dbeafe;
+}
+
+.id-card-front__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 0.18rem 0.4rem;
+  background: rgba(14, 165, 233, 0.2);
+  color: #ecfeff;
+}
+
+.id-card-back {
+  border: 1px solid rgba(15, 23, 42, 0.2);
+  background: linear-gradient(155deg, #f8fafc 0%, #e2e8f0 75%);
+  color: #0f172a;
+  padding: 0.65rem;
+}
+
+.id-card-back__qr-wrap {
+  border-radius: 12px;
+  background: white;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  width: 94px;
+  height: 94px;
+  display: grid;
+  place-items: center;
+}
+
+.id-card-back__qr {
+  width: 82px;
+  height: 82px;
+}
+
+.id-card-back__qr-fallback {
+  font-size: 0.55rem;
+  color: #64748b;
+}
+
+.id-card-back__copy {
+  margin-top: 0.5rem;
+}
+
+.id-card-back__title {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.id-card-back__body {
+  margin: 0.15rem 0 0;
+  font-size: 0.58rem;
+  color: #334155;
+  line-height: 1.35;
+}
+
+.id-card-back__token {
+  margin: 0.5rem 0 0;
+  font-size: 0.52rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  color: #334155;
+  border-top: 1px dashed rgba(51, 65, 85, 0.35);
+  padding-top: 0.35rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.print-only {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .id-cards-page,
+  .id-cards-page * {
+    visibility: visible;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .id-cards-page {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    padding: 0;
+  }
+
+  .id-print-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5mm;
+  }
+
+  .id-card-pair {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .id-card-template {
+    min-height: auto;
+    height: 54mm;
+    border-radius: 3mm;
+    box-shadow: none !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+

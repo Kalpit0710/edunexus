@@ -11,6 +11,13 @@ const getSupabase = createServerSupabaseClient
 // ─── Soft-delete helpers ───────────────────────────────────────────────────
 
 type ConfigEntity = 'classes' | 'sections' | 'subjects' | 'academic_years' | 'grading_rules'
+type ConfigEntityRow = {
+    id: string
+    school_id: string
+    deleted_at?: string | null
+    name?: string | null
+    grade_name?: string | null
+}
 
 function labelColumnFor(entity: ConfigEntity): 'name' | 'grade_name' {
     return entity === 'grading_rules' ? 'grade_name' : 'name'
@@ -26,7 +33,7 @@ async function softDeleteConfig(entity: ConfigEntity, id: string, action: string
     const actor = await requireActor(supabase, ['school_admin'])
     if (!actor.school_id) throw new Error('Your account is not linked to any school.')
 
-    const admin = (await createAdminClient()) as any
+    const admin = await createAdminClient()
     const labelCol = labelColumnFor(entity)
 
     const { data: row, error: readErr } = await admin
@@ -35,7 +42,8 @@ async function softDeleteConfig(entity: ConfigEntity, id: string, action: string
         .eq('id', id)
         .maybeSingle()
     if (readErr) throw new Error(readErr.message)
-    if (!row || row.school_id !== actor.school_id) {
+    const typedRow = row as ConfigEntityRow | null
+    if (!typedRow || typedRow.school_id !== actor.school_id) {
         throw new Error('Item not found or not permitted.')
     }
 
@@ -54,7 +62,7 @@ async function softDeleteConfig(entity: ConfigEntity, id: string, action: string
         action,
         entityType: entity,
         entityId: id,
-        entityLabel: (row[labelCol] as string | null) ?? null,
+        entityLabel: (typedRow[labelCol] as string | null) ?? null,
     })
 }
 
@@ -68,7 +76,7 @@ async function restoreConfig(entity: ConfigEntity, id: string, action: string): 
     const actor = await requireActor(supabase, ['school_admin'])
     if (!actor.school_id) throw new Error('Your account is not linked to any school.')
 
-    const admin = (await createAdminClient()) as any
+    const admin = await createAdminClient()
     const labelCol = labelColumnFor(entity)
 
     const { data: row, error: readErr } = await admin
@@ -77,7 +85,8 @@ async function restoreConfig(entity: ConfigEntity, id: string, action: string): 
         .eq('id', id)
         .maybeSingle()
     if (readErr) throw new Error(readErr.message)
-    if (!row || row.school_id !== actor.school_id) {
+    const typedRow = row as ConfigEntityRow | null
+    if (!typedRow || typedRow.school_id !== actor.school_id) {
         throw new Error('Item not found or not permitted.')
     }
 
@@ -96,7 +105,7 @@ async function restoreConfig(entity: ConfigEntity, id: string, action: string): 
         action,
         entityType: entity,
         entityId: id,
-        entityLabel: (row[labelCol] as string | null) ?? null,
+        entityLabel: (typedRow[labelCol] as string | null) ?? null,
     })
 }
 
@@ -108,7 +117,7 @@ export async function getDeletedConfigEntities(
     const actor = await requireActor(supabase, ['school_admin'])
     if (!actor.school_id) throw new Error('Your account is not linked to any school.')
 
-    const admin = (await createAdminClient()) as any
+    const admin = await createAdminClient()
     const labelCol = labelColumnFor(entity)
 
     const { data, error } = await admin
@@ -119,10 +128,10 @@ export async function getDeletedConfigEntities(
         .order('deleted_at', { ascending: false })
     if (error) throw new Error(error.message)
 
-    return ((data ?? []) as any[]).map(r => ({
-        id: r.id as string,
+    return ((data ?? []) as unknown as ConfigEntityRow[]).map(r => ({
+        id: r.id,
         label: (r[labelCol] as string | null) ?? null,
-        deletedAt: r.deleted_at as string,
+        deletedAt: String(r.deleted_at),
     }))
 }
 
