@@ -5,6 +5,7 @@ import { Providers } from '@/components/providers'
 import { Toaster } from '@/components/ui/sonner'
 import { ImpersonationBanner } from '@/components/impersonation-banner'
 import { NavigationProgress } from '@/components/navigation-progress'
+import { PwaRegister } from '@/components/pwa-register'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -20,6 +21,7 @@ export const metadata: Metadata = {
   keywords: ['school management', 'EduNexus', 'education', 'students', 'teachers'],
   authors: [{ name: 'EduNexus Team' }],
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'),
+  manifest: '/manifest.webmanifest',
   icons: {
     icon: '/logo.svg',
     shortcut: '/logo.svg',
@@ -35,6 +37,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans`}>
+        <PwaRegister />
         <NavigationProgress />
         <ImpersonationBanner />
         <Providers>{children}</Providers>

@@ -19,6 +19,7 @@ import {
 import { ArrowLeft, Download } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 
 const MONTHS = [
   'January','February','March','April','May','June',
@@ -32,15 +33,19 @@ function pctColor(pct: number): string {
 }
 
 export default function AttendanceReportPage() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { school } = useAuthStore()
-  const now = new Date()
+  const defaultMonth = String(new Date().getMonth() + 1)
+  const defaultYear = String(new Date().getFullYear())
 
   const [classes, setClasses] = useState<any[]>([])
   const [sections, setSections] = useState<any[]>([])
-  const [selClass, setSelClass] = useState('')
-  const [selSection, setSelSection] = useState('')
-  const [month, setMonth] = useState(String(now.getMonth() + 1))
-  const [year, setYear] = useState(String(now.getFullYear()))
+  const [selClass, setSelClass] = useState(() => searchParams.get('class') ?? '')
+  const [selSection, setSelSection] = useState(() => searchParams.get('section') ?? '')
+  const [month, setMonth] = useState(() => searchParams.get('month') ?? defaultMonth)
+  const [year, setYear] = useState(() => searchParams.get('year') ?? defaultYear)
 
   const [report, setReport] = useState<MonthlyAttendanceRow[]>([])
   const [loading, setLoading] = useState(false)
@@ -52,6 +57,32 @@ export default function AttendanceReportPage() {
       .then(([cls, sec]) => { setClasses(cls); setSections(sec) })
       .catch((e) => toast.error(getErrorMessage(e)))
   }, [school?.id])
+
+  useEffect(() => {
+    setSelClass(searchParams.get('class') ?? '')
+    setSelSection(searchParams.get('section') ?? '')
+    setMonth(searchParams.get('month') ?? defaultMonth)
+    setYear(searchParams.get('year') ?? defaultYear)
+  }, [searchParams, defaultMonth, defaultYear])
+
+  function syncFiltersToUrl(next: { classId: string; sectionId: string; monthValue: string; yearValue: string }) {
+    const params = new URLSearchParams(searchParams.toString())
+
+    if (next.classId) params.set('class', next.classId)
+    else params.delete('class')
+
+    if (next.sectionId) params.set('section', next.sectionId)
+    else params.delete('section')
+
+    if (next.monthValue) params.set('month', next.monthValue)
+    else params.delete('month')
+
+    if (next.yearValue) params.set('year', next.yearValue)
+    else params.delete('year')
+
+    const query = params.toString()
+    router.replace((query ? `${pathname}?${query}` : pathname) as any, { scroll: false })
+  }
 
   const filteredSections = sections.filter((s) => s.class_id === selClass)
 
@@ -128,7 +159,15 @@ export default function AttendanceReportPage() {
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
             <div className="space-y-1">
               <Label className="text-xs">Class</Label>
-              <Select value={selClass} onValueChange={(v) => { setSelClass(v); setSelSection(''); setLoaded(false) }}>
+              <Select
+                value={selClass}
+                onValueChange={(v) => {
+                  setSelClass(v)
+                  setSelSection('')
+                  setLoaded(false)
+                  syncFiltersToUrl({ classId: v, sectionId: '', monthValue: month, yearValue: year })
+                }}
+              >
                 <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                 <SelectContent>
                   {classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
@@ -138,7 +177,15 @@ export default function AttendanceReportPage() {
 
             <div className="space-y-1">
               <Label className="text-xs">Section</Label>
-              <Select value={selSection} onValueChange={(v) => { setSelSection(v); setLoaded(false) }} disabled={!selClass}>
+              <Select
+                value={selSection}
+                onValueChange={(v) => {
+                  setSelSection(v)
+                  setLoaded(false)
+                  syncFiltersToUrl({ classId: selClass, sectionId: v, monthValue: month, yearValue: year })
+                }}
+                disabled={!selClass}
+              >
                 <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                 <SelectContent>
                   {filteredSections.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
@@ -148,7 +195,14 @@ export default function AttendanceReportPage() {
 
             <div className="space-y-1">
               <Label className="text-xs">Month</Label>
-              <Select value={month} onValueChange={(v) => { setMonth(v); setLoaded(false) }}>
+              <Select
+                value={month}
+                onValueChange={(v) => {
+                  setMonth(v)
+                  setLoaded(false)
+                  syncFiltersToUrl({ classId: selClass, sectionId: selSection, monthValue: v, yearValue: year })
+                }}
+              >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {MONTHS.map((m, i) => <SelectItem key={i + 1} value={String(i + 1)}>{m}</SelectItem>)}
@@ -158,7 +212,14 @@ export default function AttendanceReportPage() {
 
             <div className="space-y-1">
               <Label className="text-xs">Year</Label>
-              <Select value={year} onValueChange={(v) => { setYear(v); setLoaded(false) }}>
+              <Select
+                value={year}
+                onValueChange={(v) => {
+                  setYear(v)
+                  setLoaded(false)
+                  syncFiltersToUrl({ classId: selClass, sectionId: selSection, monthValue: month, yearValue: v })
+                }}
+              >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {[2024, 2025, 2026, 2027].map((y) => (

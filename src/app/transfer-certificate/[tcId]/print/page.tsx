@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import * as React from 'react'
 import { getTransferCertificate, type TransferCertificateView } from '@/app/(school-admin)/school-admin/students/tc-actions'
-import { Printer, Loader2 } from 'lucide-react'
+import { ArrowLeft, Loader2, Printer } from 'lucide-react'
 
 function fmtDate(d: string | null): string {
   if (!d) return '—'
@@ -55,12 +55,24 @@ export default function TransferCertificatePrintPage({ params }: { params: Promi
   return (
     <div className="min-h-screen bg-zinc-100 py-8 print:bg-white print:py-0">
       {/* Toolbar — hidden when printing */}
-      <div className="mx-auto mb-4 flex max-w-[800px] justify-end px-4 print:hidden">
+      <div className="mx-auto mb-4 flex max-w-[800px] items-center justify-between px-4 print:hidden">
+        <button
+          onClick={() => {
+            if (window.history.length > 1) {
+              window.history.back()
+              return
+            }
+            window.location.assign('/school-admin/students')
+          }}
+          className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-accent"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back to Dashboard
+        </button>
         <button
           onClick={() => window.print()}
           className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
         >
-          <Printer className="h-4 w-4" /> Print / Save as PDF
+          <Printer className="h-4 w-4" /> Print Again
         </button>
       </div>
 

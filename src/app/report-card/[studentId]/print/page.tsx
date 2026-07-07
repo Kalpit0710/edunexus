@@ -11,7 +11,7 @@ import {
   STANDARD_CSS,
   LOWER_CSS,
 } from '@/components/modules/report-cards/ReportCardDocument'
-import { Printer, Loader2 } from 'lucide-react'
+import { ArrowLeft, Loader2, Printer } from 'lucide-react'
 
 export default function ReportCardPrintPage({ params }: { params: Promise<{ studentId: string }> }) {
   const { studentId } = React.use(params)
@@ -45,6 +45,27 @@ export default function ReportCardPrintPage({ params }: { params: Promise<{ stud
   return (
     <div className="srms-screen">
       <style dangerouslySetInnerHTML={{ __html: isLower ? LOWER_CSS : STANDARD_CSS }} />
+
+      <div className="print:hidden mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-4 py-3">
+        <button
+          onClick={() => {
+            if (window.history.length > 1) {
+              window.history.back()
+              return
+            }
+            window.location.assign('/school-admin/dashboard')
+          }}
+          className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-accent"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back to Dashboard
+        </button>
+        <button
+          onClick={() => window.print()}
+          className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+        >
+          <Printer className="h-4 w-4" /> Print Again
+        </button>
+      </div>
 
       <div className="srms-toolbar">
         <button onClick={() => window.print()} className="srms-print-btn">

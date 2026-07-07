@@ -27,6 +27,7 @@ import { Input } from '@/components/ui/input'
 import { DateInput } from '@/components/ui/date-input'
 import { BarChart2, CheckCheck, Save, Grid2X2, FileUp } from 'lucide-react'
 import Link from 'next/link'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 
 const STATUS_CONFIG: Record<
   AttendanceStatus,
@@ -42,12 +43,15 @@ const STATUS_CONFIG: Record<
 const STATUSES: AttendanceStatus[] = ['present', 'absent', 'late', 'half_day', 'holiday']
 
 export default function AttendancePage() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { school, user } = useAuthStore()
   const [classes, setClasses] = useState<any[]>([])
   const [sections, setSections] = useState<any[]>([])
-  const [selClass, setSelClass] = useState('')
-  const [selSection, setSelSection] = useState('')
-  const [date, setDate] = useState(schoolToday())
+  const [selClass, setSelClass] = useState(() => searchParams.get('class') ?? '')
+  const [selSection, setSelSection] = useState(() => searchParams.get('section') ?? '')
+  const [date, setDate] = useState(() => searchParams.get('date') ?? schoolToday())
 
   const [students, setStudents] = useState<StudentAttendanceRow[]>([])
   const [statusMap, setStatusMap] = useState<Record<string, AttendanceStatus>>({})
@@ -63,6 +67,28 @@ export default function AttendancePage() {
       .then(([cls, sec]) => { setClasses(cls); setSections(sec) })
       .catch((e) => toast.error(getErrorMessage(e)))
   }, [school?.id])
+
+  useEffect(() => {
+    setSelClass(searchParams.get('class') ?? '')
+    setSelSection(searchParams.get('section') ?? '')
+    setDate(searchParams.get('date') ?? schoolToday())
+  }, [searchParams])
+
+  function syncFiltersToUrl(next: { classId: string; sectionId: string; dateValue: string }) {
+    const params = new URLSearchParams(searchParams.toString())
+
+    if (next.classId) params.set('class', next.classId)
+    else params.delete('class')
+
+    if (next.sectionId) params.set('section', next.sectionId)
+    else params.delete('section')
+
+    if (next.dateValue) params.set('date', next.dateValue)
+    else params.delete('date')
+
+    const query = params.toString()
+    router.replace((query ? `${pathname}?${query}` : pathname) as any, { scroll: false })
+  }
 
   const filteredSections = sections.filter((s) => s.class_id === selClass)
 
@@ -165,7 +191,15 @@ export default function AttendancePage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="space-y-1">
               <Label className="text-xs">Class</Label>
-              <Select value={selClass} onValueChange={(v) => { setSelClass(v); setSelSection(''); setLoaded(false) }}>
+              <Select
+                value={selClass}
+                onValueChange={(v) => {
+                  setSelClass(v)
+                  setSelSection('')
+                  setLoaded(false)
+                  syncFiltersToUrl({ classId: v, sectionId: '', dateValue: date })
+                }}
+              >
                 <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
                 <SelectContent>
                   {classes.map((c) => (
@@ -177,7 +211,15 @@ export default function AttendancePage() {
 
             <div className="space-y-1">
               <Label className="text-xs">Section</Label>
-              <Select value={selSection} onValueChange={(v) => { setSelSection(v); setLoaded(false) }} disabled={!selClass}>
+              <Select
+                value={selSection}
+                onValueChange={(v) => {
+                  setSelSection(v)
+                  setLoaded(false)
+                  syncFiltersToUrl({ classId: selClass, sectionId: v, dateValue: date })
+                }}
+                disabled={!selClass}
+              >
                 <SelectTrigger><SelectValue placeholder="Select section" /></SelectTrigger>
                 <SelectContent>
                   {filteredSections.map((s) => (
@@ -189,7 +231,14 @@ export default function AttendancePage() {
 
             <div className="space-y-1">
               <Label className="text-xs">Date</Label>
-              <DateInput value={date} onChange={(e) => { setDate(e.target.value); setLoaded(false) }} />
+              <DateInput
+                value={date}
+                onChange={(e) => {
+                  setDate(e.target.value)
+                  setLoaded(false)
+                  syncFiltersToUrl({ classId: selClass, sectionId: selSection, dateValue: e.target.value })
+                }}
+              />
             </div>
 
             <div className="flex items-end">
