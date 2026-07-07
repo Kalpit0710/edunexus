@@ -37,6 +37,7 @@ export interface School {
   currency_symbol?: string
   locale?: string
   date_format?: string
+  timezone?: string
   subscription_plan?: SubscriptionPlan
   subscription_status?: SubscriptionStatus
   trial_ends_at?: string | null

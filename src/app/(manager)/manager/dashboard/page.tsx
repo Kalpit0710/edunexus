@@ -32,7 +32,7 @@ export default function ManagerDashboardPage() {
   const [stats, setStats] = useState<ManagerDashboardStats>(EMPTY_STATS)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const today = schoolToday()
+  const today = schoolToday(school?.timezone)
 
   const loadStats = useCallback(async () => {
     if (!school?.id) return
@@ -53,7 +53,12 @@ export default function ManagerDashboardPage() {
     loadStats()
   }, [loadStats])
 
-  const todayLabel = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })
+  const todayLabel = new Intl.DateTimeFormat('en-IN', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    timeZone: school?.timezone || undefined,
+  }).format(new Date())
   const fullName = (user?.user_metadata?.full_name as string) || 'Manager'
   const statCards = [
     {

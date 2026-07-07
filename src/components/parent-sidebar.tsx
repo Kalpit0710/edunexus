@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Home, CalendarCheck, BookOpen, BookText, CalendarRange, IndianRupee, Megaphone, Bus, CalendarDays, LogOut, GraduationCap, ChevronDown } from 'lucide-react'
+import { Home, CalendarCheck, BookOpen, BookText, CalendarRange, IndianRupee, Megaphone, Bus, CalendarDays, LogOut, GraduationCap, ChevronDown, Users } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth.store'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
@@ -23,6 +23,7 @@ const navItems = [
   { href: '/parent/homework', label: 'Homework', icon: BookText },
   { href: '/parent/results', label: 'Results', icon: BookOpen },
   { href: '/parent/fees', label: 'Fees', icon: IndianRupee },
+  { href: '/parent/family', label: 'Family', icon: Users },
   { href: '/parent/transport', label: 'Transport', icon: Bus },
   { href: '/parent/calendar', label: 'Calendar', icon: CalendarDays },
   { href: '/parent/announcements', label: 'Announcements', icon: Megaphone },

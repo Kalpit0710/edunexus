@@ -223,14 +223,24 @@ async function getPrimaryParentForStudent(schoolId: string, studentId: string): 
     return (fallbackParent as ParentSummaryRow | null) ?? null
 }
 
-export async function getStudents(schoolId: string) {
+export async function getStudents(
+    schoolId: string,
+    status: 'active' | 'inactive' | 'all' = 'active',
+) {
     const supabase = await getSupabase()
-    const { data, error } = await supabase
+    let query = supabase
         .from('students')
         .select('*, class:classes(name), section:sections(name)')
         .eq('school_id', schoolId)
-        .eq('is_active', true)
         .order('full_name', { ascending: true })
+
+    if (status === 'active') {
+        query = query.eq('is_active', true)
+    } else if (status === 'inactive') {
+        query = query.eq('is_active', false)
+    }
+
+    const { data, error } = await query
 
     if (error) throw new Error(error.message)
 
@@ -275,6 +285,33 @@ export async function deleteStudent(studentId: string) {
 
     const admin = await createAdminClient()
     await unlinkParentsForStudent(admin, student.school_id, studentId)
+}
+
+export async function bulkUpdateStudentStatus(
+    schoolId: string,
+    studentIds: string[],
+    isActive: boolean,
+) {
+    const supabase = await getSupabase()
+    const actorProfile = await getActorProfile(supabase)
+    if (!actorProfile.school_id || actorProfile.school_id !== schoolId) {
+        throw new Error('You are not permitted to update students in another school.')
+    }
+    await requirePermission(supabase, 'students.edit')
+
+    if (studentIds.length === 0) {
+        throw new Error('Select at least one student.')
+    }
+
+    const { error } = await supabase
+        .from('students')
+        .update({ is_active: isActive, deleted_at: isActive ? null : undefined })
+        .eq('school_id', schoolId)
+        .in('id', studentIds)
+
+    if (error) throw new Error(error.message)
+
+    return true
 }
 
 export async function getStudentById(id: string): Promise<Record<string, unknown>> {

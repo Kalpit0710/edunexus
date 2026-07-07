@@ -1669,6 +1669,7 @@ export type Database = {
           subscription_plan: string
           subscription_status: string
           theme_color: string | null
+          timezone: string
           trial_ends_at: string | null
           updated_at: string
           website: string | null
@@ -1703,6 +1704,7 @@ export type Database = {
           subscription_plan?: string
           subscription_status?: string
           theme_color?: string | null
+          timezone?: string
           trial_ends_at?: string | null
           updated_at?: string
           website?: string | null
@@ -1737,6 +1739,7 @@ export type Database = {
           subscription_plan?: string
           subscription_status?: string
           theme_color?: string | null
+          timezone?: string
           trial_ends_at?: string | null
           updated_at?: string
           website?: string | null

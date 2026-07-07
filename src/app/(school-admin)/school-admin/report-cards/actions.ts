@@ -7,6 +7,7 @@ import {
 import { requireActor } from '@/lib/auth/require-actor'
 import { requirePermission } from '@/lib/auth/permissions'
 import { logAudit } from '@/lib/audit'
+import { ensureRateLimit } from '@/lib/rate-limit'
 import { computeStudentFeeBalance } from '@/lib/fees/balance'
 import {
   calcStandardSubjectResult,
@@ -1347,6 +1348,13 @@ export async function getClassPrintableReportCards(
   const staffRoles = ['school_admin', 'teacher', 'manager', 'cashier']
   if (!staffRoles.includes(profile.role) || !profile.school_id) return []
   const schoolId = profile.school_id as string
+
+  await ensureRateLimit(`${user.id}:${schoolId}:${classId}:${sectionId ?? 'all'}`, {
+    name: 'report-card-class-print',
+    limit: 6,
+    windowSeconds: 300,
+    message: 'Bulk report-card generation is being requested too frequently. Please wait a moment and try again.',
+  })
 
   const admin = await createAdminClient()
   const db = admin as DbClient

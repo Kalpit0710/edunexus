@@ -103,6 +103,24 @@ export interface ChildFeeStatus {
     recentPayments: FeePaymentRow[]
 }
 
+export interface FamilyStatementChildRow {
+    studentId: string
+    studentName: string
+    className: string
+    sectionName: string
+    totalFee: number
+    totalPaid: number
+    balance: number
+}
+
+export interface ParentFamilyStatement {
+    totalFee: number
+    totalPaid: number
+    totalBalance: number
+    generatedAt: string
+    children: FamilyStatementChildRow[]
+}
+
 export interface AttendanceDayRecord {
     date: string
     status: 'present' | 'absent' | 'late' | 'half_day' | 'holiday'
@@ -476,6 +494,53 @@ export async function getChildFeeStatus(
             balance: 0,
             recentPayments: [],
         }
+    }
+}
+
+export async function getParentFamilyStatement(
+    schoolId: string,
+): Promise<ParentFamilyStatement | null> {
+    try {
+        const context = await getParentAccessContext(schoolId)
+        if (!context) return null
+
+        const linkedChildren = await getLinkedChildrenInternal(context)
+        if (linkedChildren.length === 0) return null
+
+        const children = await Promise.all(
+            linkedChildren.map(async (child) => {
+                const fee = await computeStudentFeeBalance(
+                    context.db,
+                    schoolId,
+                    child.id,
+                    child.classId,
+                )
+
+                return {
+                    studentId: child.id,
+                    studentName: child.fullName,
+                    className: child.className,
+                    sectionName: child.sectionName,
+                    totalFee: fee.totalFee,
+                    totalPaid: fee.totalPaid,
+                    balance: fee.balance,
+                } satisfies FamilyStatementChildRow
+            }),
+        )
+
+        const totalFee = children.reduce((sum, child) => sum + child.totalFee, 0)
+        const totalPaid = children.reduce((sum, child) => sum + child.totalPaid, 0)
+        const totalBalance = children.reduce((sum, child) => sum + child.balance, 0)
+
+        return {
+            totalFee,
+            totalPaid,
+            totalBalance,
+            generatedAt: new Date().toISOString(),
+            children: children.sort((a, b) => b.balance - a.balance || a.studentName.localeCompare(b.studentName)),
+        }
+    } catch {
+        return null
     }
 }
 

@@ -12,6 +12,7 @@ import {
   getStudentForFeeById,
   type FeeStructureRow,
   type FeeStudentResult,
+  type CollectFeeInput,
 } from '../actions'
 import { generateReceiptNumber, isReferenceRequired } from '@/lib/fee-utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -28,8 +29,33 @@ import { PrinterIcon, CheckCircle, ArrowLeft, GraduationCap, Banknote, UserSearc
 import Link from 'next/link'
 import { LiveSearch } from '@/components/live-search'
 import { StudentQrPickerButton } from '@/components/student-qr-picker-button'
+import {
+  clearOfflineDraft,
+  enqueueOfflineTransaction,
+  listOfflineTransactions,
+  readOfflineDraft,
+  removeOfflineTransaction,
+  writeOfflineDraft,
+} from '@/lib/offline/transaction-queue'
 
 type PaymentMode = 'cash' | 'cheque' | 'upi' | 'neft' | 'card' | 'online'
+
+interface OfflineFeePaymentPayload {
+  schoolId: string
+  schoolCode: string
+  input: CollectFeeInput
+}
+
+interface FeeCollectDraft {
+  student: FeeStudentResult | null
+  structures: FeeStructureRow[]
+  selectedItems: Record<string, boolean>
+  discount: string
+  paymentMode: PaymentMode
+  reference: string
+  remarks: string
+  paidAmount: string
+}
 
 const PAYMENT_MODES: { value: PaymentMode; label: string }[] = [
   { value: 'cash', label: 'Cash' },
@@ -45,6 +71,10 @@ function CollectFeePageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const qrHandledStudentIdRef = useRef<string | null>(null)
+  const draftRestoredRef = useRef(false)
+  const [isOffline, setIsOffline] = useState(false)
+  const [pendingSyncCount, setPendingSyncCount] = useState(0)
+  const [syncingQueued, setSyncingQueued] = useState(false)
 
   // Step 1: search
   const [student, setStudent] = useState<FeeStudentResult | null>(null)
@@ -78,6 +108,76 @@ function CollectFeePageContent() {
   const balanceRemaining = Math.max(0, netPayable - Number(paidAmount || 0))
   const referenceRequired = isReferenceRequired(paymentMode)
   const referenceMissing = referenceRequired && !reference.trim()
+  const draftKey = school?.id ? `fee-collect:draft:${school.id}` : null
+
+  const resetCollector = useCallback(() => {
+    setStudent(null)
+    setStructures([])
+    setSelectedItems({})
+    setDiscount('0')
+    setPaymentMode('cash')
+    setReference('')
+    setRemarks('')
+    setPaidAmount('')
+    setReceiptNumber(null)
+    if (draftKey) clearOfflineDraft(draftKey)
+  }, [draftKey])
+
+  const refreshPendingSyncCount = useCallback(async () => {
+    try {
+      const queued = await listOfflineTransactions<OfflineFeePaymentPayload>('fee-payment')
+      setPendingSyncCount(queued.filter((item) => item.payload.schoolId === school?.id).length)
+    } catch {
+      setPendingSyncCount(0)
+    }
+  }, [school?.id])
+
+  const flushOfflineQueue = useCallback(async () => {
+    if (!school?.id || !navigator.onLine || syncingQueued) return
+
+    setSyncingQueued(true)
+    let synced = 0
+    try {
+      const queued = await listOfflineTransactions<OfflineFeePaymentPayload>('fee-payment')
+      const feeQueue = queued.filter((item) => item.payload.schoolId === school.id)
+      for (const item of feeQueue) {
+        const seq = await getNextReceiptSeq(item.payload.schoolId)
+        const receipt = generateReceiptNumber(item.payload.schoolCode, new Date().getFullYear(), seq)
+        await collectFeePayment(item.payload.schoolId, receipt, item.payload.input)
+        await removeOfflineTransaction(item.id)
+        synced += 1
+      }
+      if (synced > 0) {
+        toast.success(`Synced ${synced} queued fee payment${synced > 1 ? 's' : ''}.`)
+      }
+    } catch (error) {
+      toast.error(`Offline fee sync paused: ${getErrorMessage(error)}`)
+    } finally {
+      setSyncingQueued(false)
+      void refreshPendingSyncCount()
+    }
+  }, [refreshPendingSyncCount, school?.id, syncingQueued])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const syncOnlineState = () => setIsOffline(!window.navigator.onLine)
+    syncOnlineState()
+    void refreshPendingSyncCount()
+    if (window.navigator.onLine) {
+      void flushOfflineQueue()
+    }
+
+    window.addEventListener('online', syncOnlineState)
+    window.addEventListener('offline', syncOnlineState)
+    window.addEventListener('online', flushOfflineQueue)
+
+    return () => {
+      window.removeEventListener('online', syncOnlineState)
+      window.removeEventListener('offline', syncOnlineState)
+      window.removeEventListener('online', flushOfflineQueue)
+    }
+  }, [flushOfflineQueue, refreshPendingSyncCount])
 
   const loadStudentData = useCallback(async (found: FeeStudentResult) => {
     if (!school?.id) return
@@ -139,6 +239,44 @@ function CollectFeePageContent() {
     })()
   }, [searchParams, school?.id, loadStudentData, router])
 
+  useEffect(() => {
+    if (!draftKey || draftRestoredRef.current || student || receiptNumber) return
+    const draft = readOfflineDraft<FeeCollectDraft>(draftKey)
+    if (!draft) {
+      draftRestoredRef.current = true
+      return
+    }
+
+    setStudent(draft.student)
+    setStructures(draft.structures)
+    setSelectedItems(draft.selectedItems)
+    setDiscount(draft.discount)
+    setPaymentMode(draft.paymentMode)
+    setReference(draft.reference)
+    setRemarks(draft.remarks)
+    setPaidAmount(draft.paidAmount)
+    draftRestoredRef.current = true
+  }, [draftKey, student, receiptNumber])
+
+  useEffect(() => {
+    if (!draftKey) return
+    if (!student || receiptNumber) {
+      clearOfflineDraft(draftKey)
+      return
+    }
+
+    writeOfflineDraft<FeeCollectDraft>(draftKey, {
+      student,
+      structures,
+      selectedItems,
+      discount,
+      paymentMode,
+      reference,
+      remarks,
+      paidAmount,
+    })
+  }, [draftKey, student, structures, selectedItems, discount, paymentMode, reference, remarks, paidAmount, receiptNumber])
+
   const handleCollect = async () => {
     if (!school?.id || !student || !user?.id) return
     const items = structures
@@ -151,21 +289,40 @@ function CollectFeePageContent() {
       return
     }
 
+    const input: CollectFeeInput = {
+      studentId: student.id,
+      items,
+      paidAmount: Number(paidAmount),
+      discountAmount: Number(discount || 0),
+      paymentMode,
+      collectedById: user.id,
+      referenceNumber: reference || undefined,
+      remarks: remarks || undefined,
+    }
+
+    if (typeof window !== 'undefined' && !window.navigator.onLine) {
+      try {
+        await enqueueOfflineTransaction<OfflineFeePaymentPayload>('fee-payment', {
+          schoolId: school.id,
+          schoolCode: school.code ?? 'SCH',
+          input,
+        })
+        toast.success('Payment saved offline. It will sync automatically when the connection returns.')
+        await refreshPendingSyncCount()
+        resetCollector()
+      } catch (error) {
+        toast.error(`Unable to queue offline payment: ${getErrorMessage(error)}`)
+      }
+      return
+    }
+
     setSaving(true)
     try {
       const seq = await getNextReceiptSeq(school.id)
       const rxNumber = generateReceiptNumber(school.code ?? 'SCH', new Date().getFullYear(), seq)
-      await collectFeePayment(school.id, rxNumber, {
-        studentId: student.id,
-        items,
-        paidAmount: Number(paidAmount),
-        discountAmount: Number(discount || 0),
-        paymentMode,
-        collectedById: user.id,
-        referenceNumber: reference || undefined,
-        remarks: remarks || undefined,
-      })
+      await collectFeePayment(school.id, rxNumber, input)
       setReceiptNumber(rxNumber)
+      if (draftKey) clearOfflineDraft(draftKey)
       toast.success(`Payment recorded — Receipt: ${rxNumber}`)
     } catch (e) {
       toast.error(getErrorMessage(e))
@@ -229,9 +386,7 @@ function CollectFeePageContent() {
                 <PrinterIcon className="mr-2 h-4 w-4" /> Print Receipt
               </Button>
               <Button onClick={() => {
-                setStudent(null); setStructures([]); setSelectedItems({})
-                setDiscount('0'); setPaymentMode('cash'); setReference('')
-                setRemarks(''); setPaidAmount(''); setReceiptNumber(null)
+                resetCollector()
               }}>
                 New Payment
               </Button>
@@ -259,17 +414,34 @@ function CollectFeePageContent() {
       )}
 
       <div className={`relative z-10 w-full max-w-2xl ${student ? '' : 'space-y-8'}`}>
+        <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-zinc-300">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-medium text-white">{isOffline ? 'Offline buffering active' : 'Offline-safe fee collection enabled'}</p>
+              <p className="text-xs text-zinc-500">
+                {isOffline
+                  ? 'Payments are being queued locally in this browser until the network returns.'
+                  : pendingSyncCount > 0
+                    ? `${pendingSyncCount} queued payment${pendingSyncCount > 1 ? 's are' : ' is'} waiting to sync.`
+                    : 'Draft progress is saved locally and queued payments will replay automatically on reconnect.'}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-white/10 bg-white/5 text-zinc-200 hover:bg-white/10 hover:text-white"
+              disabled={isOffline || syncingQueued || pendingSyncCount === 0}
+              onClick={() => void flushOfflineQueue()}
+            >
+              {syncingQueued ? 'Syncing…' : pendingSyncCount > 0 ? `Sync pending (${pendingSyncCount})` : 'All synced'}
+            </Button>
+          </div>
+        </div>
+
         {student ? (
           <div>
             <Button variant="ghost" size="sm" className="gap-1 -ml-2 mb-2 w-fit text-muted-foreground" onClick={() => {
-              setStudent(null)
-              setStructures([])
-              setSelectedItems({})
-              setDiscount('0')
-              setPaymentMode('cash')
-              setReference('')
-              setRemarks('')
-              setPaidAmount('')
+              resetCollector()
             }}>
               <ArrowLeft className="h-4 w-4" /> Back
             </Button>

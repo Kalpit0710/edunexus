@@ -1,5 +1,6 @@
 'use server'
 
+import { unstable_cache } from 'next/cache'
 import { createClient as getSupabase } from '@/lib/supabase/server'
 import type { Database } from '@/types/database.types'
 
@@ -16,7 +17,7 @@ export interface DashboardStats {
   needsOnboarding: boolean
 }
 
-export async function getDashboardStats(
+async function getDashboardStatsUncached(
   schoolId: string,
   today: string,
 ): Promise<DashboardStats> {
@@ -77,7 +78,18 @@ export async function getDashboardStats(
   return { totalStudents, activeTeachers, classCount, todayCollection, totalPendingFees, todayAttendancePct, needsOnboarding }
 }
 
-export async function getWeeklyCollectionTrend(
+const getDashboardStatsCached = unstable_cache(getDashboardStatsUncached, ['school-dashboard-stats'], {
+  revalidate: 60,
+})
+
+export async function getDashboardStats(
+  schoolId: string,
+  today: string,
+): Promise<DashboardStats> {
+  return getDashboardStatsCached(schoolId, today)
+}
+
+async function getWeeklyCollectionTrendUncached(
   schoolId: string,
 ): Promise<{ date: string; label: string; amount: number }[]> {
   const supabase = await getSupabase()
@@ -95,4 +107,14 @@ export async function getWeeklyCollectionTrend(
     days.push({ date: dateStr, label, amount })
   }
   return days
+}
+
+const getWeeklyCollectionTrendCached = unstable_cache(getWeeklyCollectionTrendUncached, ['school-dashboard-weekly-trend'], {
+  revalidate: 60,
+})
+
+export async function getWeeklyCollectionTrend(
+  schoolId: string,
+): Promise<{ date: string; label: string; amount: number }[]> {
+  return getWeeklyCollectionTrendCached(schoolId)
 }

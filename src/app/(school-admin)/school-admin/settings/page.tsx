@@ -54,6 +54,7 @@ export default function SettingsPage() {
         currency_symbol: formData.currency_symbol || '₹',
         locale: formData.locale || 'en-IN',
         date_format: formData.date_format || 'dd MMM yyyy',
+        timezone: formData.timezone || 'Asia/Kolkata',
       } as any)
       setSchool({ ...school, ...formData } as any)
       toast.success('School settings updated')
@@ -192,6 +193,15 @@ export default function SettingsPage() {
                       value={formData.locale || ''}
                       onChange={(e) => setFormData({ ...formData, locale: e.target.value })}
                       placeholder="en-IN"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="timezone">Timezone</Label>
+                    <Input
+                      id="timezone"
+                      value={formData.timezone || ''}
+                      onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
+                      placeholder="Asia/Kolkata"
                     />
                   </div>
                 </div>

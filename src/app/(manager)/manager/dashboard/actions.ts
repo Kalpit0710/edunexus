@@ -1,5 +1,6 @@
 'use server'
 
+import { unstable_cache } from 'next/cache'
 import { createClient as createServerSupabaseClient } from '@/lib/supabase/server'
 import { isLowStock } from '@/lib/inventory-utils'
 import type { Database } from '@/types/database.types'
@@ -21,7 +22,7 @@ export interface ManagerDashboardStats {
   classPendingRisk: { className: string; pendingStudents: number }[]
 }
 
-export async function getManagerDashboardStats(
+async function getManagerDashboardStatsUncached(
   schoolId: string,
   today: string,
 ): Promise<ManagerDashboardStats> {
@@ -193,4 +194,15 @@ export async function getManagerDashboardStats(
     paymentModeBreakdown,
     classPendingRisk,
   }
+}
+
+const getManagerDashboardStatsCached = unstable_cache(getManagerDashboardStatsUncached, ['manager-dashboard-stats'], {
+  revalidate: 60,
+})
+
+export async function getManagerDashboardStats(
+  schoolId: string,
+  today: string,
+): Promise<ManagerDashboardStats> {
+  return getManagerDashboardStatsCached(schoolId, today)
 }

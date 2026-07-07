@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
 import { usePermissions } from '@/hooks/use-permissions'
-import { getStudents, deleteStudent, bulkCreateStudents } from './actions'
+import { getStudents, deleteStudent, bulkCreateStudents, bulkUpdateStudentStatus } from './actions'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -14,6 +14,9 @@ import { TableSkeleton } from '@/components/loaders/page-loaders'
 import { Spinner } from '@/components/ui/spinner'
 import Link from 'next/link'
 import * as xlsx from 'xlsx'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 export default function StudentsPage() {
   const { school } = useAuthStore()
@@ -22,25 +25,51 @@ export default function StudentsPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [statusFilter, setStatusFilter] = useState<'active' | 'inactive' | 'all'>('active')
+  const [bulkUpdating, setBulkUpdating] = useState(false)
 
   const fetchStudents = useCallback(async () => {
     if (!school?.id) return
     setLoading(true)
     try {
-      const data = await getStudents(school.id)
+      const data = await getStudents(school.id, statusFilter)
       setStudents(data || [])
+      setSelectedIds([])
     } catch (e) {
       toast.error('Failed to load students: ' + getErrorMessage(e))
     } finally {
       setLoading(false)
     }
-  }, [school?.id])
+  }, [school?.id, statusFilter])
 
   useEffect(() => {
     if (school?.id) {
       fetchStudents()
     }
   }, [fetchStudents, school?.id])
+
+  const toggleStudentSelection = (studentId: string, checked: boolean) => {
+    setSelectedIds((prev) => checked ? [...prev, studentId] : prev.filter((id) => id !== studentId))
+  }
+
+  const toggleSelectAllVisible = (checked: boolean) => {
+    setSelectedIds(checked ? filteredStudents.map((student) => student.id) : [])
+  }
+
+  const handleBulkStatusUpdate = async (isActive: boolean) => {
+    if (!school?.id || selectedIds.length === 0) return
+    setBulkUpdating(true)
+    try {
+      await bulkUpdateStudentStatus(school.id, selectedIds, isActive)
+      toast.success(`Updated ${selectedIds.length} student${selectedIds.length > 1 ? 's' : ''}.`)
+      await fetchStudents()
+    } catch (error) {
+      toast.error(getErrorMessage(error))
+    } finally {
+      setBulkUpdating(false)
+    }
+  }
 
   async function handleDelete(id: string) {
     if (!confirm('Are you sure you want to delete this student?')) return
@@ -165,6 +194,8 @@ export default function StudentsPage() {
     )
   })
 
+  const allVisibleSelected = filteredStudents.length > 0 && filteredStudents.every((student) => selectedIds.includes(student.id))
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -173,6 +204,16 @@ export default function StudentsPage() {
           <p className="text-muted-foreground">Manage and view all enrolled students.</p>
         </div>
         <div className="flex gap-2">
+          <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as 'active' | 'inactive' | 'all')}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">Active only</SelectItem>
+              <SelectItem value="inactive">Inactive only</SelectItem>
+              <SelectItem value="all">All students</SelectItem>
+            </SelectContent>
+          </Select>
           <Button variant="outline" onClick={handleExport} disabled={loading}>
             <Download className="w-4 h-4 mr-2" /> Export
           </Button>
@@ -198,14 +239,32 @@ export default function StudentsPage() {
 
       <Card>
         <CardHeader className="pb-3 border-b">
-          <div className="flex items-center gap-2 max-w-sm">
-            <Search className="w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by name, adm no. or class..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="h-9 border-0 shadow-none focus-visible:ring-0 px-0 rounded-none bg-transparent"
-            />
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-2 max-w-sm">
+              <Search className="w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name, adm no. or class..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="h-9 border-0 shadow-none focus-visible:ring-0 px-0 rounded-none bg-transparent"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                disabled={!can('students.edit') || selectedIds.length === 0 || bulkUpdating}
+                onClick={() => void handleBulkStatusUpdate(true)}
+              >
+                {bulkUpdating ? 'Updating…' : 'Mark Active'}
+              </Button>
+              <Button
+                variant="outline"
+                disabled={!can('students.edit') || selectedIds.length === 0 || bulkUpdating}
+                onClick={() => void handleBulkStatusUpdate(false)}
+              >
+                {bulkUpdating ? 'Updating…' : 'Mark Inactive'}
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -218,16 +277,27 @@ export default function StudentsPage() {
               <table className="w-full text-sm text-left">
                 <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b">
                   <tr>
+                    <th className="px-4 py-3 font-medium">
+                      <Checkbox checked={allVisibleSelected} onCheckedChange={(checked) => toggleSelectAllVisible(!!checked)} aria-label="Select all visible students" />
+                    </th>
                     <th className="px-6 py-3 font-medium">Admission No</th>
                     <th className="px-6 py-3 font-medium">Name</th>
                     <th className="px-6 py-3 font-medium">Class / Section</th>
                     <th className="px-6 py-3 font-medium">Gender</th>
+                    <th className="px-6 py-3 font-medium">Status</th>
                     <th className="px-6 py-3 font-medium text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
                   {filteredStudents.map((student) => (
                     <tr key={student.id} className="hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-4">
+                        <Checkbox
+                          checked={selectedIds.includes(student.id)}
+                          onCheckedChange={(checked) => toggleStudentSelection(student.id, !!checked)}
+                          aria-label={`Select ${student.full_name}`}
+                        />
+                      </td>
                       <td className="px-6 py-4 font-medium">{student.admission_number || '-'}</td>
                       <td className="px-6 py-4">
                         <Link href={`/school-admin/students/${student.id}` as any}>
@@ -240,6 +310,11 @@ export default function StudentsPage() {
                         {student.class?.name || 'N/A'} {student.section?.name ? `- ${student.section.name}` : ''}
                       </td>
                       <td className="px-6 py-4 capitalize">{student.gender || '-'}</td>
+                      <td className="px-6 py-4">
+                        <Badge variant={student.is_active ? 'default' : 'secondary'}>
+                          {student.is_active ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </td>
                       <td className="px-6 py-4 text-right space-x-2">
                         {can('students.edit') && (
                           <Link href={`/school-admin/students/${student.id}/edit` as any}>

@@ -21,6 +21,14 @@ import {
 import { usePermissions } from '@/hooks/use-permissions'
 import { LiveSearch } from '@/components/live-search'
 import { StudentQrPickerButton } from '@/components/student-qr-picker-button'
+import {
+    clearOfflineDraft,
+    enqueueOfflineTransaction,
+    listOfflineTransactions,
+    readOfflineDraft,
+    removeOfflineTransaction,
+    writeOfflineDraft,
+} from '@/lib/offline/transaction-queue'
 
 type PaymentMode = InventorySaleInput['paymentMode']
 
@@ -44,6 +52,23 @@ interface CartLine {
 type Stage = 'start' | 'shop' | 'pay'
 type SearchMode = 'set' | 'item'
 
+interface OfflineInventorySalePayload {
+    schoolId: string
+    input: InventorySaleInput
+}
+
+interface PosDraft {
+    stage: Stage
+    searchMode: SearchMode
+    selectedClassId: string
+    catalog: CatalogItem[]
+    catalogLabel: string
+    cart: CartLine[]
+    student: PosStudent | null
+    guest: boolean
+    paymentMode: PaymentMode
+}
+
 const PAYMENT_MODES: PaymentMode[] = ['cash', 'upi', 'card', 'online']
 
 export default function POSPage() {
@@ -52,11 +77,15 @@ export default function POSPage() {
     const canSell = usePermissions().can('inventory.manage')
     const qrHandledStudentIdRef = useRef<string | null>(null)
     const restoredSnapshotRef = useRef(false)
+    const draftRestoredRef = useRef(false)
 
     const [stage, setStage] = useState<Stage>('start')
     const [searchMode, setSearchMode] = useState<SearchMode>('set')
     const [busy, setBusy] = useState(false)
     const [processing, setProcessing] = useState(false)
+    const [isOffline, setIsOffline] = useState(false)
+    const [pendingSyncCount, setPendingSyncCount] = useState(0)
+    const [syncingQueued, setSyncingQueued] = useState(false)
 
     // Reference data
     const [classes, setClasses] = useState<PosClass[]>([])
@@ -73,6 +102,7 @@ export default function POSPage() {
     const [student, setStudent] = useState<PosStudent | null>(null)
     const [guest, setGuest] = useState(false)
     const [paymentMode, setPaymentMode] = useState<PaymentMode>('cash')
+    const draftKey = school?.id ? `inventory-pos:draft:${school.id}` : null
 
     const [successBill, setSuccessBill] = useState<{
         billNumber: string
@@ -87,6 +117,74 @@ export default function POSPage() {
         if (!school?.id) return
         getPosClasses(school.id).then(setClasses).catch(() => {})
     }, [school?.id])
+
+    const resetPosState = useCallback(() => {
+        setSuccessBill(null)
+        setStage('start')
+        setSearchMode('set')
+        setSelectedClassId('')
+        setCatalog([])
+        setCatalogLabel('')
+        setCart([])
+        setStudent(null)
+        setGuest(false)
+        setPaymentMode('cash')
+        if (draftKey) clearOfflineDraft(draftKey)
+    }, [draftKey])
+
+    const refreshPendingSyncCount = useCallback(async () => {
+        try {
+            const queued = await listOfflineTransactions<OfflineInventorySalePayload>('inventory-sale')
+            setPendingSyncCount(queued.filter((item) => item.payload.schoolId === school?.id).length)
+        } catch {
+            setPendingSyncCount(0)
+        }
+    }, [school?.id])
+
+    const flushOfflineQueue = useCallback(async () => {
+        if (!school?.id || !navigator.onLine || syncingQueued) return
+
+        setSyncingQueued(true)
+        let synced = 0
+        try {
+            const queued = await listOfflineTransactions<OfflineInventorySalePayload>('inventory-sale')
+            const salesQueue = queued.filter((item) => item.payload.schoolId === school.id)
+            for (const item of salesQueue) {
+                await createInventorySale(item.payload.schoolId, item.payload.input)
+                await removeOfflineTransaction(item.id)
+                synced += 1
+            }
+            if (synced > 0) {
+                toast.success(`Synced ${synced} queued POS sale${synced > 1 ? 's' : ''}.`)
+            }
+        } catch (error) {
+            toast.error(`Offline POS sync paused: ${getErrorMessage(error)}`)
+        } finally {
+            setSyncingQueued(false)
+            void refreshPendingSyncCount()
+        }
+    }, [refreshPendingSyncCount, school?.id, syncingQueued])
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+
+        const syncOnlineState = () => setIsOffline(!window.navigator.onLine)
+        syncOnlineState()
+        void refreshPendingSyncCount()
+        if (window.navigator.onLine) {
+            void flushOfflineQueue()
+        }
+
+        window.addEventListener('online', syncOnlineState)
+        window.addEventListener('offline', syncOnlineState)
+        window.addEventListener('online', flushOfflineQueue)
+
+        return () => {
+            window.removeEventListener('online', syncOnlineState)
+            window.removeEventListener('offline', syncOnlineState)
+            window.removeEventListener('online', flushOfflineQueue)
+        }
+    }, [flushOfflineQueue, refreshPendingSyncCount])
 
     useEffect(() => {
         if (restoredSnapshotRef.current) return
@@ -128,6 +226,46 @@ export default function POSPage() {
             window.sessionStorage.removeItem('pos.qr.snapshot')
         }
     }, [searchParams])
+
+    useEffect(() => {
+        if (!draftKey || draftRestoredRef.current || successBill) return
+        const draft = readOfflineDraft<PosDraft>(draftKey)
+        if (!draft) {
+            draftRestoredRef.current = true
+            return
+        }
+
+        setStage(draft.stage)
+        setSearchMode(draft.searchMode)
+        setSelectedClassId(draft.selectedClassId)
+        setCatalog(draft.catalog)
+        setCatalogLabel(draft.catalogLabel)
+        setCart(draft.cart)
+        setStudent(draft.student)
+        setGuest(draft.guest)
+        setPaymentMode(draft.paymentMode)
+        draftRestoredRef.current = true
+    }, [draftKey, successBill])
+
+    useEffect(() => {
+        if (!draftKey) return
+        if (successBill || (stage === 'start' && cart.length === 0 && !student && !guest)) {
+            clearOfflineDraft(draftKey)
+            return
+        }
+
+        writeOfflineDraft<PosDraft>(draftKey, {
+            stage,
+            searchMode,
+            selectedClassId,
+            catalog,
+            catalogLabel,
+            cart,
+            student,
+            guest,
+            paymentMode,
+        })
+    }, [draftKey, stage, searchMode, selectedClassId, catalog, catalogLabel, cart, student, guest, paymentMode, successBill])
 
     const savePosSnapshotBeforeQr = useCallback(() => {
         if (typeof window === 'undefined') return
@@ -315,13 +453,30 @@ export default function POSPage() {
             toast.error('Select a student or choose guest billing.')
             return
         }
+
+        const payload: InventorySaleInput = {
+            studentId: student?.id ?? null,
+            paymentMode,
+            items: cart.map(l => ({ itemId: l.itemId, quantity: l.quantity, unitPrice: l.unitPrice })),
+        }
+
+        if (typeof window !== 'undefined' && !window.navigator.onLine) {
+            try {
+                await enqueueOfflineTransaction<OfflineInventorySalePayload>('inventory-sale', {
+                    schoolId: school.id,
+                    input: payload,
+                })
+                toast.success('Sale saved offline. It will sync automatically when the connection returns.')
+                await refreshPendingSyncCount()
+                resetPosState()
+            } catch (error) {
+                toast.error(`Unable to queue offline sale: ${getErrorMessage(error)}`)
+            }
+            return
+        }
+
         setProcessing(true)
         try {
-            const payload: InventorySaleInput = {
-                studentId: student?.id ?? null,
-                paymentMode,
-                items: cart.map(l => ({ itemId: l.itemId, quantity: l.quantity, unitPrice: l.unitPrice })),
-            }
             const result = await createInventorySale(school.id, payload)
             setSuccessBill({
                 billNumber: result.billNumber,
@@ -331,6 +486,7 @@ export default function POSPage() {
                 paymentMode,
                 date: new Date().toLocaleDateString(),
             })
+            if (draftKey) clearOfflineDraft(draftKey)
             toast.success('Sale completed.')
         } catch (e) {
             toast.error('Checkout failed: ' + getErrorMessage(e))
@@ -339,15 +495,33 @@ export default function POSPage() {
         }
     }
 
-    const resetAll = () => {
-        setSuccessBill(null)
-        setStage('start')
-        setSearchMode('set')
-        setSelectedClassId('')
-        setCatalog([]); setCatalogLabel(''); setCart([])
-        setStudent(null); setGuest(false)
-        setPaymentMode('cash')
-    }
+    const resetAll = resetPosState
+
+    const syncBanner = (
+        <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-zinc-300">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <p className="font-medium text-white">{isOffline ? 'Offline buffering active' : 'Offline-safe POS enabled'}</p>
+                    <p className="text-xs text-zinc-500">
+                        {isOffline
+                            ? 'Sales are being queued locally in this browser until the network returns.'
+                            : pendingSyncCount > 0
+                                ? `${pendingSyncCount} queued sale${pendingSyncCount > 1 ? 's are' : ' is'} waiting to sync.`
+                                : 'Cart progress is saved locally and queued sales will replay automatically on reconnect.'}
+                    </p>
+                </div>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-white/10 bg-white/5 text-zinc-200 hover:bg-white/10 hover:text-white"
+                    disabled={isOffline || syncingQueued || pendingSyncCount === 0}
+                    onClick={() => void flushOfflineQueue()}
+                >
+                    {syncingQueued ? 'Syncing…' : pendingSyncCount > 0 ? `Sync pending (${pendingSyncCount})` : 'All synced'}
+                </Button>
+            </div>
+        </div>
+    )
 
     // ── Receipt ───────────────────────────────────────────────────────────────
     if (successBill) {
@@ -431,6 +605,7 @@ export default function POSPage() {
                 </div>
 
                 <div className="relative z-10 w-full max-w-xl space-y-8">
+                    {syncBanner}
                     <div className="text-center relative">
                         <Link href={"/manager/inventory" as never}>
                             <Button variant="ghost" size="sm" className="absolute -top-6 -left-4 gap-1 text-muted-foreground"><ArrowLeft className="w-4 h-4" /> Back</Button>
@@ -548,6 +723,7 @@ export default function POSPage() {
     // ── Stage: SHOP / PAY (catalog + cart) ────────────────────────────────────
     return (
         <div className="h-[calc(100vh-6rem)] flex flex-col space-y-4">
+            {syncBanner}
             <div className="flex items-center justify-between gap-4 flex-none">
                 {header}
                 <Button variant="ghost" size="sm" onClick={resetAll}>

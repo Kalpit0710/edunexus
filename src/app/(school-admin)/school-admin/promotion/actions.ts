@@ -3,6 +3,7 @@
 import { createClient as createServerSupabaseClient } from '@/lib/supabase/server'
 import { requireActor } from '@/lib/auth/require-actor'
 import { logAudit } from '@/lib/audit'
+import { ensureRateLimit } from '@/lib/rate-limit'
 import { validatePromotionMapping, type PromotionClass, type PromotionMapping } from '@/lib/promotion-utils'
 
 export interface PromotionClassRow extends PromotionClass {
@@ -98,6 +99,13 @@ export async function promoteStudents(input: PromoteStudentsInput): Promise<Prom
   if (input.confirm !== 'PROMOTE') {
     throw new Error('Please type PROMOTE to confirm.')
   }
+
+  await ensureRateLimit(`${actor.id}:${input.schoolId}`, {
+    name: 'promote-students',
+    limit: 2,
+    windowSeconds: 300,
+    message: 'Promotion was triggered too recently. Please wait a few minutes before retrying.',
+  })
 
   // Validate the mapping against the live class list.
   const { data: classRows, error: classErr } = await supabase

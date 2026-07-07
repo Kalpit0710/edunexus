@@ -59,6 +59,22 @@ export async function checkRateLimit(
   return { success: res.success, remaining: res.remaining, limit: res.limit, reset: res.reset }
 }
 
+export async function ensureRateLimit(
+  identifier: string,
+  options: {
+    name: string
+    limit?: number
+    windowSeconds?: number
+    message?: string
+  },
+): Promise<RateLimitResult> {
+  const result = await checkRateLimit(identifier, options)
+  if (!result.success) {
+    throw new Error(options.message ?? 'Too many requests. Please wait a moment and try again.')
+  }
+  return result
+}
+
 /** Best-effort client IP from common proxy headers. */
 export function getClientIp(request: Request): string {
   const fwd = request.headers.get('x-forwarded-for')

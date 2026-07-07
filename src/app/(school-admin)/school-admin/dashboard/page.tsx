@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/utils'
+import { schoolToday } from '@/lib/date-utils'
 import { DataLoadError } from '@/components/shared/DataLoadError'
 import { getDashboardStats, getWeeklyCollectionTrend, type DashboardStats } from './actions'
 import { Button } from '@/components/ui/button'
@@ -33,7 +34,7 @@ export default function SchoolAdminDashboardPage() {
 
   const loadDashboard = useCallback(async () => {
     if (!school?.id) return
-    const today = new Date().toISOString().split('T')[0]!
+    const today = schoolToday(school?.timezone)
     setLoading(true)
     setTrendLoading(true)
     setError(null)
@@ -52,7 +53,7 @@ export default function SchoolAdminDashboardPage() {
     }
     setLoading(false)
     setTrendLoading(false)
-  }, [school?.id])
+  }, [school?.id, school?.timezone])
 
   useEffect(() => {
     loadDashboard()
@@ -89,7 +90,12 @@ export default function SchoolAdminDashboardPage() {
             <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-blue-500/20 bg-blue-600/10 px-3 py-1">
               <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
               <span className="text-xs font-medium text-blue-300 uppercase tracking-wider">
-                {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
+                {new Intl.DateTimeFormat('en-IN', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'long',
+                  timeZone: school?.timezone || undefined,
+                }).format(new Date())}
               </span>
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-white">

@@ -1,5 +1,6 @@
 'use server'
 
+import { unstable_cache } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import {
     calcStandardSubjectResult,
@@ -74,7 +75,7 @@ export interface ExamAnalyticsSummary {
     classComparison: ClassComparisonPoint[]
 }
 
-export async function getAttendanceSummaryByClass(
+async function getAttendanceSummaryByClassUncached(
     schoolId: string,
     month: number,
     year: number,
@@ -136,7 +137,19 @@ export async function getAttendanceSummaryByClass(
     return results
 }
 
-export async function getFeeCollectionSummary(
+const getAttendanceSummaryByClassCached = unstable_cache(getAttendanceSummaryByClassUncached, ['reports-attendance-summary'], {
+    revalidate: 120,
+})
+
+export async function getAttendanceSummaryByClass(
+    schoolId: string,
+    month: number,
+    year: number,
+): Promise<ClassAttendanceSummary[]> {
+    return getAttendanceSummaryByClassCached(schoolId, month, year)
+}
+
+async function getFeeCollectionSummaryUncached(
     schoolId: string,
 ): Promise<FeeCollectionSummary> {
     const supabase = await createClient()
@@ -180,6 +193,16 @@ export async function getFeeCollectionSummary(
     return { totalFee, totalCollected, totalOutstanding, collectionPercentage }
 }
 
+const getFeeCollectionSummaryCached = unstable_cache(getFeeCollectionSummaryUncached, ['reports-fee-collection-summary'], {
+    revalidate: 120,
+})
+
+export async function getFeeCollectionSummary(
+    schoolId: string,
+): Promise<FeeCollectionSummary> {
+    return getFeeCollectionSummaryCached(schoolId)
+}
+
 export async function getStudentEnrollmentStats(schoolId: string): Promise<EnrollmentStat[]> {
     const supabase = await createClient()
 
@@ -212,7 +235,7 @@ export async function getStudentEnrollmentStats(schoolId: string): Promise<Enrol
     return results
 }
 
-export async function getWeeklyCollectionTrend(
+async function getWeeklyCollectionTrendUncached(
     schoolId: string,
 ): Promise<{ date: string; amount: number }[]> {
     const supabase = await createClient()
@@ -236,7 +259,17 @@ export async function getWeeklyCollectionTrend(
     return days
 }
 
-export async function getFeeMomentumSummary(
+const getWeeklyCollectionTrendCached = unstable_cache(getWeeklyCollectionTrendUncached, ['reports-weekly-collection-trend'], {
+    revalidate: 120,
+})
+
+export async function getWeeklyCollectionTrend(
+    schoolId: string,
+): Promise<{ date: string; amount: number }[]> {
+    return getWeeklyCollectionTrendCached(schoolId)
+}
+
+async function getFeeMomentumSummaryUncached(
     schoolId: string,
 ): Promise<FeeMomentumSummary> {
     const supabase = await createClient()
@@ -276,9 +309,19 @@ export async function getFeeMomentumSummary(
     }
 }
 
+const getFeeMomentumSummaryCached = unstable_cache(getFeeMomentumSummaryUncached, ['reports-fee-momentum-summary'], {
+    revalidate: 120,
+})
+
+export async function getFeeMomentumSummary(
+    schoolId: string,
+): Promise<FeeMomentumSummary> {
+    return getFeeMomentumSummaryCached(schoolId)
+}
+
 const PASS_PERCENTAGE = 33
 
-export async function getExamAnalyticsSummary(
+async function getExamAnalyticsSummaryUncached(
     schoolId: string,
 ): Promise<ExamAnalyticsSummary> {
     const supabase = await createClient()
@@ -394,4 +437,14 @@ export async function getExamAnalyticsSummary(
         .slice(0, 8)
 
     return { passRateTrend, subjectDifficulty, classComparison }
+}
+
+const getExamAnalyticsSummaryCached = unstable_cache(getExamAnalyticsSummaryUncached, ['reports-exam-analytics-summary'], {
+    revalidate: 120,
+})
+
+export async function getExamAnalyticsSummary(
+    schoolId: string,
+): Promise<ExamAnalyticsSummary> {
+    return getExamAnalyticsSummaryCached(schoolId)
 }

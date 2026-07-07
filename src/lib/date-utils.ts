@@ -16,13 +16,25 @@
  */
 export const DEFAULT_TIMEZONE = process.env.NEXT_PUBLIC_DEFAULT_TIMEZONE || 'Asia/Kolkata'
 
+export function resolveTimeZone(timeZone?: string | null): string {
+  if (!timeZone?.trim()) return DEFAULT_TIMEZONE
+
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone }).format(new Date())
+    return timeZone
+  } catch {
+    return DEFAULT_TIMEZONE
+  }
+}
+
 /**
  * The calendar date (`YYYY-MM-DD`) of `instant` as seen in `timeZone`.
  * Uses the `en-CA` locale, which formats dates as ISO `YYYY-MM-DD`.
  */
 export function localDateISO(instant: Date = new Date(), timeZone: string = DEFAULT_TIMEZONE): string {
+  const safeTimeZone = resolveTimeZone(timeZone)
   return new Intl.DateTimeFormat('en-CA', {
-    timeZone,
+    timeZone: safeTimeZone,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

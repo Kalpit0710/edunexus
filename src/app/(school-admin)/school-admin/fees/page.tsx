@@ -28,10 +28,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/utils'
-import { Plus, Trash2, Power, CircleDollarSign, RotateCcw, Mail } from 'lucide-react'
+import { Plus, Trash2, Power, CircleDollarSign, RotateCcw, Mail, MessageSquare } from 'lucide-react'
 import Link from 'next/link'
 import { Spinner } from '@/components/ui/spinner'
 import { Skeleton } from '@/components/ui/skeleton'
+import type { NotificationChannel } from '@/lib/notifications'
 
 export default function FeesPage() {
   const { school } = useAuthStore()
@@ -64,13 +65,13 @@ export default function FeesPage() {
   const [addingStruct, setAddingStruct] = useState(false)
 
   // Fee reminders
-  const [sendingReminders, setSendingReminders] = useState(false)
+  const [sendingReminderChannel, setSendingReminderChannel] = useState<NotificationChannel | null>(null)
 
-  const handleSendReminders = async () => {
+  const handleSendReminders = async (channel: Extract<NotificationChannel, 'email' | 'whatsapp'>) => {
     if (!school?.id) return
-    setSendingReminders(true)
+    setSendingReminderChannel(channel)
     try {
-      const res = await sendFeeRemindersNow(school.id)
+      const res = await sendFeeRemindersNow(school.id, [channel])
       if (!res.success) {
         toast.error(res.error ?? 'Could not send reminders.')
         return
@@ -79,7 +80,7 @@ export default function FeesPage() {
         toast.success('No outstanding fees — nothing to remind.')
       } else {
         toast.success(
-          `Reminders sent: ${res.sent}` +
+          `${channel === 'email' ? 'Email' : 'WhatsApp'} reminders sent: ${res.sent}` +
             (res.skipped ? ` · ${res.skipped} skipped (no parent email)` : '') +
             (res.failed ? ` · ${res.failed} failed` : ''),
         )
@@ -87,7 +88,7 @@ export default function FeesPage() {
     } catch (e) {
       toast.error(getErrorMessage(e))
     } finally {
-      setSendingReminders(false)
+      setSendingReminderChannel(null)
     }
   }
 
@@ -197,11 +198,19 @@ export default function FeesPage() {
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            disabled={!canCollect || sendingReminders}
-            onClick={handleSendReminders}
+            disabled={!canCollect || sendingReminderChannel !== null}
+            onClick={() => void handleSendReminders('email')}
           >
             <Mail className="mr-2 h-4 w-4" />
-            {sendingReminders ? 'Sending…' : 'Send Reminders'}
+            {sendingReminderChannel === 'email' ? 'Sending…' : 'Email Reminders'}
+          </Button>
+          <Button
+            variant="outline"
+            disabled={!canCollect || sendingReminderChannel !== null}
+            onClick={() => void handleSendReminders('whatsapp')}
+          >
+            <MessageSquare className="mr-2 h-4 w-4" />
+            {sendingReminderChannel === 'whatsapp' ? 'Sending…' : 'WhatsApp Reminders'}
           </Button>
           <Link href={"/school-admin/fees/collect" as any}>
             <Button disabled={!canCollect}>

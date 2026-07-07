@@ -238,16 +238,28 @@ function StudentsTab({
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
-        <Link
-          href={
-            `/report-card/class/${classId}/print${sectionId ? `?section=${sectionId}` : ''}` as never
-          }
-          target="_blank"
-        >
-          <Button variant="outline" size="sm">
-            <Printer className="mr-1.5 h-3.5 w-3.5" /> Print all report cards
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            href={
+              `/api/report-cards/class/${classId}/archive${sectionId ? `?section=${sectionId}` : ''}` as never
+            }
+            target="_blank"
+          >
+            <Button variant="outline" size="sm">
+              <Printer className="mr-1.5 h-3.5 w-3.5" /> Download ZIP PDFs
+            </Button>
+          </Link>
+          <Link
+            href={
+              `/report-card/class/${classId}/print${sectionId ? `?section=${sectionId}` : ''}` as never
+            }
+            target="_blank"
+          >
+            <Button variant="outline" size="sm">
+              <Printer className="mr-1.5 h-3.5 w-3.5" /> Print all report cards
+            </Button>
+          </Link>
+        </div>
       </div>
       <div className="overflow-x-auto rounded-xl border border-white/10">
         <table className="w-full border-collapse text-sm">

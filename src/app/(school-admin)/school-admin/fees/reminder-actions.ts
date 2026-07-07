@@ -14,7 +14,7 @@
  * (Part 6) — switch `channel: 'email'` to fan out, no other change needed.
  */
 import { createAdminClient, createClient } from '@/lib/supabase/server'
-import { notify } from '@/lib/notifications'
+import { notify, type NotificationChannel } from '@/lib/notifications'
 import { FeeReminderEmail } from '@/emails/FeeReminderEmail'
 import {
   pickReminderRecipient,
@@ -31,11 +31,28 @@ interface PendingFeeRow {
   balance: number
 }
 
+interface ReminderParentContact extends ReminderParent {
+  phone: string | null
+}
+
+function pickReminderPhoneRecipient(parents: ReminderParentContact[]): { name: string; phone: string } | null {
+  const primary = parents.find((parent) => parent.is_primary && parent.phone)
+  if (primary?.phone) {
+    return { name: primary.full_name || 'Parent', phone: primary.phone }
+  }
+
+  const fallback = parents.find((parent) => parent.phone)
+  return fallback?.phone ? { name: fallback.full_name || 'Parent', phone: fallback.phone } : null
+}
+
 /**
  * Build + send fee reminders for one school. Service-role (no session) so it is
  * safe to call from the cron. Callers from the UI must verify the user first.
  */
-async function sendSchoolFeeReminders(schoolId: string): Promise<ReminderRunResult> {
+async function sendSchoolFeeReminders(
+  schoolId: string,
+  channels: NotificationChannel[] = ['email'],
+): Promise<ReminderRunResult> {
   const admin = await createAdminClient()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = admin as any
@@ -53,42 +70,61 @@ async function sendSchoolFeeReminders(schoolId: string): Promise<ReminderRunResu
   const studentIds = pending.map((p) => p.student_id)
   const { data: parentRows } = await db
     .from('parents')
-    .select('student_id, full_name, email, is_primary')
+    .select('student_id, full_name, email, phone, is_primary')
     .eq('school_id', schoolId)
     .in('student_id', studentIds)
 
-  const parentsByStudent = new Map<string, ReminderParent[]>()
+  const parentsByStudent = new Map<string, ReminderParentContact[]>()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const r of (parentRows ?? []) as any[]) {
     const list = parentsByStudent.get(r.student_id) ?? []
-    list.push({ full_name: r.full_name, email: r.email, is_primary: r.is_primary })
+    list.push({ full_name: r.full_name, email: r.email, phone: r.phone, is_primary: r.is_primary })
     parentsByStudent.set(r.student_id, list)
   }
 
   const outcomes: { success: boolean; skipped?: boolean }[] = []
   for (const row of pending) {
-    const recipient = pickReminderRecipient(parentsByStudent.get(row.student_id) ?? [])
-    if (!recipient) {
-      // No parent email on file — nothing to send, count as skipped.
-      outcomes.push({ success: false, skipped: true })
-      continue
+    const parents = parentsByStudent.get(row.student_id) ?? []
+
+    if (channels.includes('email')) {
+      const recipient = pickReminderRecipient(parents)
+      if (!recipient) {
+        outcomes.push({ success: false, skipped: true })
+      } else {
+        const result = await notify({
+          channel: 'email',
+          to: recipient.email,
+          subject: `Fee reminder — ${row.student_name} (${schoolName})`,
+          react: FeeReminderEmail({
+            parentName: recipient.name,
+            studentName: row.student_name,
+            schoolName,
+            feeName: 'Total Outstanding Fees',
+            amountDue: formatReminderAmount(Number(row.balance), symbol),
+            dueDate: 'At your earliest convenience',
+          }),
+          schoolId,
+          event: 'fee_reminder',
+        })
+        outcomes.push({ success: result.success, skipped: result.skipped })
+      }
     }
-    const result = await notify({
-      channel: 'email',
-      to: recipient.email,
-      subject: `Fee reminder — ${row.student_name} (${schoolName})`,
-      react: FeeReminderEmail({
-        parentName: recipient.name,
-        studentName: row.student_name,
-        schoolName,
-        feeName: 'Total Outstanding Fees',
-        amountDue: formatReminderAmount(Number(row.balance), symbol),
-        dueDate: 'At your earliest convenience',
-      }),
-      schoolId,
-      event: 'fee_reminder',
-    })
-    outcomes.push({ success: result.success, skipped: result.skipped })
+
+    if (channels.includes('whatsapp')) {
+      const recipient = pickReminderPhoneRecipient(parents)
+      if (!recipient) {
+        outcomes.push({ success: false, skipped: true })
+      } else {
+        const result = await notify({
+          channel: 'whatsapp',
+          to: recipient.phone,
+          body: `${schoolName}: ${row.student_name} has an outstanding balance of ${formatReminderAmount(Number(row.balance), symbol)}. Please clear it at your earliest convenience.`,
+          schoolId,
+          event: 'fee_reminder',
+        })
+        outcomes.push({ success: result.success, skipped: result.skipped })
+      }
+    }
   }
 
   return summarizeReminderRun(outcomes)
@@ -127,9 +163,19 @@ export interface SendRemindersResult extends ReminderRunResult {
  * On-demand fee reminders for the school-admin dashboard (verifies the caller).
  * Emails every current defaulter's parent and returns a run summary.
  */
-export async function sendFeeRemindersNow(schoolId: string): Promise<SendRemindersResult> {
+import { ensureRateLimit } from '@/lib/rate-limit'
+export async function sendFeeRemindersNow(
+  schoolId: string,
+  channels: NotificationChannel[] = ['email'],
+): Promise<SendRemindersResult> {
+  let authUserId: string | null = null
   try {
     await requireSchoolAdmin(schoolId)
+    const session = await createClient()
+    const {
+      data: { user },
+    } = await session.auth.getUser()
+    authUserId = user?.id ?? null
   } catch (err) {
     return {
       success: false,
@@ -141,7 +187,15 @@ export async function sendFeeRemindersNow(schoolId: string): Promise<SendReminde
   }
 
   try {
-    const summary = await sendSchoolFeeReminders(schoolId)
+    if (authUserId) {
+      await ensureRateLimit(`${authUserId}:${schoolId}`, {
+        name: 'fee-reminders',
+        limit: 3,
+        windowSeconds: 600,
+        message: 'Fee reminders were sent recently. Please wait a few minutes before sending again.',
+      })
+    }
+    const summary = await sendSchoolFeeReminders(schoolId, channels)
     return { success: true, ...summary }
   } catch (err) {
     return {
@@ -180,7 +234,7 @@ export async function dispatchAllFeeReminders(): Promise<{
   let failed = 0
 
   for (const school of schoolRows) {
-    const summary = await sendSchoolFeeReminders(school.id)
+    const summary = await sendSchoolFeeReminders(school.id, ['email'])
     sent += summary.sent
     skipped += summary.skipped
     failed += summary.failed
