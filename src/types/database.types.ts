@@ -1032,6 +1032,7 @@ export type Database = {
       inventory_sales: {
         Row: {
           bill_number: string
+          client_reference: string | null
           created_at: string
           id: string
           payment_mode: Database["public"]["Enums"]["payment_mode"]
@@ -1043,6 +1044,7 @@ export type Database = {
         }
         Insert: {
           bill_number: string
+          client_reference?: string | null
           created_at?: string
           id?: string
           payment_mode: Database["public"]["Enums"]["payment_mode"]
@@ -1054,6 +1056,7 @@ export type Database = {
         }
         Update: {
           bill_number?: string
+          client_reference?: string | null
           created_at?: string
           id?: string
           payment_mode?: Database["public"]["Enums"]["payment_mode"]
@@ -2581,6 +2584,7 @@ export type Database = {
       }
       create_inventory_sale: {
         Args: {
+          p_client_reference?: string
           p_items: Json
           p_payment_mode: Database["public"]["Enums"]["payment_mode"]
           p_school_id: string

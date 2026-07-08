@@ -24,6 +24,17 @@ import { ArrowLeft, Download, Upload, CheckCircle, XCircle, AlertCircle } from '
 import Link from 'next/link'
 import * as XLSX from 'xlsx'
 
+type ClassOption = {
+    id: string
+    name: string
+}
+
+type SectionOption = {
+    id: string
+    name: string
+    class_id: string
+}
+
 type RowStatus = 'ok' | 'unknown_student' | 'bad_status'
 
 interface ParsedRow {
@@ -41,8 +52,8 @@ export default function AttendanceImportPage() {
     const { school, user } = useAuthStore()
     const fileRef = useRef<HTMLInputElement>(null)
 
-    const [classes, setClasses] = useState<any[]>([])
-    const [sections, setSections] = useState<any[]>([])
+    const [classes, setClasses] = useState<ClassOption[]>([])
+    const [sections, setSections] = useState<SectionOption[]>([])
     const [selClass, setSelClass] = useState('')
     const [selSection, setSelSection] = useState('')
     const [date, setDate] = useState(schoolToday())
@@ -54,7 +65,10 @@ export default function AttendanceImportPage() {
     useEffect(() => {
         if (!school?.id) return
         Promise.all([getClasses(school.id), getSections(school.id)])
-            .then(([cls, sec]) => { setClasses(cls); setSections(sec) })
+            .then(([cls, sec]) => {
+                setClasses((cls ?? []) as ClassOption[])
+                setSections((sec ?? []) as SectionOption[])
+            })
             .catch((e) => toast.error(getErrorMessage(e)))
     }, [school?.id])
 
@@ -85,7 +99,7 @@ export default function AttendanceImportPage() {
             const buffer = await file.arrayBuffer()
             const wb = XLSX.read(buffer, { type: 'array' })
             const ws = wb.Sheets[wb.SheetNames[0]!]!
-            const data = XLSX.utils.sheet_to_json<any>(ws)
+            const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws)
 
             if (data.length === 0) {
                 toast.error('The file appears to be empty.')
@@ -93,7 +107,7 @@ export default function AttendanceImportPage() {
             }
 
             // Check required columns
-            const firstRow = data[0]
+            const firstRow = data[0] ?? {}
             if (!('admission_number' in firstRow) || !('status' in firstRow)) {
                 toast.error('File must have columns: admission_number, status, remarks')
                 return
@@ -103,7 +117,7 @@ export default function AttendanceImportPage() {
             const students = await getStudentsForAttendance(school.id, selClass, selSection, date)
             const admMap = new Map(students.map(s => [s.admission_number?.toLowerCase(), s]))
 
-            const rows: ParsedRow[] = data.map((row: any) => {
+            const rows: ParsedRow[] = data.map((row) => {
                 const admNo = String(row.admission_number ?? '').trim()
                 const statusRaw = String(row.status ?? '').trim().toLowerCase().replace(' ', '_')
                 const remarks = String(row.remarks ?? '').trim()
@@ -165,7 +179,7 @@ export default function AttendanceImportPage() {
 
     return (
         <div className="max-w-4xl mx-auto space-y-6">
-            <Link href={'/school-admin/attendance' as any}>
+            <Link href="/school-admin/attendance">
                 <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground">
                     <ArrowLeft className="h-4 w-4" />
                     Back to Daily Attendance

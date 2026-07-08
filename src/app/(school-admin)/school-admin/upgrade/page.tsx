@@ -14,7 +14,6 @@ import {
   SUBSCRIPTION_PLANS,
   formatInr,
   type PlanPriceMap,
-  type SubscriptionPlan,
 } from '@/lib/subscription'
 import {
   FEATURE_LABEL,

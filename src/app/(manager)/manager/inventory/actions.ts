@@ -51,6 +51,7 @@ export interface InventoryItemInput {
 
 export interface InventorySaleInput {
   studentId?: string | null
+  clientReference?: string | null
   paymentMode: 'cash' | 'cheque' | 'upi' | 'neft' | 'card' | 'online'
   soldByProfileId?: string
   items: Array<{
@@ -510,6 +511,7 @@ export async function createInventorySale(
   const saleRpcArgs: {
     p_school_id: string
     p_student_id?: string
+    p_client_reference?: string
     p_items: Array<{ item_id: string; quantity: number; unit_price: number | null }>
     p_payment_mode: InventorySaleInput['paymentMode']
     p_sold_by?: string
@@ -519,6 +521,7 @@ export async function createInventorySale(
     p_payment_mode: input.paymentMode,
   }
   if (input.studentId) saleRpcArgs.p_student_id = input.studentId
+  if (input.clientReference?.trim()) saleRpcArgs.p_client_reference = input.clientReference.trim()
   if (actorProfileId) saleRpcArgs.p_sold_by = actorProfileId
 
   const { data, error } = await supabase.rpc('create_inventory_sale', saleRpcArgs)

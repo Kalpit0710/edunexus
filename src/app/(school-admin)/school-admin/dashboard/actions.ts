@@ -5,7 +5,7 @@ import { createClient as getSupabase } from '@/lib/supabase/server'
 import type { Database } from '@/types/database.types'
 
 type PaymentAmountRow = Pick<Database['public']['Tables']['fee_payments']['Row'], 'paid_amount'>
-type FeeStructureAmountRow = Pick<Database['public']['Tables']['fee_structures']['Row'], 'amount'>
+type PendingFeeRpcRow = Database['public']['Functions']['get_pending_fees']['Returns'][number]
 
 export interface DashboardStats {
   totalStudents: number
@@ -53,27 +53,12 @@ async function getDashboardStatsUncached(
   const totalMarked = totalMarkedRes.count ?? 0
   const todayAttendancePct = totalMarked > 0 ? Math.round((presentCount / totalMarked) * 100) : 0
 
-  // Pending fees calculation
-  const paymentsRes = await supabase.from('fee_payments').select('paid_amount').eq('school_id', schoolId)
-  const totalPaid = (paymentsRes.data as PaymentAmountRow[] | null ?? []).reduce(
-    (sum, row) => sum + Number(row.paid_amount ?? 0),
+  const pendingRes = await supabase.rpc('get_pending_fees', { p_school_id: schoolId })
+  if (pendingRes.error) throw new Error(pendingRes.error.message)
+  const totalPendingFees = ((pendingRes.data ?? []) as PendingFeeRpcRow[]).reduce(
+    (sum, row) => sum + Number(row.balance ?? 0),
     0,
   )
-  const yearRes = await supabase.from('academic_years').select('id').eq('school_id', schoolId).eq('is_current', true).single()
-  let totalFee = 0
-  if (yearRes.data?.id) {
-    const structRes = await supabase
-      .from('fee_structures')
-      .select('amount')
-      .eq('school_id', schoolId)
-      .eq('academic_year_id', yearRes.data.id)
-      .eq('is_active', true)
-    totalFee = (structRes.data as FeeStructureAmountRow[] | null ?? []).reduce(
-      (sum, row) => sum + Number(row.amount ?? 0),
-      0,
-    )
-  }
-  const totalPendingFees = Math.max(0, totalFee - totalPaid)
 
   return { totalStudents, activeTeachers, classCount, todayCollection, totalPendingFees, todayAttendancePct, needsOnboarding }
 }

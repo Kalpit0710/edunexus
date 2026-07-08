@@ -12,9 +12,12 @@ import { Plus, Search, ShoppingCart, Settings2, Package, Tag, Edit, AlertCircle,
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import Link from 'next/link'
+import type { Route } from 'next'
 import { isLowStock, type InventoryCategory } from '@/lib/inventory-utils'
 import { formatCurrency } from '@/lib/utils'
 import { TableSkeleton } from '@/components/loaders/page-loaders'
+
+type InventoryItem = Awaited<ReturnType<typeof getInventoryItems>>[number]
 
 const categories: { label: string, value: InventoryCategory }[] = [
     { label: 'Books', value: 'book' },
@@ -28,7 +31,7 @@ const categories: { label: string, value: InventoryCategory }[] = [
 export default function InventoryPage() {
     const { school } = useAuthStore()
     const canManage = usePermissions().can('inventory.manage')
-    const [items, setItems] = useState<any[]>([])
+    const [items, setItems] = useState<InventoryItem[]>([])
     const [loading, setLoading] = useState(true)
 
     // Filters
@@ -90,25 +93,25 @@ export default function InventoryPage() {
                     <p className="text-muted-foreground">Manage products, stock levels, and POS sales.</p>
                 </div>
                 <div className="flex gap-2 flex-wrap">
-                    <Link href={"/manager/inventory/stock" as any}>
+                    <Link href="/manager/inventory/stock">
                         <Button variant="outline" className="shadow-soft hover:scale-105 transition-transform">
                             <Settings2 className="w-4 h-4 mr-2" /> Adjust Stock
                         </Button>
                     </Link>
-                    <Link href={"/manager/inventory/pos" as any}>
+                    <Link href="/manager/inventory/pos">
                         <Button variant="outline" className="shadow-soft border-primary text-primary hover:bg-primary/10 hover:scale-105 transition-transform">
                             <ShoppingCart className="w-4 h-4 mr-2" /> POS Sale
                         </Button>
                     </Link>
                     {canManage && (
-                        <Link href={"/manager/inventory/import" as any}>
+                        <Link href="/manager/inventory/import">
                             <Button variant="outline" className="shadow-soft hover:scale-105 transition-transform">
                                 <Upload className="w-4 h-4 mr-2" /> Import
                             </Button>
                         </Link>
                     )}
                     {canManage && (
-                        <Link href={"/manager/inventory/new" as any}>
+                        <Link href="/manager/inventory/new">
                             <Button className="shadow-soft hover:scale-105 transition-transform">
                                 <Plus className="w-4 h-4 mr-2" /> Add Item
                             </Button>
@@ -178,7 +181,7 @@ export default function InventoryPage() {
                                 {items.length === 0 ? 'Add your first inventory item to get started.' : 'Try adjusting your search filters.'}
                             </p>
                             {items.length === 0 && canManage && (
-                                <Link href={"/manager/inventory/new" as any}>
+                                <Link href="/manager/inventory/new">
                                     <Button variant="outline"><Plus className="w-4 h-4 mr-2" /> Add Item</Button>
                                 </Link>
                             )}
@@ -238,7 +241,7 @@ export default function InventoryPage() {
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
-                                                    <Link href={`/manager/inventory/${item.id}/edit` as any}>
+                                                    <Link href={`/manager/inventory/${item.id}/edit` as Route}>
                                                         <Button variant="ghost" size="sm" className="h-8 text-muted-foreground hover:text-primary">
                                                             <Edit className="h-4 w-4 mr-2" /> Edit
                                                         </Button>

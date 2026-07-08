@@ -10,9 +10,10 @@ import { permissionSetAllows } from '@/lib/permissions'
  */
 export function usePermissions() {
   const permissions = useAuthStore((s) => s.permissions)
+  const effectivePermissions = Array.isArray(permissions) ? permissions : []
 
   return {
-    permissions,
-    can: (permission: string) => permissionSetAllows(permissions, permission),
+    permissions: effectivePermissions,
+    can: (permission: string) => permissionSetAllows(effectivePermissions, permission),
   }
 }

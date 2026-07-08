@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import type { Route } from 'next'
 import { usePathname, useRouter } from 'next/navigation'
 import { Home, CalendarCheck, BookOpen, BookText, CalendarRange, IndianRupee, Megaphone, Bus, CalendarDays, LogOut, GraduationCap, ChevronDown, Users } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth.store'
@@ -16,7 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn, getInitials } from '@/lib/utils'
 
-const navItems = [
+const navItems: Array<{ href: Route; label: string; icon: typeof Home }> = [
   { href: '/parent/today', label: 'Today', icon: Home },
   { href: '/parent/attendance', label: 'Attendance', icon: CalendarCheck },
   { href: '/parent/timetable', label: 'Timetable', icon: CalendarRange },
@@ -110,7 +111,7 @@ export function ParentSidebar() {
           return (
             <Link
               key={href}
-              href={href as any}
+              href={href}
               className={cn(
                 'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150',
                 active

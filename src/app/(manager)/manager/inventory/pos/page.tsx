@@ -22,6 +22,7 @@ import { usePermissions } from '@/hooks/use-permissions'
 import { LiveSearch } from '@/components/live-search'
 import { StudentQrPickerButton } from '@/components/student-qr-picker-button'
 import {
+    createClientReference,
     clearOfflineDraft,
     enqueueOfflineTransaction,
     listOfflineTransactions,
@@ -67,6 +68,15 @@ interface PosDraft {
     student: PosStudent | null
     guest: boolean
     paymentMode: PaymentMode
+    pendingSaleReference: string | null
+}
+
+type QueueSyncState = 'idle' | 'success' | 'error'
+
+interface QueueSyncResult {
+    state: QueueSyncState
+    message: string
+    at: string | null
 }
 
 const PAYMENT_MODES: PaymentMode[] = ['cash', 'upi', 'card', 'online']
@@ -86,6 +96,11 @@ export default function POSPage() {
     const [isOffline, setIsOffline] = useState(false)
     const [pendingSyncCount, setPendingSyncCount] = useState(0)
     const [syncingQueued, setSyncingQueued] = useState(false)
+    const [lastSyncResult, setLastSyncResult] = useState<QueueSyncResult>({
+        state: 'idle',
+        message: 'No sync attempts in this session yet.',
+        at: null,
+    })
 
     // Reference data
     const [classes, setClasses] = useState<PosClass[]>([])
@@ -102,6 +117,7 @@ export default function POSPage() {
     const [student, setStudent] = useState<PosStudent | null>(null)
     const [guest, setGuest] = useState(false)
     const [paymentMode, setPaymentMode] = useState<PaymentMode>('cash')
+    const [pendingSaleReference, setPendingSaleReference] = useState<string | null>(null)
     const draftKey = school?.id ? `inventory-pos:draft:${school.id}` : null
 
     const [successBill, setSuccessBill] = useState<{
@@ -129,6 +145,7 @@ export default function POSPage() {
         setStudent(null)
         setGuest(false)
         setPaymentMode('cash')
+        setPendingSaleReference(null)
         if (draftKey) clearOfflineDraft(draftKey)
     }, [draftKey])
 
@@ -155,9 +172,25 @@ export default function POSPage() {
                 synced += 1
             }
             if (synced > 0) {
+                setLastSyncResult({
+                    state: 'success',
+                    message: `Synced ${synced} queued POS sale${synced > 1 ? 's' : ''}.`,
+                    at: new Date().toLocaleTimeString('en-IN'),
+                })
                 toast.success(`Synced ${synced} queued POS sale${synced > 1 ? 's' : ''}.`)
+            } else {
+                setLastSyncResult({
+                    state: 'success',
+                    message: 'Queue is already up to date.',
+                    at: new Date().toLocaleTimeString('en-IN'),
+                })
             }
         } catch (error) {
+            setLastSyncResult({
+                state: 'error',
+                message: getErrorMessage(error),
+                at: new Date().toLocaleTimeString('en-IN'),
+            })
             toast.error(`Offline POS sync paused: ${getErrorMessage(error)}`)
         } finally {
             setSyncingQueued(false)
@@ -209,6 +242,7 @@ export default function POSPage() {
                 student?: PosStudent | null
                 guest?: boolean
                 paymentMode?: PaymentMode
+                pendingSaleReference?: string | null
             }
             if (snapshot.stage) setStage(snapshot.stage)
             if (snapshot.searchMode) setSearchMode(snapshot.searchMode)
@@ -219,6 +253,9 @@ export default function POSPage() {
             if (typeof snapshot.guest === 'boolean') setGuest(snapshot.guest)
             if (snapshot.paymentMode) setPaymentMode(snapshot.paymentMode)
             if (snapshot.student !== undefined) setStudent(snapshot.student)
+            if (typeof snapshot.pendingSaleReference === 'string' || snapshot.pendingSaleReference === null) {
+                setPendingSaleReference(snapshot.pendingSaleReference)
+            }
         } catch {
             // Ignore malformed restore payload.
         } finally {
@@ -244,6 +281,7 @@ export default function POSPage() {
         setStudent(draft.student)
         setGuest(draft.guest)
         setPaymentMode(draft.paymentMode)
+        setPendingSaleReference(draft.pendingSaleReference ?? null)
         draftRestoredRef.current = true
     }, [draftKey, successBill])
 
@@ -264,8 +302,9 @@ export default function POSPage() {
             student,
             guest,
             paymentMode,
+            pendingSaleReference,
         })
-    }, [draftKey, stage, searchMode, selectedClassId, catalog, catalogLabel, cart, student, guest, paymentMode, successBill])
+    }, [draftKey, stage, searchMode, selectedClassId, catalog, catalogLabel, cart, student, guest, paymentMode, pendingSaleReference, successBill])
 
     const savePosSnapshotBeforeQr = useCallback(() => {
         if (typeof window === 'undefined') return
@@ -279,9 +318,10 @@ export default function POSPage() {
             student,
             guest,
             paymentMode,
+            pendingSaleReference,
         }
         window.sessionStorage.setItem('pos.qr.snapshot', JSON.stringify(snapshot))
-    }, [stage, searchMode, selectedClassId, catalog, catalogLabel, cart, student, guest, paymentMode])
+    }, [stage, searchMode, selectedClassId, catalog, catalogLabel, cart, student, guest, paymentMode, pendingSaleReference])
 
     // ── Cart helpers ──────────────────────────────────────────────────────────
     const addToCart = useCallback((item: CatalogItem, qty = 1) => {
@@ -454,7 +494,11 @@ export default function POSPage() {
             return
         }
 
+        const saleReference = pendingSaleReference ?? createClientReference('inv')
+        if (!pendingSaleReference) setPendingSaleReference(saleReference)
+
         const payload: InventorySaleInput = {
+            clientReference: saleReference,
             studentId: student?.id ?? null,
             paymentMode,
             items: cart.map(l => ({ itemId: l.itemId, quantity: l.quantity, unitPrice: l.unitPrice })),
@@ -486,6 +530,7 @@ export default function POSPage() {
                 paymentMode,
                 date: new Date().toLocaleDateString(),
             })
+            setPendingSaleReference(null)
             if (draftKey) clearOfflineDraft(draftKey)
             toast.success('Sale completed.')
         } catch (e) {
@@ -509,16 +554,30 @@ export default function POSPage() {
                                 ? `${pendingSyncCount} queued sale${pendingSyncCount > 1 ? 's are' : ' is'} waiting to sync.`
                                 : 'Cart progress is saved locally and queued sales will replay automatically on reconnect.'}
                     </p>
+                    <p className={`mt-1 text-xs ${lastSyncResult.state === 'error' ? 'text-red-300' : 'text-zinc-500'}`}>
+                        Last sync: {lastSyncResult.message}{lastSyncResult.at ? ` (${lastSyncResult.at})` : ''}
+                    </p>
                 </div>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-white/10 bg-white/5 text-zinc-200 hover:bg-white/10 hover:text-white"
-                    disabled={isOffline || syncingQueued || pendingSyncCount === 0}
-                    onClick={() => void flushOfflineQueue()}
-                >
-                    {syncingQueued ? 'Syncing…' : pendingSyncCount > 0 ? `Sync pending (${pendingSyncCount})` : 'All synced'}
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-white/10 bg-white/5 text-zinc-200 hover:bg-white/10 hover:text-white"
+                        disabled={isOffline || syncingQueued || pendingSyncCount === 0}
+                        onClick={() => void flushOfflineQueue()}
+                    >
+                        {syncingQueued ? 'Syncing…' : pendingSyncCount > 0 ? `Sync pending (${pendingSyncCount})` : 'All synced'}
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-white/10 bg-white/5 text-zinc-200 hover:bg-white/10 hover:text-white"
+                        disabled={isOffline || syncingQueued || lastSyncResult.state !== 'error'}
+                        onClick={() => void flushOfflineQueue()}
+                    >
+                        Retry failed sync
+                    </Button>
+                </div>
             </div>
         </div>
     )

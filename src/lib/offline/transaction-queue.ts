@@ -7,6 +7,17 @@ export interface OfflineTransactionRecord<TPayload = unknown> {
   createdAt: string
 }
 
+/**
+ * Stable client-side reference used to make replayable/offline transactions
+ * idempotent on the server.
+ */
+export function createClientReference(prefix: string): string {
+  const safePrefix = prefix.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 12) || 'tx'
+  const now = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)
+  const rnd = Math.random().toString(36).slice(2, 10)
+  return `${safePrefix}_${now}_${rnd}`
+}
+
 const DB_NAME = 'edunexus-offline'
 const DB_VERSION = 1
 const STORE_NAME = 'transactions'

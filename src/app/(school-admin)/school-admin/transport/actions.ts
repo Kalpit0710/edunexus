@@ -4,7 +4,6 @@ import { createClient as getSupabase } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/auth/permissions'
 import type { Database } from '@/types/database.types'
 
-type DbClient = Awaited<ReturnType<typeof getSupabase>>
 type BusStopQueryRow = Pick<
   Database['public']['Tables']['bus_stops']['Row'],
   'id' | 'name' | 'pickup_time' | 'drop_time' | 'stop_order'

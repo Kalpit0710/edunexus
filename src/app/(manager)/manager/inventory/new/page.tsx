@@ -15,6 +15,8 @@ import { useEffect } from 'react'
 import { createInventoryItem, getPosClasses, type InventoryItemInput, type PosClass } from '../actions'
 import type { InventoryCategory } from '@/lib/inventory-utils'
 
+type InventoryFormValue = InventoryItemInput[keyof InventoryItemInput]
+
 const categories: { label: string, value: InventoryCategory }[] = [
     { label: 'Books', value: 'book' },
     { label: 'Uniforms', value: 'uniform' },
@@ -47,7 +49,7 @@ export default function NewInventoryItemPage() {
         getPosClasses(school.id).then(setClasses).catch(() => {})
     }, [school?.id])
 
-    const updateForm = (field: keyof InventoryItemInput, value: any) => {
+    const updateForm = (field: keyof InventoryItemInput, value: InventoryFormValue) => {
         setFormData(prev => ({ ...prev, [field]: value }))
     }
 
@@ -83,7 +85,7 @@ export default function NewInventoryItemPage() {
         try {
             await createInventoryItem(school.id, formData as InventoryItemInput)
             toast.success("Inventory item added successfully!")
-            router.push('/manager/inventory' as any)
+            router.push('/manager/inventory')
         } catch (e) {
             toast.error(getErrorMessage(e))
         } finally {
@@ -94,7 +96,7 @@ export default function NewInventoryItemPage() {
     return (
         <div className="max-w-2xl mx-auto space-y-6">
             <div className="flex items-center gap-4">
-                <Link href={"/manager/inventory" as any}>
+                <Link href="/manager/inventory">
                     <Button variant="outline" size="icon" aria-label="Go back">
                         <ArrowLeft className="w-4 h-4" />
                     </Button>
@@ -222,7 +224,7 @@ export default function NewInventoryItemPage() {
 
                 </CardContent>
                 <CardFooter className="flex justify-between border-t pt-6">
-                    <Link href={"/manager/inventory" as any}>
+                    <Link href="/manager/inventory">
                         <Button variant="outline">Cancel</Button>
                     </Link>
                     <Button onClick={handleSubmit} disabled={loading} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-soft">

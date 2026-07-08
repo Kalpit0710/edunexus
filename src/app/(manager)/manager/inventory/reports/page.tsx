@@ -14,12 +14,46 @@ import * as xlsx from 'xlsx'
 import { ContentAreaLoader } from '@/components/loaders/page-loaders'
 import { DateInput } from '@/components/ui/date-input'
 
+interface InventorySummary {
+    stockValue: number
+    itemCount: number
+    lowStockCount: number
+    salesTotal: number
+    salesCount: number
+}
+
+interface InventorySaleRow {
+    id: string
+    sale_date: string
+    bill_number: string
+    payment_mode: string
+    total_amount: number
+    inventory_sale_items: Array<{
+        quantity: number
+        unit_price: number
+        total_price: number
+    }>
+    students: {
+        full_name: string
+        admission_number: string
+    } | null
+}
+
+interface LowStockRow {
+    id: string
+    name: string
+    category: string
+    sku: string | null
+    stock_quantity: number
+    low_stock_alert: number
+}
+
 export default function InventoryReportsPage() {
     const { school } = useAuthStore()
 
-    const [summary, setSummary] = useState<any>(null)
-    const [sales, setSales] = useState<any[]>([])
-    const [lowStock, setLowStock] = useState<any[]>([])
+    const [summary, setSummary] = useState<InventorySummary | null>(null)
+    const [sales, setSales] = useState<InventorySaleRow[]>([])
+    const [lowStock, setLowStock] = useState<LowStockRow[]>([])
     const [loading, setLoading] = useState(true)
 
     const [dateRange, setDateRange] = useState<{ from: string, to: string }>({
@@ -42,9 +76,9 @@ export default function InventoryReportsPage() {
                 getInventorySales(school.id, { fromDate: dateRangeRef.current.from, toDate: dateRangeRef.current.to }),
                 getLowStockItems(school.id, 20)
             ])
-            setSummary(sumData)
-            setSales(salesData || [])
-            setLowStock(minStockData || [])
+            setSummary((sumData ?? null) as InventorySummary | null)
+            setSales((salesData ?? []) as InventorySaleRow[])
+            setLowStock((minStockData ?? []) as LowStockRow[])
         } catch (e) {
             toast.error("Failed to load reports: " + getErrorMessage(e))
         } finally {
@@ -56,7 +90,7 @@ export default function InventoryReportsPage() {
         if (!school?.id) return
         try {
             const salesData = await getInventorySales(school.id, { fromDate: dateRange.from, toDate: dateRange.to })
-            setSales(salesData || [])
+            setSales((salesData ?? []) as InventorySaleRow[])
         } catch (e) {
             toast.error("Failed to fetch sales: " + getErrorMessage(e))
         }
@@ -100,7 +134,7 @@ export default function InventoryReportsPage() {
         <div className="max-w-7xl mx-auto space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex items-center gap-4">
-                    <Link href={"/manager/inventory" as any}>
+                    <Link href="/manager/inventory">
                         <Button variant="outline" size="icon" aria-label="Go back">
                             <ArrowLeft className="w-4 h-4" />
                         </Button>

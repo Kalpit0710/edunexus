@@ -158,7 +158,7 @@ export default function InventoryImportPage() {
 
     return (
         <div className="max-w-5xl mx-auto space-y-6">
-            <Link href={'/manager/inventory' as any}>
+            <Link href="/manager/inventory">
                 <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground">
                     <ArrowLeft className="h-4 w-4" /> Back to Inventory
                 </Button>

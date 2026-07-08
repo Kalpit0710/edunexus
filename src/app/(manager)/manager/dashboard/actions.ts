@@ -6,10 +6,8 @@ import { isLowStock } from '@/lib/inventory-utils'
 import type { Database } from '@/types/database.types'
 
 type FeePaymentRow = Pick<Database['public']['Tables']['fee_payments']['Row'], 'student_id' | 'paid_amount' | 'payment_date' | 'payment_mode'>
-type StudentRow = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'class_id'>
-type FeeStructureRow = Pick<Database['public']['Tables']['fee_structures']['Row'], 'class_id' | 'amount' | 'academic_year_id'>
 type InventoryItemRow = Pick<Database['public']['Tables']['inventory_items']['Row'], 'id' | 'stock_quantity' | 'low_stock_alert'>
-type ClassRow = Pick<Database['public']['Tables']['classes']['Row'], 'id' | 'name'>
+type PendingFeeRpcRow = Database['public']['Functions']['get_pending_fees']['Returns'][number]
 
 export interface ManagerDashboardStats {
   todayCollection: number
@@ -37,7 +35,7 @@ async function getManagerDashboardStatsUncached(
   }
   const fromDate = dates[0]!
 
-  const [paymentsRes, studentsRes, structuresRes, inventoryRes, pendingPayRes, classesRes] = await Promise.all([
+  const [paymentsRes, inventoryRes, pendingRes] = await Promise.all([
     // Today + last 7 days payments (for trend + today stats)
     supabase
       .from('fee_payments')
@@ -45,22 +43,6 @@ async function getManagerDashboardStatsUncached(
       .eq('school_id', schoolId)
       .gte('payment_date', fromDate)
       .lte('payment_date', today)
-      .limit(5000),
-
-    // Active students
-    supabase
-      .from('students')
-      .select('id, class_id')
-      .eq('school_id', schoolId)
-      .eq('is_active', true)
-      .limit(5000),
-
-    // Fee structures for current academic year
-    supabase
-      .from('fee_structures')
-      .select('class_id, amount, academic_year_id')
-      .eq('school_id', schoolId)
-      .eq('is_active', true)
       .limit(5000),
 
     // Inventory items
@@ -71,26 +53,13 @@ async function getManagerDashboardStatsUncached(
       .eq('is_active', true)
       .limit(5000),
 
-    // All-time payments for pending fee calc
-    supabase
-      .from('fee_payments')
-      .select('student_id, paid_amount')
-      .eq('school_id', schoolId)
-      .limit(10000),
-
-    supabase
-      .from('classes')
-      .select('id, name')
-      .eq('school_id', schoolId)
-      .limit(500),
+    supabase.rpc('get_pending_fees', { p_school_id: schoolId }),
   ])
 
   const payments = (paymentsRes.data ?? []) as FeePaymentRow[]
-  const students = (studentsRes.data ?? []) as StudentRow[]
-  const structures = (structuresRes.data ?? []) as FeeStructureRow[]
   const inventoryItems = (inventoryRes.data ?? []) as InventoryItemRow[]
-  const allPayments = (pendingPayRes.data ?? []) as Pick<Database['public']['Tables']['fee_payments']['Row'], 'student_id' | 'paid_amount'>[]
-  const classes = (classesRes.data ?? []) as ClassRow[]
+  if (pendingRes.error) throw new Error(pendingRes.error.message)
+  const pendingRows = (pendingRes.data ?? []) as PendingFeeRpcRow[]
 
   // Today's collection
   const todayPayments = payments.filter((p) => p.payment_date === today)
@@ -123,56 +92,16 @@ async function getManagerDashboardStatsUncached(
     .map(([mode, v]) => ({ mode, amount: Math.round(v.amount), count: v.count }))
     .sort((a, b) => b.amount - a.amount)
 
-  // Pending fee count — students with balance > 0
-  // Get current academic year first
-  const { data: yearData } = await supabase
-    .from('academic_years')
-    .select('id')
-    .eq('school_id', schoolId)
-    .eq('is_current', true)
-    .single()
-
-  let pendingFeeCount = 0
-  let classFeeMap: Record<string, number> = {}
-  let paidMap: Record<string, number> = {}
-  if (yearData) {
-    const yearId = yearData.id
-    const yearStructures = structures.filter((s) => s.academic_year_id === yearId)
-    classFeeMap = {}
-    yearStructures.forEach((s) => {
-      classFeeMap[s.class_id] = (classFeeMap[s.class_id] ?? 0) + Number(s.amount)
-    })
-    paidMap = {}
-    allPayments.forEach((p) => {
-      paidMap[p.student_id] = (paidMap[p.student_id] ?? 0) + Number(p.paid_amount)
-    })
-    pendingFeeCount = students.filter((s) => {
-      if (!s.class_id) return false
-      const totalFee = classFeeMap[s.class_id] ?? 0
-      const totalPaid = paidMap[s.id] ?? 0
-      return totalFee > 0 && (totalFee - totalPaid) > 0
-    }).length
-  }
-
-  const classNameMap: Record<string, string> = {}
-  classes.forEach((c) => {
-    classNameMap[c.id] = c.name
-  })
-
+  const pendingFeeCount = pendingRows.length
   const classPendingMap: Record<string, number> = {}
-  students.forEach((s) => {
-    if (!s.class_id) return
-    const totalFee = classFeeMap[s.class_id] ?? 0
-    const totalPaid = paidMap[s.id] ?? 0
-
-    if (totalFee > 0 && totalFee - totalPaid > 0) {
-      classPendingMap[s.class_id] = (classPendingMap[s.class_id] ?? 0) + 1
-    }
+  pendingRows.forEach((row) => {
+    const className = row.class_name || 'Unknown Class'
+    classPendingMap[className] = (classPendingMap[className] ?? 0) + 1
   })
 
   const classPendingRisk = Object.entries(classPendingMap)
-    .map(([classId, pendingStudents]) => ({
-      className: classNameMap[classId] ?? 'Unknown Class',
+    .map(([className, pendingStudents]) => ({
+      className,
       pendingStudents,
     }))
     .sort((a, b) => b.pendingStudents - a.pendingStudents)

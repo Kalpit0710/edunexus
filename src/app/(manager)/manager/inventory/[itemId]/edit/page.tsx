@@ -16,6 +16,8 @@ import { ContentAreaLoader } from '@/components/loaders/page-loaders'
 import { createClient } from '@/lib/supabase/client'
 import type { InventoryCategory } from '@/lib/inventory-utils'
 
+type InventoryFormValue = InventoryItemInput[keyof InventoryItemInput]
+
 const categories: { label: string, value: InventoryCategory }[] = [
     { label: 'Books', value: 'book' },
     { label: 'Uniforms', value: 'uniform' },
@@ -62,7 +64,7 @@ export default function EditInventoryItemPage() {
 
             if (error) throw error
 
-            const item = data as any;
+            const item = data
 
             setFormData({
                 name: item.name,
@@ -78,7 +80,7 @@ export default function EditInventoryItemPage() {
             setIsActive(item.is_active)
         } catch (e) {
             toast.error("Failed to load item: " + getErrorMessage(e))
-            router.push('/manager/inventory' as any)
+            router.push('/manager/inventory')
         } finally {
             setLoading(false)
         }
@@ -95,7 +97,7 @@ export default function EditInventoryItemPage() {
         getPosClasses(school.id).then(setClasses).catch(() => {})
     }, [school?.id])
 
-    const updateForm = (field: keyof InventoryItemInput, value: any) => {
+    const updateForm = (field: keyof InventoryItemInput, value: InventoryFormValue) => {
         setFormData(prev => ({ ...prev, [field]: value }))
     }
 
@@ -131,7 +133,7 @@ export default function EditInventoryItemPage() {
         try {
             await updateInventoryItem(school.id, itemId, formData as InventoryItemInput)
             toast.success("Inventory item updated successfully!")
-            router.push('/manager/inventory' as any)
+            router.push('/manager/inventory')
         } catch (e) {
             toast.error("Update failed: " + getErrorMessage(e))
         } finally {
@@ -163,7 +165,7 @@ export default function EditInventoryItemPage() {
     return (
         <div className="max-w-3xl mx-auto space-y-6">
             <div className="flex items-center gap-4">
-                <Link href={"/manager/inventory" as any}>
+                <Link href="/manager/inventory">
                     <Button variant="outline" size="icon" aria-label="Go back">
                         <ArrowLeft className="w-4 h-4" />
                     </Button>
@@ -263,7 +265,7 @@ export default function EditInventoryItemPage() {
                             </div>
                         </CardContent>
                         <CardFooter className="flex justify-between border-t pt-6">
-                            <Link href={"/manager/inventory" as any}>
+                            <Link href="/manager/inventory">
                                 <Button variant="outline">Cancel</Button>
                             </Link>
                             <Button onClick={handleSubmit} disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-soft">
@@ -289,7 +291,7 @@ export default function EditInventoryItemPage() {
                                     onChange={e => updateForm('stockQuantity', parseInt(e.target.value) || 0)}
                                 />
                                 <p className="text-xs text-muted-foreground mt-1">
-                                    Prefer using the <Link href={'/manager/inventory/stock' as any} className="text-primary hover:underline">Stock Adjustment workflow</Link> for routine operational changes.
+                                    Prefer using the <Link href="/manager/inventory/stock" className="text-primary hover:underline">Stock Adjustment workflow</Link> for routine operational changes.
                                 </p>
                             </div>
 

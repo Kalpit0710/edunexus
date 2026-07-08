@@ -18,8 +18,26 @@ import {
 } from '@/components/ui/select'
 import { ArrowLeft, Download } from 'lucide-react'
 import Link from 'next/link'
-import * as XLSX from 'xlsx'
+import type { Route } from 'next'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+
+type ClassOption = {
+    id: string
+    name: string
+}
+
+type SectionOption = {
+    id: string
+    name: string
+    class_id: string
+}
+
+type AttendanceStudent = {
+    id: string
+    name: string
+    admission_number: string
+    roll_number: string | null
+}
 
 const MONTHS = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -57,15 +75,15 @@ export default function ClassAttendanceViewPage() {
     const defaultMonth = String(new Date().getMonth() + 1)
     const defaultYear = String(new Date().getFullYear())
 
-    const [classes, setClasses] = useState<any[]>([])
-    const [sections, setSections] = useState<any[]>([])
+    const [classes, setClasses] = useState<ClassOption[]>([])
+    const [sections, setSections] = useState<SectionOption[]>([])
     const [selClass, setSelClass] = useState(() => searchParams.get('class') ?? '')
     const [selSection, setSelSection] = useState(() => searchParams.get('section') ?? '')
     const [month, setMonth] = useState(() => searchParams.get('month') ?? defaultMonth)
     const [year, setYear] = useState(() => searchParams.get('year') ?? defaultYear)
 
     // date-wise grid: { date -> { studentId -> status } }
-    const [students, setStudents] = useState<any[]>([])
+    const [students, setStudents] = useState<AttendanceStudent[]>([])
     const [dates, setDates] = useState<string[]>([])
     const [grid, setGrid] = useState<Record<string, Record<string, AttendanceStatus | null>>>({})
     const [loading, setLoading] = useState(false)
@@ -74,7 +92,10 @@ export default function ClassAttendanceViewPage() {
     useEffect(() => {
         if (!school?.id) return
         Promise.all([getClasses(school.id), getSections(school.id)])
-            .then(([cls, sec]) => { setClasses(cls); setSections(sec) })
+            .then(([cls, sec]) => {
+                setClasses((cls ?? []) as ClassOption[])
+                setSections((sec ?? []) as SectionOption[])
+            })
             .catch((e) => toast.error(getErrorMessage(e)))
     }, [school?.id])
 
@@ -101,7 +122,7 @@ export default function ClassAttendanceViewPage() {
         else params.delete('year')
 
         const query = params.toString()
-        router.replace((query ? `${pathname}?${query}` : pathname) as any, { scroll: false })
+        router.replace((query ? `${pathname}?${query}` : pathname) as Route, { scroll: false })
     }
 
     const filteredSections = sections.filter(s => s.class_id === selClass)
@@ -133,7 +154,12 @@ export default function ClassAttendanceViewPage() {
             )
 
             // Build student list from first result
-            const studentList = results[0]?.map(r => ({ id: r.id, name: r.full_name, admission_number: r.admission_number, roll_number: r.roll_number })) ?? []
+            const studentList: AttendanceStudent[] = results[0]?.map((r) => ({
+                id: r.id,
+                name: r.full_name,
+                admission_number: r.admission_number,
+                roll_number: r.roll_number,
+            })) ?? []
             setStudents(studentList)
 
             // Build grid: date -> studentId -> status
@@ -160,8 +186,9 @@ export default function ClassAttendanceViewPage() {
         }
     }
 
-    function handleExportXLSX() {
+    async function handleExportXLSX() {
         if (!loaded || students.length === 0) return
+        const XLSX = await import('xlsx')
 
         const headers = ['#', 'Name', 'Adm. No', ...dates.map(d => {
             const dt = new Date(d)
@@ -193,7 +220,7 @@ export default function ClassAttendanceViewPage() {
 
     return (
         <div className="space-y-6">
-            <Link href={'/school-admin/attendance' as any}>
+            <Link href="/school-admin/attendance">
                 <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground">
                     <ArrowLeft className="h-4 w-4" />
                     Back to Daily Attendance
@@ -206,7 +233,7 @@ export default function ClassAttendanceViewPage() {
                     <p className="text-muted-foreground">Date-wise attendance grid for a class section.</p>
                 </div>
                 {loaded && dates.length > 0 && (
-                    <Button variant="outline" onClick={handleExportXLSX}>
+                    <Button variant="outline" onClick={() => void handleExportXLSX()}>
                         <Download className="h-4 w-4 mr-2" />
                         Export Excel
                     </Button>

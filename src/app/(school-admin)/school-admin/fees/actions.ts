@@ -512,6 +512,28 @@ export async function collectFeePayment(
   await requirePermission(supabase, 'fees.collect')
   const totalAmount = input.items.reduce((s, i) => s + i.amount, 0)
 
+  const tryReadExistingByReceipt = async (): Promise<{ paymentId: string; receiptNumber: string } | null> => {
+    const { data: existing, error: existingErr } = await supabase
+      .from('fee_payments')
+      .select('id, student_id, paid_amount, total_amount, payment_mode')
+      .eq('school_id', schoolId)
+      .eq('receipt_number', receiptNumber)
+      .maybeSingle()
+
+    if (existingErr || !existing) return null
+
+    const sameStudent = existing.student_id === input.studentId
+    const samePaidAmount = Number(existing.paid_amount) === Number(input.paidAmount)
+    const sameTotalAmount = Number(existing.total_amount) === Number(totalAmount)
+    const samePaymentMode = String(existing.payment_mode) === String(input.paymentMode)
+
+    if (!sameStudent || !samePaidAmount || !sameTotalAmount || !samePaymentMode) {
+      throw new Error('Receipt number conflict detected. Please retry the payment.')
+    }
+
+    return { paymentId: existing.id, receiptNumber }
+  }
+
   const { data: payment, error: payErr } = await supabase
     .from('fee_payments')
     .insert({
@@ -528,7 +550,14 @@ export async function collectFeePayment(
     })
     .select('id')
     .single()
-  if (payErr) throw new Error(payErr.message)
+
+  if (payErr) {
+    if (payErr.code === '23505') {
+      const existing = await tryReadExistingByReceipt()
+      if (existing) return existing
+    }
+    throw new Error(payErr.message)
+  }
 
   const paymentId = payment.id
   const { error: itemErr } = await supabase.from('fee_payment_items').insert(
@@ -596,15 +625,6 @@ export async function collectFeePayment(
   }
 
   return { paymentId, receiptNumber }
-}
-
-export async function getNextReceiptSeq(schoolId: string): Promise<number> {
-  const supabase = await createServerSupabaseClient()
-  const { count } = await supabase
-    .from('fee_payments')
-    .select('id', { count: 'exact', head: true })
-    .eq('school_id', schoolId)
-  return (count ?? 0) + 1
 }
 
 export async function getPaymentsByStudent(

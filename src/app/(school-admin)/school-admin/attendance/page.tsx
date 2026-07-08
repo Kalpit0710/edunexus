@@ -27,7 +27,19 @@ import { Input } from '@/components/ui/input'
 import { DateInput } from '@/components/ui/date-input'
 import { BarChart2, CheckCheck, Save, Grid2X2, FileUp } from 'lucide-react'
 import Link from 'next/link'
+import type { Route } from 'next'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+
+type ClassOption = {
+  id: string
+  name: string
+}
+
+type SectionOption = {
+  id: string
+  name: string
+  class_id: string
+}
 
 const STATUS_CONFIG: Record<
   AttendanceStatus,
@@ -47,8 +59,8 @@ export default function AttendancePage() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const { school, user } = useAuthStore()
-  const [classes, setClasses] = useState<any[]>([])
-  const [sections, setSections] = useState<any[]>([])
+  const [classes, setClasses] = useState<ClassOption[]>([])
+  const [sections, setSections] = useState<SectionOption[]>([])
   const [selClass, setSelClass] = useState(() => searchParams.get('class') ?? '')
   const [selSection, setSelSection] = useState(() => searchParams.get('section') ?? '')
   const [date, setDate] = useState(() => searchParams.get('date') ?? schoolToday())
@@ -64,7 +76,10 @@ export default function AttendancePage() {
   useEffect(() => {
     if (!school?.id) return
     Promise.all([getClasses(school.id), getSections(school.id)])
-      .then(([cls, sec]) => { setClasses(cls); setSections(sec) })
+      .then(([cls, sec]) => {
+        setClasses((cls ?? []) as ClassOption[])
+        setSections((sec ?? []) as SectionOption[])
+      })
       .catch((e) => toast.error(getErrorMessage(e)))
   }, [school?.id])
 
@@ -87,7 +102,7 @@ export default function AttendancePage() {
     else params.delete('date')
 
     const query = params.toString()
-    router.replace((query ? `${pathname}?${query}` : pathname) as any, { scroll: false })
+    router.replace((query ? `${pathname}?${query}` : pathname) as Route, { scroll: false })
   }
 
   const filteredSections = sections.filter((s) => s.class_id === selClass)
@@ -161,19 +176,19 @@ export default function AttendancePage() {
           <p className="text-muted-foreground">Mark and review student attendance.</p>
         </div>
         <div className="flex gap-2">
-          <Link href={'/school-admin/attendance/import' as any}>
+          <Link href="/school-admin/attendance/import">
             <Button variant="outline">
               <FileUp className="h-4 w-4 mr-2" />
               Import Excel
             </Button>
           </Link>
-          <Link href={'/school-admin/attendance/class-view' as any}>
+          <Link href="/school-admin/attendance/class-view">
             <Button variant="outline">
               <Grid2X2 className="h-4 w-4 mr-2" />
               Class View
             </Button>
           </Link>
-          <Link href={'/school-admin/attendance/report' as any}>
+          <Link href="/school-admin/attendance/report">
             <Button variant="outline">
               <BarChart2 className="h-4 w-4 mr-2" />
               Monthly Report

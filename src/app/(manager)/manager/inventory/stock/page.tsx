@@ -10,12 +10,22 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { ArrowLeft, ArrowDownToLine, ArrowUpFromLine, FileEdit, Save, Package } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import Link from 'next/link'
 import { getInventoryItems, adjustInventoryStock, type InventoryStockAdjustmentInput } from '../actions'
 import { ContentAreaLoader } from '@/components/loaders/page-loaders'
 import type { StockAdjustmentType } from '@/lib/inventory-utils'
 
-const adjustmentTypes: { id: StockAdjustmentType; label: string; icon: any; description: string }[] = [
+type InventoryItem = Awaited<ReturnType<typeof getInventoryItems>>[number]
+
+type StockFormData = {
+    itemId: string
+    quantity: number | ''
+    type: StockAdjustmentType
+    reason: string
+}
+
+const adjustmentTypes: { id: StockAdjustmentType; label: string; icon: LucideIcon; description: string }[] = [
     { id: 'add', label: 'Add Stock', icon: ArrowDownToLine, description: 'Increase stock (e.g. new delivery)' },
     { id: 'remove', label: 'Remove Stock', icon: ArrowUpFromLine, description: 'Decrease stock (e.g. damaged, lost)' },
     { id: 'adjustment', label: 'Set Exact Count', icon: FileEdit, description: 'Override current stock to a specific number' }
@@ -25,16 +35,11 @@ export default function StockAdjustmentPage() {
     const router = useRouter()
     const { school } = useAuthStore()
 
-    const [items, setItems] = useState<any[]>([])
+    const [items, setItems] = useState<InventoryItem[]>([])
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
 
-    const [formData, setFormData] = useState<{
-        itemId: string,
-        quantity: number | '',
-        type: StockAdjustmentType,
-        reason: string
-    }>({
+    const [formData, setFormData] = useState<StockFormData>({
         itemId: '',
         quantity: '',
         type: 'add',
@@ -60,7 +65,7 @@ export default function StockAdjustmentPage() {
         }
     }, [loadItems, school?.id])
 
-    const updateForm = (field: string, value: any) => {
+    const updateForm = <K extends keyof StockFormData>(field: K, value: StockFormData[K]) => {
         setFormData(prev => ({ ...prev, [field]: value }))
     }
 
@@ -101,7 +106,7 @@ export default function StockAdjustmentPage() {
             }
             await adjustInventoryStock(school.id, payload)
             toast.success("Stock adjusted successfully!")
-            router.push('/manager/inventory' as any)
+            router.push('/manager/inventory')
         } catch (e) {
             toast.error("Adjustment failed: " + getErrorMessage(e))
         } finally {
@@ -118,7 +123,7 @@ export default function StockAdjustmentPage() {
     return (
         <div className="max-w-3xl mx-auto space-y-6">
             <div className="flex items-center gap-4">
-                <Link href={"/manager/inventory" as any}>
+                <Link href="/manager/inventory">
                     <Button variant="outline" size="icon" aria-label="Go back">
                         <ArrowLeft className="w-4 h-4" />
                     </Button>
@@ -229,7 +234,7 @@ export default function StockAdjustmentPage() {
 
                 </CardContent>
                 <CardFooter className="flex justify-between border-t pt-6">
-                    <Link href={"/manager/inventory" as any}>
+                    <Link href="/manager/inventory">
                         <Button variant="outline">Cancel</Button>
                     </Link>
                     <Button onClick={handleSubmit} disabled={saving || !formData.itemId} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-soft">

@@ -6,7 +6,6 @@ import type { Database } from '@/types/database.types'
 
 type ServerDbClient = Awaited<ReturnType<typeof getSupabase>>
 type TeacherProfileRow = Pick<Database['public']['Tables']['user_profiles']['Row'], 'id'>
-type TeacherIdRow = Pick<Database['public']['Tables']['teachers']['Row'], 'id'>
 type PeriodQueryRow = Pick<Database['public']['Tables']['timetable_periods']['Row'], 'id' | 'name' | 'start_time' | 'end_time' | 'is_break'>
 type EntryQueryRow = Pick<Database['public']['Tables']['timetable_entries']['Row'], 'day_of_week' | 'period_id' | 'room'> & {
   subjects: { name: string | null } | null

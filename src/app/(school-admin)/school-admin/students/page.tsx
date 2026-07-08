@@ -13,20 +13,58 @@ import { Input } from '@/components/ui/input'
 import { TableSkeleton } from '@/components/loaders/page-loaders'
 import { Spinner } from '@/components/ui/spinner'
 import Link from 'next/link'
-import * as xlsx from 'xlsx'
+import type { Route } from 'next'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
+type StudentRow = {
+  id: string
+  full_name: string
+  first_name: string
+  middle_name: string | null
+  last_name: string | null
+  gender: string | null
+  date_of_birth: string | null
+  admission_number: string
+  roll_number: string | null
+  date_of_joining: string | null
+  class_id: string | null
+  section_id: string | null
+  address: string | null
+  blood_group: string | null
+  medical_conditions: string | null
+  is_active: boolean
+  class: { name: string } | null
+  section: { name: string } | null
+  parent_name: string | null
+  parent_contact: string | null
+  parent_email: string | null
+}
+
+type BulkImportRow = Record<string, unknown> & {
+  parent_name?: string | null
+  parent_email?: string | null
+  parent_contact?: string | null
+}
+
+type StudentStatusFilter = 'active' | 'inactive' | 'all'
+
+function parseStudentStatusFilter(value: string): StudentStatusFilter {
+  if (value === 'inactive') return 'inactive'
+  if (value === 'all') return 'all'
+  return 'active'
+}
+
 export default function StudentsPage() {
   const { school } = useAuthStore()
   const { can } = usePermissions()
-  const [students, setStudents] = useState<any[]>([])
+  const [students, setStudents] = useState<StudentRow[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
-  const [statusFilter, setStatusFilter] = useState<'active' | 'inactive' | 'all'>('active')
+  const [statusFilter, setStatusFilter] = useState<StudentStatusFilter>('active')
   const [bulkUpdating, setBulkUpdating] = useState(false)
 
   const fetchStudents = useCallback(async () => {
@@ -34,7 +72,7 @@ export default function StudentsPage() {
     setLoading(true)
     try {
       const data = await getStudents(school.id, statusFilter)
-      setStudents(data || [])
+      setStudents((data ?? []) as StudentRow[])
       setSelectedIds([])
     } catch (e) {
       toast.error('Failed to load students: ' + getErrorMessage(e))
@@ -87,11 +125,12 @@ export default function StudentsPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (students.length === 0) {
       toast.error('No students to export.')
       return
     }
+    const xlsx = await import('xlsx')
     const exportData = students.map(s => ({
       'First Name': s.first_name,
       'Middle Name': s.middle_name || '',
@@ -129,6 +168,7 @@ export default function StudentsPage() {
         const bstr = evt.target?.result
         if (typeof bstr !== 'string') throw new Error('File read error')
 
+        const xlsx = await import('xlsx')
         const wb = xlsx.read(bstr, { type: 'binary' })
         const wsname = wb.SheetNames[0]
         if (!wsname) throw new Error('No sheets found')
@@ -136,7 +176,7 @@ export default function StudentsPage() {
         const ws = wb.Sheets[wsname]
         if (!ws) throw new Error('Sheet data is missing')
 
-        const data: any[] = xlsx.utils.sheet_to_json(ws)
+        const data = xlsx.utils.sheet_to_json<Record<string, unknown>>(ws)
 
         if (data.length === 0) {
           toast.error('Excel file is empty.')
@@ -144,23 +184,23 @@ export default function StudentsPage() {
           return
         }
 
-        const payloads = data.map(row => ({
-          first_name: row['First Name'],
-          middle_name: row['Middle Name'] || null,
-          last_name: row['Last Name'] || null,
-          gender: row['Gender'],
-          date_of_birth: row['Date of Birth'],
-          admission_number: row['Admission No'],
-          roll_number: row['Roll No'] || null,
-          date_of_joining: row['Date of Joining'],
-          class_id: row['Class ID'],
-          section_id: row['Section ID'] || null,
-          parent_name: row['Parent Name'] || null,
-          parent_contact: row['Parent Contact'] || null,
-          parent_email: row['Parent Email'] || null,
-          address: row['Address'] || null,
-          blood_group: row['Blood Group'] || null,
-          medical_conditions: row['Medical Conditions'] || null
+        const payloads: BulkImportRow[] = data.map((row) => ({
+          first_name: String(row['First Name'] ?? ''),
+          middle_name: row['Middle Name'] ? String(row['Middle Name']) : null,
+          last_name: row['Last Name'] ? String(row['Last Name']) : null,
+          gender: row['Gender'] ? String(row['Gender']) : null,
+          date_of_birth: row['Date of Birth'] ? String(row['Date of Birth']) : null,
+          admission_number: String(row['Admission No'] ?? ''),
+          roll_number: row['Roll No'] ? String(row['Roll No']) : null,
+          date_of_joining: row['Date of Joining'] ? String(row['Date of Joining']) : null,
+          class_id: row['Class ID'] ? String(row['Class ID']) : null,
+          section_id: row['Section ID'] ? String(row['Section ID']) : null,
+          parent_name: row['Parent Name'] ? String(row['Parent Name']) : null,
+          parent_contact: row['Parent Contact'] ? String(row['Parent Contact']) : null,
+          parent_email: row['Parent Email'] ? String(row['Parent Email']) : null,
+          address: row['Address'] ? String(row['Address']) : null,
+          blood_group: row['Blood Group'] ? String(row['Blood Group']) : null,
+          medical_conditions: row['Medical Conditions'] ? String(row['Medical Conditions']) : null,
         }))
 
         // Validate basic required fields on first row
@@ -204,7 +244,7 @@ export default function StudentsPage() {
           <p className="text-muted-foreground">Manage and view all enrolled students.</p>
         </div>
         <div className="flex gap-2">
-          <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as 'active' | 'inactive' | 'all')}>
+          <Select value={statusFilter} onValueChange={(value) => setStatusFilter(parseStudentStatusFilter(value))}>
             <SelectTrigger className="w-[150px]">
               <SelectValue />
             </SelectTrigger>
@@ -214,7 +254,7 @@ export default function StudentsPage() {
               <SelectItem value="all">All students</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={handleExport} disabled={loading}>
+          <Button variant="outline" onClick={() => void handleExport()} disabled={loading}>
             <Download className="w-4 h-4 mr-2" /> Export
           </Button>
           <input
@@ -228,7 +268,7 @@ export default function StudentsPage() {
             <Upload className="w-4 h-4 mr-2" /> Import
           </Button>
           {can('students.create') && (
-            <Link href={"/school-admin/students/new" as any}>
+            <Link href="/school-admin/students/new">
               <Button>
                 <UserPlus className="w-4 h-4 mr-2" /> Add Student
               </Button>
@@ -300,7 +340,7 @@ export default function StudentsPage() {
                       </td>
                       <td className="px-6 py-4 font-medium">{student.admission_number || '-'}</td>
                       <td className="px-6 py-4">
-                        <Link href={`/school-admin/students/${student.id}` as any}>
+                        <Link href={`/school-admin/students/${student.id}` as Route}>
                           <div className="font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
                             {student.full_name}
                           </div>
@@ -317,7 +357,7 @@ export default function StudentsPage() {
                       </td>
                       <td className="px-6 py-4 text-right space-x-2">
                         {can('students.edit') && (
-                          <Link href={`/school-admin/students/${student.id}/edit` as any}>
+                          <Link href={`/school-admin/students/${student.id}/edit` as Route}>
                             <Button variant="ghost" size="icon" aria-label="Edit student" className="h-8 w-8 text-muted-foreground hover:text-primary">
                               <Edit className="h-4 w-4" />
                             </Button>

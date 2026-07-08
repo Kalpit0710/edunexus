@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import {
   getStudentFeeStructure,
   collectFeePayment,
-  getNextReceiptSeq,
   searchStudentForFee,
   searchStudentsForFeeLive,
   getStudentForFeeById,
@@ -14,7 +13,7 @@ import {
   type FeeStudentResult,
   type CollectFeeInput,
 } from '../actions'
-import { generateReceiptNumber, isReferenceRequired } from '@/lib/fee-utils'
+import { generateRobustReceiptNumber, isReferenceRequired } from '@/lib/fee-utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -42,7 +41,7 @@ type PaymentMode = 'cash' | 'cheque' | 'upi' | 'neft' | 'card' | 'online'
 
 interface OfflineFeePaymentPayload {
   schoolId: string
-  schoolCode: string
+  receiptNumber: string
   input: CollectFeeInput
 }
 
@@ -55,6 +54,15 @@ interface FeeCollectDraft {
   reference: string
   remarks: string
   paidAmount: string
+  pendingReceiptNumber: string | null
+}
+
+type QueueSyncState = 'idle' | 'success' | 'error'
+
+interface QueueSyncResult {
+  state: QueueSyncState
+  message: string
+  at: string | null
 }
 
 const PAYMENT_MODES: { value: PaymentMode; label: string }[] = [
@@ -75,6 +83,11 @@ function CollectFeePageContent() {
   const [isOffline, setIsOffline] = useState(false)
   const [pendingSyncCount, setPendingSyncCount] = useState(0)
   const [syncingQueued, setSyncingQueued] = useState(false)
+  const [lastSyncResult, setLastSyncResult] = useState<QueueSyncResult>({
+    state: 'idle',
+    message: 'No sync attempts in this session yet.',
+    at: null,
+  })
 
   // Step 1: search
   const [student, setStudent] = useState<FeeStudentResult | null>(null)
@@ -91,6 +104,7 @@ function CollectFeePageContent() {
   // Step 3: result
   const [receiptNumber, setReceiptNumber] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [pendingReceiptNumber, setPendingReceiptNumber] = useState<string | null>(null)
 
   const studentFetcher = useCallback(
     (q: string) => school?.id ? searchStudentsForFeeLive(school.id, q) : Promise.resolve([]),
@@ -100,7 +114,9 @@ function CollectFeePageContent() {
   const totalSelected = structures
     .filter(s => selectedItems[s.id])
     .reduce((sum, s) => sum + Number(s.amount), 0)
+  const selectedItemCount = structures.filter((s) => selectedItems[s.id]).length
   const netPayable = Math.max(0, totalSelected - Number(discount || 0))
+  const paidAmountNumber = Number(paidAmount || 0)
   const changeDue = paymentMode === 'cash' && Number(paidAmount) > netPayable && netPayable > 0
     ? Number(paidAmount) - netPayable
     : 0
@@ -108,6 +124,12 @@ function CollectFeePageContent() {
   const balanceRemaining = Math.max(0, netPayable - Number(paidAmount || 0))
   const referenceRequired = isReferenceRequired(paymentMode)
   const referenceMissing = referenceRequired && !reference.trim()
+  const paymentValidationIssues: string[] = []
+  if (selectedItemCount === 0) paymentValidationIssues.push('Select at least one fee item.')
+  if (!paidAmountNumber) paymentValidationIssues.push('Enter a paid amount greater than zero.')
+  if (referenceMissing) {
+    paymentValidationIssues.push(`Reference number is required for ${PAYMENT_MODES.find((m) => m.value === paymentMode)?.label ?? paymentMode.toUpperCase()} payments.`)
+  }
   const draftKey = school?.id ? `fee-collect:draft:${school.id}` : null
 
   const resetCollector = useCallback(() => {
@@ -120,6 +142,7 @@ function CollectFeePageContent() {
     setRemarks('')
     setPaidAmount('')
     setReceiptNumber(null)
+    setPendingReceiptNumber(null)
     if (draftKey) clearOfflineDraft(draftKey)
   }, [draftKey])
 
@@ -141,16 +164,30 @@ function CollectFeePageContent() {
       const queued = await listOfflineTransactions<OfflineFeePaymentPayload>('fee-payment')
       const feeQueue = queued.filter((item) => item.payload.schoolId === school.id)
       for (const item of feeQueue) {
-        const seq = await getNextReceiptSeq(item.payload.schoolId)
-        const receipt = generateReceiptNumber(item.payload.schoolCode, new Date().getFullYear(), seq)
-        await collectFeePayment(item.payload.schoolId, receipt, item.payload.input)
+        await collectFeePayment(item.payload.schoolId, item.payload.receiptNumber, item.payload.input)
         await removeOfflineTransaction(item.id)
         synced += 1
       }
       if (synced > 0) {
+        setLastSyncResult({
+          state: 'success',
+          message: `Synced ${synced} queued fee payment${synced > 1 ? 's' : ''}.`,
+          at: new Date().toLocaleTimeString('en-IN'),
+        })
         toast.success(`Synced ${synced} queued fee payment${synced > 1 ? 's' : ''}.`)
+      } else {
+        setLastSyncResult({
+          state: 'success',
+          message: 'Queue is already up to date.',
+          at: new Date().toLocaleTimeString('en-IN'),
+        })
       }
     } catch (error) {
+      setLastSyncResult({
+        state: 'error',
+        message: getErrorMessage(error),
+        at: new Date().toLocaleTimeString('en-IN'),
+      })
       toast.error(`Offline fee sync paused: ${getErrorMessage(error)}`)
     } finally {
       setSyncingQueued(false)
@@ -255,6 +292,7 @@ function CollectFeePageContent() {
     setReference(draft.reference)
     setRemarks(draft.remarks)
     setPaidAmount(draft.paidAmount)
+    setPendingReceiptNumber(draft.pendingReceiptNumber ?? null)
     draftRestoredRef.current = true
   }, [draftKey, student, receiptNumber])
 
@@ -274,8 +312,9 @@ function CollectFeePageContent() {
       reference,
       remarks,
       paidAmount,
+      pendingReceiptNumber,
     })
-  }, [draftKey, student, structures, selectedItems, discount, paymentMode, reference, remarks, paidAmount, receiptNumber])
+  }, [draftKey, student, structures, selectedItems, discount, paymentMode, reference, remarks, paidAmount, pendingReceiptNumber, receiptNumber])
 
   const handleCollect = async () => {
     if (!school?.id || !student || !user?.id) return
@@ -300,11 +339,14 @@ function CollectFeePageContent() {
       remarks: remarks || undefined,
     }
 
+    const receiptForAttempt = pendingReceiptNumber ?? generateRobustReceiptNumber(school.code ?? 'SCH')
+    if (!pendingReceiptNumber) setPendingReceiptNumber(receiptForAttempt)
+
     if (typeof window !== 'undefined' && !window.navigator.onLine) {
       try {
         await enqueueOfflineTransaction<OfflineFeePaymentPayload>('fee-payment', {
           schoolId: school.id,
-          schoolCode: school.code ?? 'SCH',
+          receiptNumber: receiptForAttempt,
           input,
         })
         toast.success('Payment saved offline. It will sync automatically when the connection returns.')
@@ -318,12 +360,11 @@ function CollectFeePageContent() {
 
     setSaving(true)
     try {
-      const seq = await getNextReceiptSeq(school.id)
-      const rxNumber = generateReceiptNumber(school.code ?? 'SCH', new Date().getFullYear(), seq)
-      await collectFeePayment(school.id, rxNumber, input)
-      setReceiptNumber(rxNumber)
+      const result = await collectFeePayment(school.id, receiptForAttempt, input)
+      setReceiptNumber(result.receiptNumber)
+      setPendingReceiptNumber(null)
       if (draftKey) clearOfflineDraft(draftKey)
-      toast.success(`Payment recorded — Receipt: ${rxNumber}`)
+      toast.success(`Payment recorded — Receipt: ${result.receiptNumber}`)
     } catch (e) {
       toast.error(getErrorMessage(e))
     } finally {
@@ -439,7 +480,7 @@ function CollectFeePageContent() {
               }}>
                 New Payment
               </Button>
-              <Link href={'/school-admin/fees' as any} className="inline-flex items-center text-sm text-muted-foreground underline">
+              <Link href="/school-admin/fees" className="inline-flex items-center text-sm text-muted-foreground underline">
                 Back to Fee Management
               </Link>
             </div>
@@ -682,11 +723,39 @@ function CollectFeePageContent() {
                 <span className="font-bold">₹{balanceRemaining.toLocaleString('en-IN')}</span>
               </div>
             )}
+            <div className="rounded-lg border border-dashed border-border/70 bg-muted/30 px-4 py-3 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="font-medium">Offline Queue Status</p>
+                  <p className="text-xs text-muted-foreground">
+                    {pendingSyncCount > 0
+                      ? `${pendingSyncCount} queued payment${pendingSyncCount > 1 ? 's' : ''} waiting to sync.`
+                      : 'No queued payments in this browser.'}
+                  </p>
+                  <p className={`mt-1 text-xs ${lastSyncResult.state === 'error' ? 'text-destructive' : 'text-muted-foreground'}`}>
+                    Last sync: {lastSyncResult.message}{lastSyncResult.at ? ` (${lastSyncResult.at})` : ''}
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isOffline || syncingQueued || pendingSyncCount === 0}
+                  onClick={() => void flushOfflineQueue()}
+                >
+                  {syncingQueued ? 'Syncing…' : 'Sync queued now'}
+                </Button>
+              </div>
+            </div>
+            {paymentValidationIssues.length > 0 && (
+              <div className="rounded-lg border border-amber-400/60 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-200">
+                {paymentValidationIssues.join(' ')}
+              </div>
+            )}
             <Button
               className="w-full"
               size="lg"
               onClick={handleCollect}
-              disabled={saving || !paidAmount || !Number(paidAmount) || referenceMissing}
+              disabled={saving || paymentValidationIssues.length > 0}
             >
               {saving ? 'Recording...' : 'Collect & Generate Receipt'}
             </Button>

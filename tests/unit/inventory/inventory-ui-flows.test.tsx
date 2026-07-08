@@ -15,6 +15,10 @@ const navMocks = vi.hoisted(() => {
 
 const inventoryActionMocks = vi.hoisted(() => ({
   getInventoryItems: vi.fn(),
+  getPosClasses: vi.fn(),
+  searchStudentsForPos: vi.fn(),
+  getClassPosCatalog: vi.fn(),
+  getStudentForPosById: vi.fn(),
   createInventoryItem: vi.fn(),
   updateInventoryItem: vi.fn(),
   setInventoryItemActive: vi.fn(),
@@ -63,11 +67,18 @@ vi.mock('next/link', () => ({
 }))
 
 vi.mock('@/stores/auth.store', () => ({
-  useAuthStore: () => ({ school: { id: 'school-1' } }),
+  useAuthStore: (selector?: (state: { school: { id: string }; permissions: string[] }) => unknown) => {
+    const state = { school: { id: 'school-1' }, permissions: ['inventory.manage'] }
+    return typeof selector === 'function' ? selector(state) : state
+  },
 }))
 
 vi.mock('../../../src/app/(manager)/manager/inventory/actions', () => ({
   getInventoryItems: inventoryActionMocks.getInventoryItems,
+  getPosClasses: inventoryActionMocks.getPosClasses,
+  searchStudentsForPos: inventoryActionMocks.searchStudentsForPos,
+  getClassPosCatalog: inventoryActionMocks.getClassPosCatalog,
+  getStudentForPosById: inventoryActionMocks.getStudentForPosById,
   createInventoryItem: inventoryActionMocks.createInventoryItem,
   updateInventoryItem: inventoryActionMocks.updateInventoryItem,
   setInventoryItemActive: inventoryActionMocks.setInventoryItemActive,
@@ -131,6 +142,28 @@ beforeEach(() => {
   inventoryActionMocks.createInventoryItem.mockResolvedValue({ id: 'item-2' })
   inventoryActionMocks.updateInventoryItem.mockResolvedValue({ id: 'item-1' })
   inventoryActionMocks.setInventoryItemActive.mockResolvedValue(undefined)
+  inventoryActionMocks.getPosClasses.mockResolvedValue([{ id: 'class-1', name: 'Class 1' }])
+  inventoryActionMocks.searchStudentsForPos.mockResolvedValue([
+    { id: 'stu-1', fullName: 'Aarav Sharma', admissionNumber: 'ADM-001', classId: 'class-1', className: 'Class 1', sectionName: 'A' },
+  ])
+  inventoryActionMocks.getClassPosCatalog.mockResolvedValue([
+    {
+      id: 'item-1',
+      name: 'Notebook',
+      sku: 'NB-001',
+      unit_price: 50,
+      stock_quantity: 5,
+      class_id: 'class-1',
+    },
+  ])
+  inventoryActionMocks.getStudentForPosById.mockResolvedValue({
+    id: 'stu-1',
+    fullName: 'Aarav Sharma',
+    admissionNumber: 'ADM-001',
+    classId: 'class-1',
+    className: 'Class 1',
+    sectionName: 'A',
+  })
 
   inventoryActionMocks.getInventoryItems.mockResolvedValue([
     {
@@ -213,16 +246,21 @@ describe('Inventory/POS UI flows (Phase 2.2)', () => {
 
     await waitFor(() => expect(screen.getByText(/point of sale/i)).toBeInTheDocument())
 
-    const chargeButton = screen.getByRole('button', { name: /charge & print bill/i })
-    expect(chargeButton).toBeDisabled()
+    const classSelect = screen.getByRole('option', { name: /select a class/i }).parentElement as HTMLSelectElement
+    await user.selectOptions(classSelect, 'class-1')
+    await user.click(screen.getByRole('button', { name: /load set/i }))
 
-    await user.click(screen.getByRole('button', { name: /notebook/i }))
+    const proceedButton = await screen.findByRole('button', { name: /proceed to payment/i })
+    await user.click(proceedButton)
+
+    await user.click(screen.getByRole('button', { name: /no student\? bill as guest/i }))
+
+    const chargeButton = await screen.findByRole('button', { name: /charge & print bill/i })
     expect(chargeButton).toBeEnabled()
-
     await user.click(chargeButton)
 
     await waitFor(() => expect(inventoryActionMocks.createInventorySale).toHaveBeenCalledTimes(1))
-    expect(screen.getByText(/payment successful/i)).toBeInTheDocument()
+    expect(screen.getByText(/bookstore sales receipt/i)).toBeInTheDocument()
     expect(screen.getByText(/bill no: bill-001/i)).toBeInTheDocument()
     expect(screen.getByText(/total amount/i)).toBeInTheDocument()
   })

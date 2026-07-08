@@ -19,7 +19,19 @@ import {
 import { ArrowLeft, Download } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect } from 'react'
+import type { Route } from 'next'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+
+type ClassOption = {
+  id: string
+  name: string
+}
+
+type SectionOption = {
+  id: string
+  name: string
+  class_id: string
+}
 
 const MONTHS = [
   'January','February','March','April','May','June',
@@ -40,8 +52,8 @@ export default function AttendanceReportPage() {
   const defaultMonth = String(new Date().getMonth() + 1)
   const defaultYear = String(new Date().getFullYear())
 
-  const [classes, setClasses] = useState<any[]>([])
-  const [sections, setSections] = useState<any[]>([])
+  const [classes, setClasses] = useState<ClassOption[]>([])
+  const [sections, setSections] = useState<SectionOption[]>([])
   const [selClass, setSelClass] = useState(() => searchParams.get('class') ?? '')
   const [selSection, setSelSection] = useState(() => searchParams.get('section') ?? '')
   const [month, setMonth] = useState(() => searchParams.get('month') ?? defaultMonth)
@@ -54,7 +66,10 @@ export default function AttendanceReportPage() {
   useEffect(() => {
     if (!school?.id) return
     Promise.all([getClasses(school.id), getSections(school.id)])
-      .then(([cls, sec]) => { setClasses(cls); setSections(sec) })
+      .then(([cls, sec]) => {
+        setClasses((cls ?? []) as ClassOption[])
+        setSections((sec ?? []) as SectionOption[])
+      })
       .catch((e) => toast.error(getErrorMessage(e)))
   }, [school?.id])
 
@@ -81,7 +96,7 @@ export default function AttendanceReportPage() {
     else params.delete('year')
 
     const query = params.toString()
-    router.replace((query ? `${pathname}?${query}` : pathname) as any, { scroll: false })
+    router.replace((query ? `${pathname}?${query}` : pathname) as Route, { scroll: false })
   }
 
   const filteredSections = sections.filter((s) => s.class_id === selClass)
@@ -130,7 +145,7 @@ export default function AttendanceReportPage() {
   return (
     <div className="space-y-6">
       {/* Back */}
-      <Link href={'/school-admin/attendance' as any}>
+      <Link href="/school-admin/attendance">
         <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground">
           <ArrowLeft className="h-4 w-4" />
           Back to Daily Attendance

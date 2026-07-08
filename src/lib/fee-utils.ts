@@ -44,6 +44,16 @@ export function generateReceiptNumber(schoolCode: string, year: number, seq: num
 }
 
 /**
+ * Generate a collision-resistant receipt number for client retries/offline
+ * replay. Format: SCHOOL/YEAR/YYYYMMDDHHMMSS-RAND
+ */
+export function generateRobustReceiptNumber(schoolCode: string, now = new Date()): string {
+  const ts = now.toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)
+  const rand = Math.random().toString(36).slice(2, 8).toUpperCase()
+  return `${schoolCode.toUpperCase()}/${now.getFullYear()}/${ts}-${rand}`
+}
+
+/**
  * Calculate total from an array of breakdown items.
  */
 export function calcTotal(items: FeeBreakdownItem[]): number {
