@@ -1,8 +1,10 @@
 # EduNexus — Technical Architecture
 
 > **Version:** 1.0.0  
-> **Last Updated:** 2026-02-27  
+> **Last Updated:** 2026-07-09  
 > **Audience:** Developers, AI Assistants, Technical Reviewers
+
+> **Current status note:** Delivery status and deferred roadmap items are tracked in `Documentation/PROGRESS.md` and `Documentation/QA_AUDIT_AND_HARDENING_PLAN.md`. Treat those as the operational source of truth.
 
 ---
 

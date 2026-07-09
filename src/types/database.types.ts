@@ -2593,6 +2593,16 @@ export type Database = {
         }
         Returns: Json
       }
+      get_inventory_summary: {
+        Args: { p_school_id: string }
+        Returns: {
+          item_count: number
+          low_stock_count: number
+          sales_count: number
+          sales_total: number
+          stock_value: number
+        }[]
+      }
       get_my_role: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]

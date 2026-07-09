@@ -15,7 +15,7 @@ import {
 import Link from 'next/link'
 import {
     getInventoryItems, createInventorySale, getPosClasses,
-    searchStudentsForPos, getClassPosCatalog, getStudentForPosById,
+    searchStudentsForPos, getClassPosCatalog, getStudentForPosById, getInventoryOnlinePaymentEnabled,
     type InventorySaleInput, type PosClass, type PosStudent,
 } from '../actions'
 import { usePermissions } from '@/hooks/use-permissions'
@@ -26,6 +26,8 @@ import {
     clearOfflineDraft,
     enqueueOfflineTransaction,
     listOfflineTransactions,
+    markOfflineTransactionAttempt,
+    resetOfflineTransactionAttempts,
     readOfflineDraft,
     removeOfflineTransaction,
     writeOfflineDraft,
@@ -80,6 +82,15 @@ interface QueueSyncResult {
 }
 
 const PAYMENT_MODES: PaymentMode[] = ['cash', 'upi', 'card', 'online']
+const MAX_QUEUE_ATTEMPTS = 5
+const MAX_BACKOFF_MS = 30 * 60 * 1000
+
+interface DeadLetterQueueEntry {
+    id: string
+    attempts: number
+    createdAt: string
+    lastError?: string
+}
 
 export default function POSPage() {
     const searchParams = useSearchParams()
@@ -95,6 +106,8 @@ export default function POSPage() {
     const [processing, setProcessing] = useState(false)
     const [isOffline, setIsOffline] = useState(false)
     const [pendingSyncCount, setPendingSyncCount] = useState(0)
+    const [deadLetters, setDeadLetters] = useState<DeadLetterQueueEntry[]>([])
+    const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState(false)
     const [syncingQueued, setSyncingQueued] = useState(false)
     const [lastSyncResult, setLastSyncResult] = useState<QueueSyncResult>({
         state: 'idle',
@@ -130,9 +143,38 @@ export default function POSPage() {
     } | null>(null)
 
     useEffect(() => {
+        if (!onlinePaymentEnabled && paymentMode === 'online') {
+            setPaymentMode('cash')
+        }
+    }, [onlinePaymentEnabled, paymentMode])
+
+    const availablePaymentModes = PAYMENT_MODES.filter((mode) => onlinePaymentEnabled || mode !== 'online')
+
+    useEffect(() => {
         if (!school?.id) return
         getPosClasses(school.id).then(setClasses).catch(() => {})
     }, [school?.id])
+
+    useEffect(() => {
+        let active = true
+        void (async () => {
+            try {
+                const enabled = await getInventoryOnlinePaymentEnabled()
+                if (active) setOnlinePaymentEnabled(enabled)
+            } catch {
+                if (active) setOnlinePaymentEnabled(false)
+            }
+        })()
+
+        return () => {
+            active = false
+        }
+    }, [])
+
+    const retryDelayMs = useCallback((attempts: number) => {
+        if (attempts <= 0) return 0
+        return Math.min(MAX_BACKOFF_MS, Math.pow(2, attempts - 1) * 60_000)
+    }, [])
 
     const resetPosState = useCallback(() => {
         setSuccessBill(null)
@@ -152,9 +194,20 @@ export default function POSPage() {
     const refreshPendingSyncCount = useCallback(async () => {
         try {
             const queued = await listOfflineTransactions<OfflineInventorySalePayload>('inventory-sale')
-            setPendingSyncCount(queued.filter((item) => item.payload.schoolId === school?.id).length)
+            const scoped = queued.filter((item) => item.payload.schoolId === school?.id)
+            const dead = scoped.filter((item) => (item.attempts ?? 0) >= MAX_QUEUE_ATTEMPTS)
+            setDeadLetters(
+                dead.map((item) => ({
+                    id: item.id,
+                    attempts: item.attempts,
+                    createdAt: item.createdAt,
+                    lastError: item.lastError,
+                })),
+            )
+            setPendingSyncCount(scoped.length - dead.length)
         } catch {
             setPendingSyncCount(0)
+            setDeadLetters([])
         }
     }, [school?.id])
 
@@ -163,25 +216,65 @@ export default function POSPage() {
 
         setSyncingQueued(true)
         let synced = 0
+        let failed = 0
+        let cooldownSkipped = 0
+        let deadLetterSkipped = 0
         try {
             const queued = await listOfflineTransactions<OfflineInventorySalePayload>('inventory-sale')
             const salesQueue = queued.filter((item) => item.payload.schoolId === school.id)
             for (const item of salesQueue) {
-                await createInventorySale(item.payload.schoolId, item.payload.input)
-                await removeOfflineTransaction(item.id)
-                synced += 1
+                if ((item.attempts ?? 0) >= MAX_QUEUE_ATTEMPTS) {
+                    deadLetterSkipped += 1
+                    continue
+                }
+
+                const delayMs = retryDelayMs(item.attempts ?? 0)
+                if (delayMs > 0 && item.lastAttemptAt) {
+                    const nextAttemptAt = Date.parse(item.lastAttemptAt) + delayMs
+                    if (Number.isFinite(nextAttemptAt) && Date.now() < nextAttemptAt) {
+                        cooldownSkipped += 1
+                        continue
+                    }
+                }
+
+                try {
+                    await createInventorySale(item.payload.schoolId, item.payload.input)
+                    await removeOfflineTransaction(item.id)
+                    synced += 1
+                } catch (error) {
+                    failed += 1
+                    await markOfflineTransactionAttempt(item.id, getErrorMessage(error))
+                }
             }
-            if (synced > 0) {
+            if (synced > 0 && failed === 0) {
                 setLastSyncResult({
                     state: 'success',
                     message: `Synced ${synced} queued POS sale${synced > 1 ? 's' : ''}.`,
                     at: new Date().toLocaleTimeString('en-IN'),
                 })
                 toast.success(`Synced ${synced} queued POS sale${synced > 1 ? 's' : ''}.`)
+            } else if (synced > 0 && failed > 0) {
+                setLastSyncResult({
+                    state: 'error',
+                    message: `Synced ${synced} queued sale${synced > 1 ? 's' : ''}, ${failed} failed and remain queued for retry.`,
+                    at: new Date().toLocaleTimeString('en-IN'),
+                })
+                toast.warning(`Synced ${synced} queued sale${synced > 1 ? 's' : ''}; ${failed} failed and will retry.`)
+            } else if (failed > 0) {
+                setLastSyncResult({
+                    state: 'error',
+                    message: `${failed} queued sale${failed > 1 ? 's' : ''} failed to sync. They remain queued for retry.`,
+                    at: new Date().toLocaleTimeString('en-IN'),
+                })
+                toast.error(`${failed} queued sale${failed > 1 ? 's' : ''} could not sync. They remain queued.`)
             } else {
                 setLastSyncResult({
                     state: 'success',
-                    message: 'Queue is already up to date.',
+                    message: deadLetterSkipped > 0
+                        ? `${deadLetterSkipped} sale${deadLetterSkipped > 1 ? 's are' : ' is'} in dead-letter after repeated failures.`
+                        : cooldownSkipped > 0
+                            ? `${cooldownSkipped} sale${cooldownSkipped > 1 ? 's are' : ' is'} cooling down before next retry.`
+                            : 'Queue is already up to date.',
                     at: new Date().toLocaleTimeString('en-IN'),
                 })
             }
@@ -196,7 +289,7 @@ export default function POSPage() {
             setSyncingQueued(false)
             void refreshPendingSyncCount()
         }
-    }, [refreshPendingSyncCount, school?.id, syncingQueued])
+    }, [refreshPendingSyncCount, retryDelayMs, school?.id, syncingQueued])
 
     useEffect(() => {
         if (typeof window === 'undefined') return
@@ -557,6 +650,11 @@ export default function POSPage() {
                     <p className={`mt-1 text-xs ${lastSyncResult.state === 'error' ? 'text-red-300' : 'text-zinc-500'}`}>
                         Last sync: {lastSyncResult.message}{lastSyncResult.at ? ` (${lastSyncResult.at})` : ''}
                     </p>
+                    {!onlinePaymentEnabled && (
+                        <p className="mt-1 text-xs text-amber-300">
+                            Online payment mode is coming soon. Use cash/UPI/card until gateway capture and reconciliation are live.
+                        </p>
+                    )}
                 </div>
                 <div className="flex items-center gap-2">
                     <Button
@@ -579,6 +677,50 @@ export default function POSPage() {
                     </Button>
                 </div>
             </div>
+            {deadLetters.length > 0 && (
+                <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-amber-200">Dead-letter queue ({deadLetters.length})</p>
+                    <p className="mt-1 text-xs text-amber-100/90">
+                        These sales hit max retry attempts and are paused until you retry or discard them.
+                    </p>
+                    <div className="mt-2 space-y-2">
+                        {deadLetters.slice(0, 5).map((entry) => (
+                            <div key={entry.id} className="rounded-md border border-amber-500/20 bg-black/20 p-2">
+                                <p className="text-xs text-zinc-200">{entry.id}</p>
+                                <p className="text-xs text-zinc-400">
+                                    Attempts: {entry.attempts} · Queued: {new Date(entry.createdAt).toLocaleString('en-IN')}
+                                </p>
+                                {entry.lastError && <p className="text-xs text-red-300">Last error: {entry.lastError}</p>}
+                                <div className="mt-2 flex gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 border-amber-500/30 bg-amber-500/10 text-amber-100 hover:bg-amber-500/20"
+                                        onClick={async () => {
+                                            await resetOfflineTransactionAttempts(entry.id)
+                                            await refreshPendingSyncCount()
+                                            void flushOfflineQueue()
+                                        }}
+                                    >
+                                        Retry now
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 border-red-500/30 bg-red-500/10 text-red-200 hover:bg-red-500/20"
+                                        onClick={async () => {
+                                            await removeOfflineTransaction(entry.id)
+                                            await refreshPendingSyncCount()
+                                        }}
+                                    >
+                                        Discard
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     )
 
@@ -980,7 +1122,7 @@ export default function POSPage() {
                                 <div className="space-y-2">
                                     <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Payment Mode</Label>
                                     <div className="grid grid-cols-4 gap-2">
-                                        {PAYMENT_MODES.map(mode => (
+                                        {availablePaymentModes.map(mode => (
                                             <button
                                                 key={mode}
                                                 onClick={() => setPaymentMode(mode)}

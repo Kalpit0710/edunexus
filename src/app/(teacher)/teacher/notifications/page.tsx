@@ -133,6 +133,7 @@ export default function TeacherNotificationsPage() {
           <Bell className="h-6 w-6 text-blue-500" /> Class Notifications
         </h2>
         <p className="text-muted-foreground">Send notifications to students of your assigned class only.</p>
+        <p className="mt-1 text-xs text-amber-600">Delivery channel status: Email only currently active (SMS/WhatsApp in pipeline).</p>
       </div>
 
       <Card>

@@ -40,6 +40,9 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: Documentation freshness
+        run: pnpm docs:check-freshness
+
       - name: Unit & integration tests
         # The RLS integration suite self-skips when Supabase secrets are absent,
         # so this stays green without credentials.

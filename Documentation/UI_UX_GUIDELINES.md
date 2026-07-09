@@ -1,7 +1,9 @@
 # EduNexus — UI/UX Guidelines
 
 > **Version:** 1.0.0  
-> **Last Updated:** 2026-02-27
+> **Last Updated:** 2026-07-09
+
+> **Current status note:** Feature rollout status (live vs deferred integrations) is tracked in `Documentation/PROGRESS.md` and `Documentation/QA_AUDIT_AND_HARDENING_PLAN.md`.
 
 ---
 

@@ -8,6 +8,7 @@ import { logAudit } from '@/lib/audit'
 import { validateCollectFeeInput } from '@/lib/fee-utils'
 import { FeeReceiptEmail } from '@/emails/FeeReceiptEmail'
 import type { Database } from '@/types/database.types'
+import { isOnlinePaymentEnabled } from '@/lib/payments'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -133,6 +134,10 @@ interface PendingFeeRpcRow {
   total_fee: number | string
   total_paid: number | string
   balance: number | string
+}
+
+export async function getFeeOnlinePaymentEnabled(): Promise<boolean> {
+  return isOnlinePaymentEnabled()
 }
 
 // ─── Category Actions ─────────────────────────────────────────────────────────

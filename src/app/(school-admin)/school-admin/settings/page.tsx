@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
-import { updateSchoolSettings } from './actions'
+import { getPlatformOpsHealth, updateSchoolSettings, type PlatformOpsHealth } from './actions'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/utils'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -23,6 +23,7 @@ export default function SettingsPage() {
   const { school, setSchool } = useAuthStore()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<any>({})
+  const [opsHealth, setOpsHealth] = useState<PlatformOpsHealth | null>(null)
 
   useEffect(() => {
     if (school) {
@@ -32,6 +33,22 @@ export default function SettingsPage() {
       // but the layout should handle it.
     }
   }, [school])
+
+  useEffect(() => {
+    let active = true
+    void (async () => {
+      try {
+        const health = await getPlatformOpsHealth()
+        if (active) setOpsHealth(health)
+      } catch {
+        if (active) setOpsHealth(null)
+      }
+    })()
+
+    return () => {
+      active = false
+    }
+  }, [])
 
   async function handleSaveGeneral(e: React.FormEvent) {
     e.preventDefault()
@@ -263,6 +280,44 @@ export default function SettingsPage() {
                     checked={!!formData.lock_results_on_fee}
                     onCheckedChange={(v) => setFormData({ ...formData, lock_results_on_fee: v })}
                   />
+                </div>
+
+                <div className="rounded-lg border p-4">
+                  <p className="text-sm font-semibold">Operations Health</p>
+                  <p className="text-xs text-muted-foreground">
+                    Checks configuration readiness for cron-based communications and payment/notification channels.
+                  </p>
+                  <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                    <p>
+                      Cron secret:{' '}
+                      <span className={opsHealth?.cronSecretConfigured ? 'text-emerald-600' : 'text-amber-600'}>
+                        {opsHealth?.cronSecretConfigured ? 'Configured' : 'Missing'}
+                      </span>
+                    </p>
+                    <p>
+                      Online payments:{' '}
+                      <span className={opsHealth?.onlinePaymentsActive ? 'text-emerald-600' : 'text-amber-600'}>
+                        {opsHealth?.onlinePaymentsActive ? 'Active' : 'Coming soon'}
+                      </span>
+                    </p>
+                    <p>
+                      Email channel:{' '}
+                      <span className={opsHealth?.emailChannelActive ? 'text-emerald-600' : 'text-amber-600'}>
+                        {opsHealth?.emailChannelActive ? 'Active' : 'Inactive'}
+                      </span>
+                    </p>
+                    <p>
+                      SMS / WhatsApp:{' '}
+                      <span className={opsHealth?.smsChannelActive || opsHealth?.whatsappChannelActive ? 'text-emerald-600' : 'text-amber-600'}>
+                        {opsHealth?.smsChannelActive || opsHealth?.whatsappChannelActive ? 'Partially active' : 'Email only currently active'}
+                      </span>
+                    </p>
+                  </div>
+                  {!opsHealth?.cronSecretConfigured && (
+                    <p className="mt-2 text-xs text-amber-600">
+                      Configure CRON_SECRET and scheduler calls for {opsHealth?.weeklyDigestCronPath ?? '/api/cron/weekly-digest'} and {opsHealth?.feeReminderCronPath ?? '/api/cron/fee-reminders'} to avoid silent inactivity.
+                    </p>
+                  )}
                 </div>
 
                 <Button type="submit" disabled={loading}>

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
 import { usePermissions } from '@/hooks/use-permissions'
-import { getInventoryItems, getPosClasses, type PosClass } from './actions'
+import { getInventoryItemsPage, getPosClasses, type PosClass } from './actions'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -17,7 +17,8 @@ import { isLowStock, type InventoryCategory } from '@/lib/inventory-utils'
 import { formatCurrency } from '@/lib/utils'
 import { TableSkeleton } from '@/components/loaders/page-loaders'
 
-type InventoryItem = Awaited<ReturnType<typeof getInventoryItems>>[number]
+type InventoryPageResult = Awaited<ReturnType<typeof getInventoryItemsPage>>
+type InventoryItem = InventoryPageResult['items'][number]
 
 const categories: { label: string, value: InventoryCategory }[] = [
     { label: 'Books', value: 'book' },
@@ -32,6 +33,9 @@ export default function InventoryPage() {
     const { school } = useAuthStore()
     const canManage = usePermissions().can('inventory.manage')
     const [items, setItems] = useState<InventoryItem[]>([])
+    const [totalItems, setTotalItems] = useState(0)
+    const [page, setPage] = useState(1)
+    const PAGE_SIZE = 50
     const [loading, setLoading] = useState(true)
 
     // Filters
@@ -52,17 +56,22 @@ export default function InventoryPage() {
         if (!school?.id) return
         setLoading(true)
         try {
-            const data = await getInventoryItems(school.id, {
+            const result = await getInventoryItemsPage(school.id, {
                 activeOnly: activeFilter === 'active',
-                limit: 500
+                search: search.trim() || undefined,
+                category: selectedCategory !== 'all' ? (selectedCategory as InventoryCategory) : undefined,
+                classId: selectedClass !== 'all' ? selectedClass : undefined,
+                page,
+                pageSize: PAGE_SIZE,
             })
-            setItems(data || [])
+            setItems(result.items || [])
+            setTotalItems(result.total)
         } catch (e) {
             toast.error('Failed to load inventory: ' + getErrorMessage(e))
         } finally {
             setLoading(false)
         }
-    }, [school?.id, activeFilter])
+    }, [school?.id, activeFilter, search, selectedCategory, selectedClass, page])
 
     useEffect(() => {
         if (school?.id) {
@@ -70,20 +79,11 @@ export default function InventoryPage() {
         }
     }, [fetchItems, school?.id])
 
-    const filteredItems = items.filter(i => {
-        if (selectedCategory !== 'all' && i.category !== selectedCategory) return false
-        if (selectedClass === 'general' && i.class_id) return false
-        if (selectedClass !== 'all' && selectedClass !== 'general' && i.class_id !== selectedClass) return false
+    const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE))
 
-        if (search) {
-            const term = search.toLowerCase()
-            return (
-                i.name.toLowerCase().includes(term) ||
-                (i.sku && i.sku.toLowerCase().includes(term))
-            )
-        }
-        return true
-    })
+    useEffect(() => {
+        setPage(1)
+    }, [search, selectedCategory, selectedClass, activeFilter])
 
     return (
         <div className="space-y-6">
@@ -171,16 +171,16 @@ export default function InventoryPage() {
                 <CardContent className="p-0">
                     {loading ? (
                         <TableSkeleton rows={6} columns={5} aria-label="Loading inventory" />
-                    ) : filteredItems.length === 0 ? (
+                    ) : items.length === 0 ? (
                         <div className="p-8 text-center sm:py-16">
                             <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
                                 <Package className="w-6 h-6 text-muted-foreground" />
                             </div>
                             <h3 className="text-lg font-medium mb-1">No items found</h3>
                             <p className="text-sm text-muted-foreground mb-4">
-                                {items.length === 0 ? 'Add your first inventory item to get started.' : 'Try adjusting your search filters.'}
+                                {totalItems === 0 ? 'Add your first inventory item to get started.' : 'Try adjusting your search filters.'}
                             </p>
-                            {items.length === 0 && canManage && (
+                            {totalItems === 0 && canManage && (
                                 <Link href="/manager/inventory/new">
                                     <Button variant="outline"><Plus className="w-4 h-4 mr-2" /> Add Item</Button>
                                 </Link>
@@ -201,7 +201,7 @@ export default function InventoryPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y relative">
-                                    {filteredItems.map((item) => {
+                                    {items.map((item) => {
                                         const lowStock = isLowStock(item.stock_quantity, item.low_stock_alert)
 
                                         return (
@@ -252,6 +252,39 @@ export default function InventoryPage() {
                                     })}
                                 </tbody>
                             </table>
+                        </div>
+                    )}
+
+                    {!loading && totalItems > 0 && (
+                        <div className="flex flex-col gap-3 border-t px-6 py-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+                            <p className="text-muted-foreground">
+                                Showing <span className="font-medium text-foreground">{(page - 1) * PAGE_SIZE + 1}</span>
+                                {' '}-{' '}
+                                <span className="font-medium text-foreground">{Math.min(page * PAGE_SIZE, totalItems)}</span>
+                                {' '}of{' '}
+                                <span className="font-medium text-foreground">{totalItems}</span> items
+                            </p>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={page <= 1}
+                                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                >
+                                    Previous
+                                </Button>
+                                <span className="min-w-24 text-center text-xs text-muted-foreground">
+                                    Page {page} of {totalPages}
+                                </span>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={page >= totalPages}
+                                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                                >
+                                    Next
+                                </Button>
+                            </div>
                         </div>
                     )}
                 </CardContent>

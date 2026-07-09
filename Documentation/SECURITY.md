@@ -1,8 +1,10 @@
 # EduNexus — Security Model
 
 > **Version:** 1.0.0  
-> **Last Updated:** 2026-02-27  
+> **Last Updated:** 2026-07-09  
 > **Audience:** Developers, AI Assistants, Security Reviewers
+
+> **Current status note:** For rollout state (completed modules vs deferred integrations like payment gateway and WhatsApp), refer to `Documentation/PROGRESS.md` and `Documentation/QA_AUDIT_AND_HARDENING_PLAN.md`.
 
 ---
 

@@ -4,7 +4,6 @@ import { createClient as createServerSupabaseClient } from '@/lib/supabase/serve
 import type { Database } from '@/types/database.types'
 import { requirePermission } from '@/lib/auth/permissions'
 import {
-  calculateInventoryCartTotal,
   isLowStock,
   validateInventorySaleItems,
   validateStockAdjustment,
@@ -15,12 +14,12 @@ import {
 import { requireActor } from '@/lib/auth/require-actor'
 import { sendEmail } from '@/lib/email'
 import { InventoryReceiptEmail } from '@/emails/InventoryReceiptEmail'
+import { isOnlinePaymentEnabled } from '@/lib/payments'
 
 type ServerDbClient = Awaited<ReturnType<typeof createServerSupabaseClient>>
 type InventoryItemRow = Database['public']['Tables']['inventory_items']['Row']
 type InventoryItemUpdate = Database['public']['Tables']['inventory_items']['Update']
 type ClassRow = Pick<Database['public']['Tables']['classes']['Row'], 'id' | 'name'>
-type InventorySaleRow = Database['public']['Tables']['inventory_sales']['Row']
 type StudentPosJoinedRow = Pick<Database['public']['Tables']['students']['Row'], 'id' | 'full_name' | 'admission_number' | 'class_id'> & {
   classes: { name: string } | null
   sections: { name: string } | null
@@ -29,7 +28,6 @@ type ParentEmailRow = Pick<Database['public']['Tables']['parents']['Row'], 'full
 type StudentSchoolRow = Pick<Database['public']['Tables']['students']['Row'], 'full_name'> & {
   schools: { name: string } | null
 }
-type SalesSummaryRow = Pick<InventorySaleRow, 'id' | 'total_amount'>
 interface CreateInventorySaleRpcResult {
   sale_id: string
   bill_number: string
@@ -122,6 +120,71 @@ export async function getInventoryItems(
   const { data, error } = await query
   if (error) throw new Error(error.message)
   return data ?? []
+}
+
+export interface InventoryItemsPageResult {
+  items: InventoryItemRow[]
+  total: number
+  page: number
+  pageSize: number
+}
+
+export async function getInventoryItemsPage(
+  schoolId: string,
+  opts?: {
+    category?: InventoryCategory
+    classId?: string
+    search?: string
+    activeOnly?: boolean
+    page?: number
+    pageSize?: number
+  },
+): Promise<InventoryItemsPageResult> {
+  const supabase = await createServerSupabaseClient()
+
+  const page = Math.max(1, opts?.page ?? 1)
+  const pageSize = Math.max(10, Math.min(200, opts?.pageSize ?? 50))
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+
+  let query = supabase
+    .from('inventory_items')
+    .select('*', { count: 'exact' })
+    .eq('school_id', schoolId)
+    .order('name', { ascending: true })
+    .range(from, to)
+
+  if (opts?.activeOnly ?? true) {
+    query = query.eq('is_active', true)
+  }
+
+  if (opts?.category) {
+    query = query.eq('category', opts.category)
+  }
+
+  if (opts?.classId === 'general') {
+    query = query.is('class_id', null)
+  } else if (opts?.classId) {
+    query = query.eq('class_id', opts.classId)
+  }
+
+  if (opts?.search?.trim()) {
+    query = query.or(`name.ilike.%${opts.search.trim()}%,sku.ilike.%${opts.search.trim()}%`)
+  }
+
+  const { data, error, count } = await query
+  if (error) throw new Error(error.message)
+
+  return {
+    items: (data ?? []) as InventoryItemRow[],
+    total: count ?? 0,
+    page,
+    pageSize,
+  }
+}
+
+export async function getInventoryOnlinePaymentEnabled(): Promise<boolean> {
+  return isOnlinePaymentEnabled()
 }
 
 // ─── Bookstore POS helpers ────────────────────────────────────────────────────
@@ -530,46 +593,69 @@ export async function createInventorySale(
   const saleResult = data as unknown as CreateInventorySaleRpcResult
 
   if (input.studentId) {
-    try {
-      const { data: parent } = await supabase
-        .from('parents')
-        .select('full_name, email')
-        .eq('student_id', input.studentId)
-        .eq('is_primary', true)
-        .maybeSingle()
-      const { data: student } = await supabase
-        .from('students')
-        .select('full_name, schools(name)')
-        .eq('id', input.studentId)
-        .single()
-      const parentRow = parent as ParentEmailRow | null
-      const studentRow = student as StudentSchoolRow | null
-      
-      if (parentRow?.email && studentRow) {
-        await sendEmail({
-          to: parentRow.email,
-          subject: `Purchase Receipt from ${studentRow.schools?.name || 'EduNexus'}`,
-          react: InventoryReceiptEmail({
-            customerName: parentRow.full_name,
-            schoolName: studentRow.schools?.name || 'EduNexus',
-            billNumber: saleResult.bill_number,
-            totalAmount: `₹${Number(saleResult.total_amount).toFixed(2)}`,
-            paymentMode: input.paymentMode,
-            date: new Date().toLocaleDateString()
-          }),
-          schoolId,
-          event: 'inventory_receipt'
-        })
-      }
-    } catch (e) {
-      console.error('Failed to send POS receipt email', e)
-    }
+    // Email dispatch is intentionally fire-and-forget so checkout latency stays low.
+    void sendInventoryReceiptEmail(supabase, {
+      schoolId,
+      studentId: input.studentId,
+      billNumber: saleResult.bill_number,
+      totalAmount: Number(saleResult.total_amount),
+      paymentMode: input.paymentMode,
+    })
   }
 
   return {
     saleId: saleResult.sale_id,
     billNumber: saleResult.bill_number,
     totalAmount: Number(saleResult.total_amount),
+  }
+}
+
+interface InventoryReceiptEmailArgs {
+  schoolId: string
+  studentId: string
+  billNumber: string
+  totalAmount: number
+  paymentMode: InventorySaleInput['paymentMode']
+}
+
+async function sendInventoryReceiptEmail(
+  supabase: ServerDbClient,
+  args: InventoryReceiptEmailArgs,
+): Promise<void> {
+  try {
+    const { data: parent } = await supabase
+      .from('parents')
+      .select('full_name, email')
+      .eq('student_id', args.studentId)
+      .eq('is_primary', true)
+      .maybeSingle()
+    const { data: student } = await supabase
+      .from('students')
+      .select('full_name, schools(name)')
+      .eq('id', args.studentId)
+      .single()
+
+    const parentRow = parent as ParentEmailRow | null
+    const studentRow = student as StudentSchoolRow | null
+
+    if (!parentRow?.email || !studentRow) return
+
+    await sendEmail({
+      to: parentRow.email,
+      subject: `Purchase Receipt from ${studentRow.schools?.name || 'EduNexus'}`,
+      react: InventoryReceiptEmail({
+        customerName: parentRow.full_name,
+        schoolName: studentRow.schools?.name || 'EduNexus',
+        billNumber: args.billNumber,
+        totalAmount: `₹${args.totalAmount.toFixed(2)}`,
+        paymentMode: args.paymentMode,
+        date: new Date().toLocaleDateString(),
+      }),
+      schoolId: args.schoolId,
+      event: 'inventory_receipt',
+    })
+  } catch (e) {
+    console.error('Failed to send POS receipt email', e)
   }
 }
 
@@ -619,48 +705,27 @@ export async function getLowStockItems(schoolId: string, limit = 50) {
 export async function getInventorySummary(schoolId: string) {
   const supabase = await createServerSupabaseClient()
 
-  const [itemsResult, salesResult] = await Promise.all([
-    supabase
-      .from('inventory_items')
-      .select('stock_quantity, unit_price, low_stock_alert')
-      .eq('school_id', schoolId)
-      .eq('is_active', true)
-      .limit(5000),
-    supabase
-      .from('inventory_sales')
-      .select('id, total_amount')
-      .eq('school_id', schoolId)
-      .limit(5000),
-  ])
+  const { data, error } = await supabase.rpc('get_inventory_summary', {
+    p_school_id: schoolId,
+  })
 
-  if (itemsResult.error) throw new Error(itemsResult.error.message)
-  if (salesResult.error) throw new Error(salesResult.error.message)
+  if (error) throw new Error(error.message)
 
-  const items = (itemsResult.data ?? []) as Pick<InventoryItemRow, 'stock_quantity' | 'unit_price' | 'low_stock_alert'>[]
-  const sales = (salesResult.data ?? []) as SalesSummaryRow[]
-
-  const stockValue = items.reduce(
-    (sum, item) => sum + Number(item.stock_quantity) * Number(item.unit_price),
-    0
-  )
-
-  const lowStockCount = items.filter((item) =>
-    isLowStock(Number(item.stock_quantity), Number(item.low_stock_alert))
-  ).length
-
-  const salesTotal = calculateInventoryCartTotal(
-    sales.map((sale) => ({
-      itemId: sale.id,
-      quantity: 1,
-      unitPrice: Number(sale.total_amount),
-    }))
-  )
+  const summary = (Array.isArray(data) ? data[0] : data) as
+    | {
+        item_count: number | string | null
+        low_stock_count: number | string | null
+        stock_value: number | string | null
+        sales_count: number | string | null
+        sales_total: number | string | null
+      }
+    | null
 
   return {
-    itemCount: items.length,
-    lowStockCount,
-    stockValue: Number(stockValue.toFixed(2)),
-    salesCount: sales.length,
-    salesTotal,
+    itemCount: Number(summary?.item_count ?? 0),
+    lowStockCount: Number(summary?.low_stock_count ?? 0),
+    stockValue: Number(Number(summary?.stock_value ?? 0).toFixed(2)),
+    salesCount: Number(summary?.sales_count ?? 0),
+    salesTotal: Number(Number(summary?.sales_total ?? 0).toFixed(2)),
   }
 }

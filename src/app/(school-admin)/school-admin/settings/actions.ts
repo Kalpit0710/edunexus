@@ -4,9 +4,36 @@ import type { Database } from '@/types/database.types'
 import { createClient as createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server'
 import { requireActor } from '@/lib/auth/require-actor'
 import { logAudit } from '@/lib/audit'
+import { isChannelConfigured } from '@/lib/notifications'
+import { isOnlinePaymentEnabled } from '@/lib/payments'
 
 // Local alias for the shared cookie-aware server client (see lib/supabase/server).
 const getSupabase = createServerSupabaseClient
+
+export interface PlatformOpsHealth {
+    cronSecretConfigured: boolean
+    weeklyDigestCronPath: string
+    feeReminderCronPath: string
+    emailChannelActive: boolean
+    smsChannelActive: boolean
+    whatsappChannelActive: boolean
+    onlinePaymentsActive: boolean
+}
+
+export async function getPlatformOpsHealth(): Promise<PlatformOpsHealth> {
+    const supabase = await createServerSupabaseClient()
+    await requireActor(supabase, ['school_admin'])
+
+    return {
+        cronSecretConfigured: Boolean(process.env.CRON_SECRET),
+        weeklyDigestCronPath: '/api/cron/weekly-digest',
+        feeReminderCronPath: '/api/cron/fee-reminders',
+        emailChannelActive: isChannelConfigured('email'),
+        smsChannelActive: isChannelConfigured('sms'),
+        whatsappChannelActive: isChannelConfigured('whatsapp'),
+        onlinePaymentsActive: isOnlinePaymentEnabled(),
+    }
+}
 
 // ─── Soft-delete helpers ───────────────────────────────────────────────────
 

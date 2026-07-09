@@ -38,6 +38,23 @@
 
 ## Completed Tasks
 
+### 2026-07-09 — SaaS readiness hardening (payments visibility, offline dead-letter controls, inventory pagination, ops health, CI doc freshness)
+- Status: ✅ Completed.
+- **Payment-mode truthfulness:** hid `online` payment mode in manager POS and school-admin fee collection when gateway is not active (`isOnlinePaymentEnabled` via server actions), with explicit "coming soon" messaging.
+- **Offline retry safety:** added dead-letter behavior for POS queue (`MAX_QUEUE_ATTEMPTS` + exponential cooldown backoff), plus cashier controls to retry or discard poisoned records from the sync banner.
+- **Inventory scalability UX:** replaced client-side truncation pattern with server-side paginated fetch (`getInventoryItemsPage`) and page controls on inventory list.
+- **Comms transparency:** added explicit "Email only currently active" channel labels on teacher/manager/super-admin notification screens.
+- **Ops health visibility:** added School Admin settings panel showing cron secret readiness, payment gateway state, and channel activity (email vs SMS/WhatsApp) with warning guidance.
+- **Operational enforcement:** added docs freshness checker (`scripts/check-doc-freshness.mjs`), package script `docs:check-freshness`, and CI step in `.github/workflows/ci.yml`.
+
+### 2026-07-09 — POS reliability hardening + summary accuracy + doc freshness
+- Status: ✅ Completed.
+- **Offline POS replay resilience:** queue sync no longer aborts on the first failing record; each queued sale is attempted independently, successful ones are removed, and failed ones remain queued with attempt metadata for retry (`markOfflineTransactionAttempt`).
+- **Offline data expiry controls:** added TTL-based expiry for queued IndexedDB transactions (7 days default) and local POS draft payloads in `localStorage` (12 hours default); expired records are auto-purged/read-as-null.
+- **Inventory summary accuracy at scale:** replaced capped in-app rollups with a DB aggregate RPC `get_inventory_summary(p_school_id)` (new migration `20260709000001_inventory_summary_rpc.sql`) and wired `getInventorySummary` to use it, preventing under-reporting on large datasets.
+- **Checkout latency reduction:** POS receipt email dispatch moved to fire-and-forget async flow so sale completion path is not blocked by provider latency.
+- **Documentation freshness:** updated `ARCHITECTURE.md`, `SECURITY.md`, and `UI_UX_GUIDELINES.md` timestamps/status notes; regenerated `Documentation/AI_CONTEXT_SNAPSHOT.md` via `pnpm ai:sync-context`.
+
 ### 2026-07-03 — Documentation enhancement: Mermaid diagrams across core docs
 - Status: ✅ Completed.
 - Added Mermaid diagrams to improve system comprehension and onboarding speed across documentation set:

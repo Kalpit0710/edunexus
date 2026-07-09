@@ -109,6 +109,7 @@ export default function SuperAdminNotificationsPage() {
           <Bell className="h-6 w-6 text-blue-400" /> Platform Notifications
         </h1>
         <p className="text-sm text-zinc-400">Send notifications globally, school-wise, or class-wise from the super-admin console.</p>
+        <p className="mt-1 text-xs text-amber-300">Delivery channel status: Email only currently active (SMS/WhatsApp in pipeline).</p>
       </div>
 
       <Card>

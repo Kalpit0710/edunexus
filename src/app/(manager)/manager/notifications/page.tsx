@@ -151,6 +151,7 @@ export default function ManagerNotificationsPage() {
             ? 'Send class or broadcast notifications to students and teachers.'
             : 'Send class or broadcast notifications allowed for manager workflows.'}
         </p>
+        <p className="mt-1 text-xs text-amber-600">Delivery channel status: Email only currently active (SMS/WhatsApp in pipeline).</p>
       </div>
 
       <Card>

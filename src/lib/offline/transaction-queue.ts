@@ -5,6 +5,15 @@ export interface OfflineTransactionRecord<TPayload = unknown> {
   type: string
   payload: TPayload
   createdAt: string
+  expiresAt: string
+  attempts: number
+  lastAttemptAt?: string
+  lastError?: string
+}
+
+interface OfflineDraftEnvelope<T> {
+  value: T
+  expiresAt: string
 }
 
 /**
@@ -21,6 +30,8 @@ export function createClientReference(prefix: string): string {
 const DB_NAME = 'edunexus-offline'
 const DB_VERSION = 1
 const STORE_NAME = 'transactions'
+const DEFAULT_TRANSACTION_TTL_MS = 7 * 24 * 60 * 60 * 1000
+const DEFAULT_DRAFT_TTL_MS = 12 * 60 * 60 * 1000
 
 function isIndexedDbAvailable() {
   return typeof window !== 'undefined' && 'indexedDB' in window
@@ -70,11 +81,14 @@ export async function enqueueOfflineTransaction<TPayload>(
   type: string,
   payload: TPayload,
 ): Promise<OfflineTransactionRecord<TPayload>> {
+  const now = new Date()
   const record: OfflineTransactionRecord<TPayload> = {
     id: `${type}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
     type,
     payload,
-    createdAt: new Date().toISOString(),
+    createdAt: now.toISOString(),
+    expiresAt: new Date(now.getTime() + DEFAULT_TRANSACTION_TTL_MS).toISOString(),
+    attempts: 0,
   }
 
   await withStore('readwrite', async (store) => {
@@ -88,11 +102,64 @@ export async function enqueueOfflineTransaction<TPayload>(
 export async function listOfflineTransactions<TPayload = unknown>(
   type?: string,
 ): Promise<OfflineTransactionRecord<TPayload>[]> {
-  return withStore('readonly', async (store) => {
+  return withStore('readwrite', async (store) => {
     const source = type ? store.index('type') : store
     const request = type ? source.getAll(type) : source.getAll()
     const result = (await requestToPromise(request as IDBRequest<OfflineTransactionRecord<TPayload>[]>)) ?? []
-    return [...result].sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    const now = Date.now()
+    const active: OfflineTransactionRecord<TPayload>[] = []
+
+    for (const record of result) {
+      if (Date.parse(record.expiresAt) <= now) {
+        await requestToPromise(store.delete(record.id))
+        continue
+      }
+      active.push(record)
+    }
+
+    return active.sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+  })
+}
+
+export async function markOfflineTransactionAttempt(id: string, errorMessage?: string): Promise<void> {
+  await withStore('readwrite', async (store) => {
+    const existing = await requestToPromise(
+      store.get(id) as IDBRequest<OfflineTransactionRecord<unknown> | undefined>,
+    )
+
+    if (!existing) return undefined
+
+    await requestToPromise(
+      store.put({
+        ...existing,
+        attempts: (existing.attempts ?? 0) + 1,
+        lastAttemptAt: new Date().toISOString(),
+        lastError: errorMessage,
+      }),
+    )
+
+    return undefined
+  })
+}
+
+export async function resetOfflineTransactionAttempts(id: string): Promise<void> {
+  await withStore('readwrite', async (store) => {
+    const existing = await requestToPromise(
+      store.get(id) as IDBRequest<OfflineTransactionRecord<unknown> | undefined>,
+    )
+
+    if (!existing) return undefined
+
+    await requestToPromise(
+      store.put({
+        ...existing,
+        attempts: 0,
+        lastAttemptAt: undefined,
+        lastError: undefined,
+      }),
+    )
+
+    return undefined
   })
 }
 
@@ -103,9 +170,14 @@ export async function removeOfflineTransaction(id: string): Promise<void> {
   })
 }
 
-export function writeOfflineDraft<T>(key: string, value: T): void {
+export function writeOfflineDraft<T>(key: string, value: T, ttlMs = DEFAULT_DRAFT_TTL_MS): void {
   if (typeof window === 'undefined') return
-  window.localStorage.setItem(key, JSON.stringify(value))
+  const now = new Date()
+  const envelope: OfflineDraftEnvelope<T> = {
+    value,
+    expiresAt: new Date(now.getTime() + ttlMs).toISOString(),
+  }
+  window.localStorage.setItem(key, JSON.stringify(envelope))
 }
 
 export function readOfflineDraft<T>(key: string): T | null {
@@ -114,7 +186,24 @@ export function readOfflineDraft<T>(key: string): T | null {
   if (!raw) return null
 
   try {
-    return JSON.parse(raw) as T
+    const parsed = JSON.parse(raw) as OfflineDraftEnvelope<T> | T
+
+    // Backward compatibility for legacy draft payloads stored without metadata.
+    if (
+      typeof parsed === 'object' &&
+      parsed !== null &&
+      'value' in parsed &&
+      'expiresAt' in parsed
+    ) {
+      const envelope = parsed as OfflineDraftEnvelope<T>
+      if (Date.parse(envelope.expiresAt) <= Date.now()) {
+        window.localStorage.removeItem(key)
+        return null
+      }
+      return envelope.value
+    }
+
+    return parsed as T
   } catch {
     return null
   }

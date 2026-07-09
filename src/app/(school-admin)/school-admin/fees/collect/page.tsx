@@ -9,6 +9,7 @@ import {
   searchStudentForFee,
   searchStudentsForFeeLive,
   getStudentForFeeById,
+  getFeeOnlinePaymentEnabled,
   type FeeStructureRow,
   type FeeStudentResult,
   type CollectFeeInput,
@@ -32,9 +33,12 @@ import {
   clearOfflineDraft,
   enqueueOfflineTransaction,
   listOfflineTransactions,
+  markOfflineTransactionAttempt,
   readOfflineDraft,
+  resetOfflineTransactionAttempts,
   removeOfflineTransaction,
   writeOfflineDraft,
+  type OfflineTransactionRecord,
 } from '@/lib/offline/transaction-queue'
 
 type PaymentMode = 'cash' | 'cheque' | 'upi' | 'neft' | 'card' | 'online'
@@ -74,6 +78,14 @@ const PAYMENT_MODES: { value: PaymentMode; label: string }[] = [
   { value: 'online', label: 'Online' },
 ]
 
+const MAX_QUEUE_ATTEMPTS = 5
+const MAX_BACKOFF_MS = 60_000
+
+const getRetryDelayMs = (attempts: number) => {
+  if (attempts <= 0) return 0
+  return Math.min(MAX_BACKOFF_MS, 1000 * 2 ** (attempts - 1))
+}
+
 function CollectFeePageContent() {
   const { school, user } = useAuthStore()
   const router = useRouter()
@@ -82,6 +94,8 @@ function CollectFeePageContent() {
   const draftRestoredRef = useRef(false)
   const [isOffline, setIsOffline] = useState(false)
   const [pendingSyncCount, setPendingSyncCount] = useState(0)
+  const [deadLetters, setDeadLetters] = useState<OfflineTransactionRecord<OfflineFeePaymentPayload>[]>([])
+  const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState(false)
   const [syncingQueued, setSyncingQueued] = useState(false)
   const [lastSyncResult, setLastSyncResult] = useState<QueueSyncResult>({
     state: 'idle',
@@ -105,6 +119,30 @@ function CollectFeePageContent() {
   const [receiptNumber, setReceiptNumber] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [pendingReceiptNumber, setPendingReceiptNumber] = useState<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+    void (async () => {
+      try {
+        const enabled = await getFeeOnlinePaymentEnabled()
+        if (active) setOnlinePaymentEnabled(enabled)
+      } catch {
+        if (active) setOnlinePaymentEnabled(false)
+      }
+    })()
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!onlinePaymentEnabled && paymentMode === 'online') {
+      setPaymentMode('cash')
+    }
+  }, [onlinePaymentEnabled, paymentMode])
+
+  const availablePaymentModes = PAYMENT_MODES.filter((mode) => onlinePaymentEnabled || mode.value !== 'online')
 
   const studentFetcher = useCallback(
     (q: string) => school?.id ? searchStudentsForFeeLive(school.id, q) : Promise.resolve([]),
@@ -149,9 +187,12 @@ function CollectFeePageContent() {
   const refreshPendingSyncCount = useCallback(async () => {
     try {
       const queued = await listOfflineTransactions<OfflineFeePaymentPayload>('fee-payment')
-      setPendingSyncCount(queued.filter((item) => item.payload.schoolId === school?.id).length)
+      const schoolQueue = queued.filter((item) => item.payload.schoolId === school?.id)
+      setDeadLetters(schoolQueue.filter((item) => item.attempts >= MAX_QUEUE_ATTEMPTS))
+      setPendingSyncCount(schoolQueue.filter((item) => item.attempts < MAX_QUEUE_ATTEMPTS).length)
     } catch {
       setPendingSyncCount(0)
+      setDeadLetters([])
     }
   }, [school?.id])
 
@@ -160,21 +201,56 @@ function CollectFeePageContent() {
 
     setSyncingQueued(true)
     let synced = 0
+    let failed = 0
+    let coolingDown = 0
+    let deadLettered = 0
     try {
       const queued = await listOfflineTransactions<OfflineFeePaymentPayload>('fee-payment')
       const feeQueue = queued.filter((item) => item.payload.schoolId === school.id)
+      const now = Date.now()
+
       for (const item of feeQueue) {
-        await collectFeePayment(item.payload.schoolId, item.payload.receiptNumber, item.payload.input)
-        await removeOfflineTransaction(item.id)
-        synced += 1
+        if (item.attempts >= MAX_QUEUE_ATTEMPTS) {
+          deadLettered += 1
+          continue
+        }
+
+        const retryDelay = getRetryDelayMs(item.attempts)
+        const lastAttemptMs = item.lastAttemptAt ? Date.parse(item.lastAttemptAt) : NaN
+        if (retryDelay > 0 && !Number.isNaN(lastAttemptMs) && now - lastAttemptMs < retryDelay) {
+          coolingDown += 1
+          continue
+        }
+
+        try {
+          await collectFeePayment(item.payload.schoolId, item.payload.receiptNumber, item.payload.input)
+          await removeOfflineTransaction(item.id)
+          synced += 1
+        } catch (error) {
+          failed += 1
+          await markOfflineTransactionAttempt(item.id, getErrorMessage(error))
+        }
       }
-      if (synced > 0) {
+
+      if (synced > 0 || failed > 0 || coolingDown > 0 || deadLettered > 0) {
+        const parts = [
+          synced > 0 ? `Synced ${synced} payment${synced > 1 ? 's' : ''}` : null,
+          failed > 0 ? `${failed} failed` : null,
+          coolingDown > 0 ? `${coolingDown} cooling down` : null,
+          deadLettered > 0 ? `${deadLettered} in dead-letter queue` : null,
+        ].filter(Boolean)
+
         setLastSyncResult({
-          state: 'success',
-          message: `Synced ${synced} queued fee payment${synced > 1 ? 's' : ''}.`,
+          state: failed > 0 ? 'error' : 'success',
+          message: `${parts.join(' · ')}.`,
           at: new Date().toLocaleTimeString('en-IN'),
         })
-        toast.success(`Synced ${synced} queued fee payment${synced > 1 ? 's' : ''}.`)
+
+        if (failed > 0) {
+          toast.error('Some queued payments failed and were retained for retry.')
+        } else if (synced > 0) {
+          toast.success(`Synced ${synced} queued fee payment${synced > 1 ? 's' : ''}.`)
+        }
       } else {
         setLastSyncResult({
           state: 'success',
@@ -194,6 +270,31 @@ function CollectFeePageContent() {
       void refreshPendingSyncCount()
     }
   }, [refreshPendingSyncCount, school?.id, syncingQueued])
+
+  const retryDeadLetters = useCallback(async () => {
+    if (deadLetters.length === 0) return
+
+    for (const item of deadLetters) {
+      await resetOfflineTransactionAttempts(item.id)
+    }
+
+    await refreshPendingSyncCount()
+    toast.success(`Re-queued ${deadLetters.length} dead-letter payment${deadLetters.length > 1 ? 's' : ''} for retry.`)
+    if (navigator.onLine) {
+      void flushOfflineQueue()
+    }
+  }, [deadLetters, flushOfflineQueue, refreshPendingSyncCount])
+
+  const discardDeadLetters = useCallback(async () => {
+    if (deadLetters.length === 0) return
+
+    for (const item of deadLetters) {
+      await removeOfflineTransaction(item.id)
+    }
+
+    await refreshPendingSyncCount()
+    toast.success(`Discarded ${deadLetters.length} dead-letter payment${deadLetters.length > 1 ? 's' : ''}.`)
+  }, [deadLetters, refreshPendingSyncCount])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -515,16 +616,48 @@ function CollectFeePageContent() {
                     ? `${pendingSyncCount} queued payment${pendingSyncCount > 1 ? 's are' : ' is'} waiting to sync.`
                     : 'Draft progress is saved locally and queued payments will replay automatically on reconnect.'}
               </p>
+              {deadLetters.length > 0 && (
+                <p className="mt-1 text-xs text-amber-300">
+                  {deadLetters.length} payment{deadLetters.length > 1 ? 's are' : ' is'} in dead-letter state after repeated failures.
+                </p>
+              )}
+              {!onlinePaymentEnabled && (
+                <p className="mt-1 text-xs text-amber-300">
+                  Online payment mode is coming soon. Use cash/cheque/UPI/NEFT/card for now.
+                </p>
+              )}
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-white/10 bg-white/5 text-zinc-200 hover:bg-white/10 hover:text-white"
-              disabled={isOffline || syncingQueued || pendingSyncCount === 0}
-              onClick={() => void flushOfflineQueue()}
-            >
-              {syncingQueued ? 'Syncing…' : pendingSyncCount > 0 ? `Sync pending (${pendingSyncCount})` : 'All synced'}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              {deadLetters.length > 0 && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-amber-400/40 bg-amber-500/10 text-amber-200 hover:bg-amber-500/20 hover:text-amber-100"
+                    onClick={() => void retryDeadLetters()}
+                  >
+                    Retry dead-letter ({deadLetters.length})
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-red-400/40 bg-red-500/10 text-red-200 hover:bg-red-500/20 hover:text-red-100"
+                    onClick={() => void discardDeadLetters()}
+                  >
+                    Discard dead-letter
+                  </Button>
+                </>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-white/10 bg-white/5 text-zinc-200 hover:bg-white/10 hover:text-white"
+                disabled={isOffline || syncingQueued || pendingSyncCount === 0}
+                onClick={() => void flushOfflineQueue()}
+              >
+                {syncingQueued ? 'Syncing…' : pendingSyncCount > 0 ? `Sync pending (${pendingSyncCount})` : 'All synced'}
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -655,7 +788,7 @@ function CollectFeePageContent() {
                 <Select value={paymentMode} onValueChange={v => setPaymentMode(v as PaymentMode)}>
                   <SelectTrigger id="payment-mode"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {PAYMENT_MODES.map(m => (
+                    {availablePaymentModes.map(m => (
                       <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
                     ))}
                   </SelectContent>
@@ -732,18 +865,43 @@ function CollectFeePageContent() {
                       ? `${pendingSyncCount} queued payment${pendingSyncCount > 1 ? 's' : ''} waiting to sync.`
                       : 'No queued payments in this browser.'}
                   </p>
+                  {deadLetters.length > 0 && (
+                    <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                      {deadLetters.length} dead-letter payment{deadLetters.length > 1 ? 's require' : ' requires'} operator action.
+                    </p>
+                  )}
                   <p className={`mt-1 text-xs ${lastSyncResult.state === 'error' ? 'text-destructive' : 'text-muted-foreground'}`}>
                     Last sync: {lastSyncResult.message}{lastSyncResult.at ? ` (${lastSyncResult.at})` : ''}
                   </p>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={isOffline || syncingQueued || pendingSyncCount === 0}
-                  onClick={() => void flushOfflineQueue()}
-                >
-                  {syncingQueued ? 'Syncing…' : 'Sync queued now'}
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  {deadLetters.length > 0 && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void retryDeadLetters()}
+                      >
+                        Retry dead-letter
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void discardDeadLetters()}
+                      >
+                        Discard dead-letter
+                      </Button>
+                    </>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={isOffline || syncingQueued || pendingSyncCount === 0}
+                    onClick={() => void flushOfflineQueue()}
+                  >
+                    {syncingQueued ? 'Syncing…' : 'Sync queued now'}
+                  </Button>
+                </div>
               </div>
             </div>
             {paymentValidationIssues.length > 0 && (

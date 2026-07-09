@@ -85,6 +85,7 @@ export function AppInitializer() {
                         .single()
 
                     if (school) {
+                        const schoolWithTimezone = school as typeof school & { timezone?: string | null }
                         setSchool({
                             id: school.id,
                             name: school.name,
@@ -103,7 +104,7 @@ export function AppInitializer() {
                             currency_symbol: school.currency_symbol ?? '₹',
                             locale: school.locale ?? 'en-IN',
                             date_format: school.date_format ?? 'dd MMM yyyy',
-                            timezone: school.timezone ?? 'Asia/Kolkata',
+                            timezone: schoolWithTimezone.timezone ?? 'Asia/Kolkata',
                             subscription_plan: (school.subscription_plan ?? 'basic') as SubscriptionPlan,
                             subscription_status: (school.subscription_status ?? 'active') as SubscriptionStatus,
                             trial_ends_at: school.trial_ends_at ?? null,
