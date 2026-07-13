@@ -30,6 +30,9 @@ import {
     Bell,
     QrCode,
     CreditCard,
+    ShieldCheck,
+    ClipboardList,
+    FileSpreadsheet,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { usePlan } from '@/hooks/use-plan'
@@ -51,6 +54,9 @@ const navItems: { href: string; label: string; icon: typeof LayoutDashboard; fea
     { href: '/school-admin/library', label: 'Library', icon: BookMarked, feature: 'inventory' },
     { href: '/manager/inventory', label: 'Inventory', icon: Package, feature: 'inventory' },
     { href: '/manager/inventory/pos', label: 'Bookstore POS', icon: ShoppingCart, feature: 'inventory' },
+    { href: '/manager/inventory/sale-controls', label: 'Sale Controls', icon: ShieldCheck, feature: 'inventory' },
+    { href: '/manager/inventory/procurement', label: 'Procurement', icon: ClipboardList, feature: 'inventory' },
+    { href: '/manager/inventory/reports', label: 'Inventory Reports', icon: FileSpreadsheet, feature: 'inventory' },
     { href: '/manager/notifications', label: 'Notifications', icon: Bell, feature: 'communication' },
     { href: '/school-admin/transport', label: 'Transport', icon: Bus, feature: 'students' },
     { href: '/school-admin/reports', label: 'Reports', icon: BarChart2, feature: 'reports' },

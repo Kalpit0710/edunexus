@@ -505,6 +505,85 @@ export type Database = {
           },
         ]
       }
+      fee_adjustments: {
+        Row: {
+          amount: number
+          created_at: string
+          direction: string
+          id: string
+          linked_payment_id: string | null
+          narrative: string
+          reason: string | null
+          request_type: string
+          requested_by: string
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          school_id: string
+          status: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          direction: string
+          id?: string
+          linked_payment_id?: string | null
+          narrative: string
+          reason?: string | null
+          request_type: string
+          requested_by: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          school_id: string
+          status?: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          direction?: string
+          id?: string
+          linked_payment_id?: string | null
+          narrative?: string
+          reason?: string | null
+          request_type?: string
+          requested_by?: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          school_id?: string
+          status?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fee_adjustments_linked_payment_id_fkey"
+            columns: ["linked_payment_id"]
+            isOneToOne: false
+            referencedRelation: "fee_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fee_adjustments_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fee_adjustments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fee_categories: {
         Row: {
           created_at: string
@@ -575,6 +654,94 @@ export type Database = {
             columns: ["payment_id"]
             isOneToOne: false
             referencedRelation: "fee_payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fee_payment_recovery_cases: {
+        Row: {
+          amount: number
+          assigned_to: string | null
+          closed_at: string | null
+          contact_phone: string | null
+          created_at: string
+          failure_reason: string | null
+          id: string
+          narrative: string | null
+          next_follow_up_at: string | null
+          reference_number: string | null
+          requested_by: string
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_payment_id: string | null
+          school_id: string
+          source: string
+          status: string
+          student_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          assigned_to?: string | null
+          closed_at?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          failure_reason?: string | null
+          id?: string
+          narrative?: string | null
+          next_follow_up_at?: string | null
+          reference_number?: string | null
+          requested_by: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_payment_id?: string | null
+          school_id: string
+          source?: string
+          status?: string
+          student_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          assigned_to?: string | null
+          closed_at?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          failure_reason?: string | null
+          id?: string
+          narrative?: string | null
+          next_follow_up_at?: string | null
+          reference_number?: string | null
+          requested_by?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_payment_id?: string | null
+          school_id?: string
+          source?: string
+          status?: string
+          student_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fee_payment_recovery_cases_resolved_payment_id_fkey"
+            columns: ["resolved_payment_id"]
+            isOneToOne: false
+            referencedRelation: "fee_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fee_payment_recovery_cases_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fee_payment_recovery_cases_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
             referencedColumns: ["id"]
           },
         ]
@@ -898,6 +1065,181 @@ export type Database = {
           },
         ]
       }
+      inventory_damage_adjustments: {
+        Row: {
+          created_at: string
+          damage_date: string
+          id: string
+          item_id: string
+          quantity: number
+          reason: string
+          recorded_by: string | null
+          school_id: string
+        }
+        Insert: {
+          created_at?: string
+          damage_date?: string
+          id?: string
+          item_id: string
+          quantity: number
+          reason: string
+          recorded_by?: string | null
+          school_id: string
+        }
+        Update: {
+          created_at?: string
+          damage_date?: string
+          id?: string
+          item_id?: string
+          quantity?: number
+          reason?: string
+          recorded_by?: string | null
+          school_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_damage_adjustments_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_damage_adjustments_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_damage_adjustments_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_goods_receipt_items: {
+        Row: {
+          created_at: string
+          goods_receipt_id: string
+          id: string
+          item_id: string
+          purchase_order_item_id: string
+          quantity_received: number
+          school_id: string
+          unit_cost: number
+        }
+        Insert: {
+          created_at?: string
+          goods_receipt_id: string
+          id?: string
+          item_id: string
+          purchase_order_item_id: string
+          quantity_received: number
+          school_id: string
+          unit_cost: number
+        }
+        Update: {
+          created_at?: string
+          goods_receipt_id?: string
+          id?: string
+          item_id?: string
+          purchase_order_item_id?: string
+          quantity_received?: number
+          school_id?: string
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_goods_receipt_items_goods_receipt_id_fkey"
+            columns: ["goods_receipt_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_goods_receipts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_goods_receipt_items_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_goods_receipt_items_purchase_order_item_id_fkey"
+            columns: ["purchase_order_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_purchase_order_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_goods_receipt_items_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_goods_receipts: {
+        Row: {
+          created_at: string
+          grn_number: string
+          id: string
+          notes: string | null
+          purchase_order_id: string
+          received_by: string | null
+          received_date: string
+          school_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          grn_number: string
+          id?: string
+          notes?: string | null
+          purchase_order_id: string
+          received_by?: string | null
+          received_date?: string
+          school_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          grn_number?: string
+          id?: string
+          notes?: string | null
+          purchase_order_id?: string
+          received_by?: string | null
+          received_date?: string
+          school_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_goods_receipts_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_goods_receipts_received_by_fkey"
+            columns: ["received_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_goods_receipts_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_items: {
         Row: {
           category: Database["public"]["Enums"]["inventory_category"]
@@ -974,6 +1316,231 @@ export type Database = {
           },
         ]
       }
+      inventory_purchase_order_items: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          ordered_quantity: number
+          purchase_order_id: string
+          received_quantity: number
+          school_id: string
+          unit_cost: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          ordered_quantity: number
+          purchase_order_id: string
+          received_quantity?: number
+          school_id: string
+          unit_cost: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          ordered_quantity?: number
+          purchase_order_id?: string
+          received_quantity?: number
+          school_id?: string
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_purchase_order_items_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_purchase_order_items_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_purchase_order_items_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_purchase_orders: {
+        Row: {
+          approval_notes: string | null
+          approved_by: string | null
+          created_at: string
+          expected_date: string | null
+          id: string
+          notes: string | null
+          order_date: string
+          po_number: string
+          requested_by: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          school_id: string
+          status: string
+          supplier_id: string | null
+          updated_at: string
+          vendor_name: string
+        }
+        Insert: {
+          approval_notes?: string | null
+          approved_by?: string | null
+          created_at?: string
+          expected_date?: string | null
+          id?: string
+          notes?: string | null
+          order_date?: string
+          po_number: string
+          requested_by?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          school_id: string
+          status?: string
+          supplier_id?: string | null
+          updated_at?: string
+          vendor_name: string
+        }
+        Update: {
+          approval_notes?: string | null
+          approved_by?: string | null
+          created_at?: string
+          expected_date?: string | null
+          id?: string
+          notes?: string | null
+          order_date?: string
+          po_number?: string
+          requested_by?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          school_id?: string
+          status?: string
+          supplier_id?: string | null
+          updated_at?: string
+          vendor_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_purchase_orders_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_purchase_orders_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_purchase_orders_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_purchase_orders_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_purchase_orders_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_sale_control_requests: {
+        Row: {
+          created_at: string
+          executed_at: string | null
+          id: string
+          reason: string
+          request_type: string
+          requested_by: string
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          sale_id: string
+          school_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          executed_at?: string | null
+          id?: string
+          reason: string
+          request_type: string
+          requested_by: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          sale_id: string
+          school_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          executed_at?: string | null
+          id?: string
+          reason?: string
+          request_type?: string
+          requested_by?: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          sale_id?: string
+          school_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_sale_control_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_sale_control_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_sale_control_requests_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_sale_control_requests_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_sale_items: {
         Row: {
           created_at: string
@@ -1035,38 +1602,70 @@ export type Database = {
           client_reference: string | null
           created_at: string
           id: string
+          is_reversed: boolean
           payment_mode: Database["public"]["Enums"]["payment_mode"]
+          reversal_type: string | null
+          reversed_at: string | null
+          reversed_by: string | null
+          reversed_request_id: string | null
           sale_date: string
           school_id: string
           sold_by: string | null
           student_id: string | null
           total_amount: number
+          updated_at: string
         }
         Insert: {
           bill_number: string
           client_reference?: string | null
           created_at?: string
           id?: string
+          is_reversed?: boolean
           payment_mode: Database["public"]["Enums"]["payment_mode"]
+          reversal_type?: string | null
+          reversed_at?: string | null
+          reversed_by?: string | null
+          reversed_request_id?: string | null
           sale_date?: string
           school_id: string
           sold_by?: string | null
           student_id?: string | null
           total_amount: number
+          updated_at?: string
         }
         Update: {
           bill_number?: string
           client_reference?: string | null
           created_at?: string
           id?: string
+          is_reversed?: boolean
           payment_mode?: Database["public"]["Enums"]["payment_mode"]
+          reversal_type?: string | null
+          reversed_at?: string | null
+          reversed_by?: string | null
+          reversed_request_id?: string | null
           sale_date?: string
           school_id?: string
           sold_by?: string | null
           student_id?: string | null
           total_amount?: number
+          updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "inventory_sales_reversed_by_fkey"
+            columns: ["reversed_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_sales_reversed_request_fkey"
+            columns: ["reversed_request_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_sale_control_requests"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "inventory_sales_school_id_fkey"
             columns: ["school_id"]
@@ -1086,6 +1685,128 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_suppliers: {
+        Row: {
+          contact_person: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          phone: string | null
+          school_id: string
+          updated_at: string
+        }
+        Insert: {
+          contact_person?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          phone?: string | null
+          school_id: string
+          updated_at?: string
+        }
+        Update: {
+          contact_person?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          school_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_suppliers_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_suppliers_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_vendor_returns: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          purchase_order_id: string | null
+          quantity: number
+          reason: string
+          recorded_by: string | null
+          return_date: string
+          school_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          purchase_order_id?: string | null
+          quantity: number
+          reason: string
+          recorded_by?: string | null
+          return_date?: string
+          school_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          purchase_order_id?: string | null
+          quantity?: number
+          reason?: string
+          recorded_by?: string | null
+          return_date?: string
+          school_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_vendor_returns_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_vendor_returns_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_vendor_returns_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_vendor_returns_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
             referencedColumns: ["id"]
           },
         ]
@@ -2582,6 +3303,18 @@ export type Database = {
         Args: { p_class_id: string; p_percentage: number; p_school_id: string }
         Returns: string
       }
+      create_inventory_purchase_order: {
+        Args: {
+          p_expected_date?: string
+          p_items?: Json
+          p_notes?: string
+          p_order_date?: string
+          p_requested_by?: string
+          p_school_id: string
+          p_supplier_id: string
+        }
+        Returns: Json
+      }
       create_inventory_sale: {
         Args: {
           p_client_reference?: string
@@ -2592,6 +3325,31 @@ export type Database = {
           p_student_id?: string
         }
         Returns: Json
+      }
+      get_inventory_sale_control_audit: {
+        Args: {
+          p_from?: string
+          p_school_id: string
+          p_sla_hours?: number
+          p_to?: string
+        }
+        Returns: {
+          aging_hours: number
+          bill_number: string
+          executed_at: string
+          reason: string
+          request_id: string
+          request_type: string
+          requested_at: string
+          requested_by_name: string
+          reversal_reason: string
+          review_tat_hours: number
+          reviewed_at: string
+          reviewed_by_name: string
+          sale_id: string
+          status: string
+          within_sla: boolean
+        }[]
       }
       get_inventory_summary: {
         Args: { p_school_id: string }
@@ -2705,6 +3463,39 @@ export type Database = {
         }
         Returns: Json
       }
+      receive_inventory_purchase_order: {
+        Args: {
+          p_items?: Json
+          p_notes?: string
+          p_purchase_order_id: string
+          p_received_by?: string
+          p_received_date?: string
+        }
+        Returns: Json
+      }
+      record_inventory_damage_adjustment: {
+        Args: {
+          p_damage_date?: string
+          p_item_id: string
+          p_quantity: number
+          p_reason: string
+          p_recorded_by?: string
+          p_school_id: string
+        }
+        Returns: Json
+      }
+      record_inventory_vendor_return: {
+        Args: {
+          p_item_id: string
+          p_purchase_order_id?: string
+          p_quantity: number
+          p_reason: string
+          p_recorded_by?: string
+          p_return_date?: string
+          p_school_id: string
+        }
+        Returns: Json
+      }
       return_book: {
         Args: {
           p_fine: number
@@ -2734,6 +3525,24 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      review_inventory_purchase_order: {
+        Args: {
+          p_decision: string
+          p_purchase_order_id: string
+          p_review_notes?: string
+          p_reviewed_by?: string
+        }
+        Returns: Json
+      }
+      review_inventory_sale_control_request: {
+        Args: {
+          p_decision: string
+          p_request_id: string
+          p_review_notes?: string
+          p_reviewed_by?: string
+        }
+        Returns: Json
       }
       save_attendance_atomic: {
         Args: {

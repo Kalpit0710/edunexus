@@ -7,6 +7,7 @@ import { normalizeWorkingDays } from '@/lib/timetable-utils'
 import { normalizeAnnouncementAudience, parentCanSeeAnnouncement } from '@/lib/announcement-utils'
 import type { Database } from '@/types/database.types'
 import type { FeePaymentRow } from '../../(school-admin)/school-admin/fees/actions'
+import { getStudentFeeStatementNarrative, type FeeStatementEntry } from '../../(school-admin)/school-admin/fees/actions'
 import { getPrintableReportCard } from '../../(school-admin)/school-admin/report-cards/actions'
 import { getStudentQrTokenForSchool } from '../../(school-admin)/school-admin/id-cards/actions'
 import { computeStudentFeeBalance } from '@/lib/fees/balance'
@@ -101,6 +102,11 @@ export interface ChildFeeStatus {
     totalPaid: number
     balance: number
     recentPayments: FeePaymentRow[]
+}
+
+export interface ChildFeeStatement {
+    entries: FeeStatementEntry[]
+    generatedAt: string
 }
 
 export interface FamilyStatementChildRow {
@@ -541,6 +547,26 @@ export async function getParentFamilyStatement(
         }
     } catch {
         return null
+    }
+}
+
+export async function getChildFeeStatement(
+    studentId: string,
+    schoolId: string,
+): Promise<ChildFeeStatement> {
+    try {
+        const context = await getParentAccessContext(schoolId)
+        if (!context || !(await isStudentLinkedToParent(context, studentId))) {
+            return { entries: [], generatedAt: new Date().toISOString() }
+        }
+
+        const entries = await getStudentFeeStatementNarrative(schoolId, studentId)
+        return {
+            entries,
+            generatedAt: new Date().toISOString(),
+        }
+    } catch {
+        return { entries: [], generatedAt: new Date().toISOString() }
     }
 }
 

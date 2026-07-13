@@ -28,11 +28,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/utils'
-import { Plus, Trash2, Power, CircleDollarSign, RotateCcw, Mail, MessageSquare } from 'lucide-react'
+import { Plus, Trash2, Power, CircleDollarSign, RotateCcw, Mail, MessageSquare, LifeBuoy, FileText } from 'lucide-react'
 import Link from 'next/link'
 import { Spinner } from '@/components/ui/spinner'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { NotificationChannel } from '@/lib/notifications'
+import type { Route } from 'next'
 
 export default function FeesPage() {
   const { school } = useAuthStore()
@@ -196,6 +197,16 @@ export default function FeesPage() {
           <p className="text-muted-foreground text-sm">Manage fee categories and class-wise fee structures</p>
         </div>
         <div className="flex items-center gap-2">
+          <Link href={'/school-admin/fees/recovery' as Route}>
+            <Button variant="outline" disabled={!canCollect}>
+              <LifeBuoy className="mr-2 h-4 w-4" /> Recovery Cases
+            </Button>
+          </Link>
+          <Link href={'/school-admin/fees/adjustments' as Route}>
+            <Button variant="outline" disabled={!canCollect}>
+              <FileText className="mr-2 h-4 w-4" /> Adjustments
+            </Button>
+          </Link>
           <Button
             variant="outline"
             disabled={!canCollect || sendingReminderChannel !== null}

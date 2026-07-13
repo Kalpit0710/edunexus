@@ -38,6 +38,75 @@
 
 ## Completed Tasks
 
+### 2026-07-09 — Inventory governance sprint: procurement lifecycle + sale-control audit reporting + integration coverage
+- Status: ✅ Completed.
+- **Procurement lifecycle implemented:** added `inventory_purchase_orders`, `inventory_purchase_order_items`, `inventory_goods_receipts`, `inventory_goods_receipt_items`, `inventory_vendor_returns`, and `inventory_damage_adjustments` with RLS and indexes via migration `20260709000004_inventory_procurement_and_audit.sql`.
+- **Procurement transactional RPCs:** added and wired
+  - `create_inventory_purchase_order` (PO creation with line validation),
+  - `receive_inventory_purchase_order` (GRN receiving with partial/full state and stock increment),
+  - `record_inventory_vendor_return` (stock-safe vendor return),
+  - `record_inventory_damage_adjustment` (stock-safe damage write-off).
+- **Inventory action layer expanded:** manager inventory actions now expose procurement APIs + stock reduction logs and a sale-control audit API.
+- **Manager procurement UI:** added `/manager/inventory/procurement` for PO creation, receive-pending flow, vendor return logging, and damage adjustment logging.
+- **Sale-control audit reporting:** added DB RPC `get_inventory_sale_control_audit` and UI integration in inventory reports showing aging, review TAT, SLA breaches, and reversal-reason context.
+- **Navigation rollout:** inventory home, manager sidebar, and school-admin sidebar now include Procurement and Inventory Reports entry points.
+- **Sale-control reliability hotfix:** added migration `20260709000005_inventory_sales_updated_at_hotfix.sql` to ensure `inventory_sales.updated_at` exists for review-reversal flow compatibility.
+- **Integration tests:** added `tests/integration/inventory-sale-control-lifecycle.test.ts` covering approve+execute stock restore, reject no-op behavior, and double-review prevention.
+- **Validation:**
+  - `pnpm db:push` (migrations 00004 + 00005 applied),
+  - `pnpm db:types`,
+  - `pnpm type-check` pass,
+  - `pnpm lint` pass (existing baseline warnings only),
+  - `pnpm test -- --reporter=dot` pass (**27 files, 325 tests**).
+
+### 2026-07-09 — Inventory governance extension: supplier master + maker-checker PO approvals + exportable audit reports + Playwright flows
+- Status: ✅ Implemented (code + migrations); ⚠️ Playwright runtime validation blocked by local webServer startup timeout in this run.
+- **Supplier master added:** `inventory_suppliers` table + RLS + indexes + actions to create/list/toggle suppliers.
+- **Maker-checker PO approval matrix:**
+  - PO model upgraded with `supplier_id`, `reviewed_by`, `reviewed_at`, and `approval_notes`.
+  - PO status flow now includes `pending_approval`, `approved`, and `rejected`.
+  - New RPC `review_inventory_purchase_order` enforces school-admin review and maker-checker separation (requester cannot approve own PO).
+  - GRN receiving RPC now gates receiving to approved/partially-received POs only.
+- **Procurement UI upgrades:**
+  - Supplier master panel on procurement page.
+  - PO creation now requires selecting supplier from master.
+  - Approval buttons for school admins (`Approve` / `Reject`) before receiving.
+  - Receiving button shown only for approved/partially-received POs.
+- **Exportable reports:**
+  - Procurement page exports PO ledger and stock-reduction ledger to Excel.
+  - Inventory reports page exports sale-control audit table to Excel.
+- **Playwright e2e flows extended:**
+  - Added seeded-flow scenarios in `tests/e2e/inventory.spec.ts` for:
+    - manager supplier + PO submission,
+    - school-admin PO approval,
+    - school-admin sale-control approval execution.
+  - Added route warm-up helper and runtime credential resolution fallback for stronger e2e stability.
+- **Validation completed:**
+  - `pnpm db:push` (migration `20260709000006_inventory_suppliers_po_approval.sql` applied),
+  - `pnpm db:types`,
+  - `pnpm type-check` pass,
+  - `pnpm lint` pass (existing baseline warnings only),
+  - `pnpm test -- --reporter=dot` pass (**27 files, 325 tests**).
+
+### 2026-07-09 — Inventory/POS cashier control matrix (void/return approvals with stock-safe execution)
+- Status: ✅ Completed.
+- Added migration `20260709000003_inventory_sale_control_workflow.sql` introducing `inventory_sale_control_requests` with RLS + audit metadata, plus reversal bookkeeping on `inventory_sales` (`is_reversed`, `reversal_type`, `reversal_reason`, `reversal_request_id`, reviewer timestamps).
+- Added RPC `review_inventory_sale_control_request` to make approval flow atomic: validates request state, blocks duplicate reversal, restores stock quantity from sale lines, marks sale reversed, and finalizes control request (`executed`).
+- Extended manager inventory actions with request/review workflow APIs:
+  - create request (`void` / `return`) with reason + role guardrails
+  - list queue with operator names + linked sale/student context
+  - review path with school-admin approval/rejection handling and RPC execution
+- Added manager UI at `/manager/inventory/sale-controls` for creating requests, filtering queue status, and school-admin approve/reject actions.
+- Added navigation entry points from inventory home + manager/school-admin sidebars to operationalize the new control matrix.
+
+### 2026-07-09 — Fee resilience and ledger governance (recovery cases + adjustment approvals + parent narrative statement)
+- Status: ✅ Completed.
+- **Failed/abandoned payment recovery workflow:** added `fee_payment_recovery_cases` table + RLS + school workflow screens (`/school-admin/fees/recovery`) for logging, tracking, and closing payment recovery cases with status transitions (`open`, `in_progress`, `resolved`, `abandoned`).
+- **Refund / credit-note / adjustment governance:** added `fee_adjustments` table + approval trail (`pending`, `approved`, `rejected`) and school-admin review flow (`/school-admin/fees/adjustments`) so finance changes are requested then approved/rejected with reviewer metadata.
+- **Balance math integration:** updated shared balance helper + `get_pending_fees` RPC + promotion carry-forward RPC to include approved debit/credit adjustments, keeping pending-fee lists, parent balances, and arrears carry-forward in sync.
+- **Parent-facing transaction narrative:** parent fee page now shows a statement narrative feed combining payments, previous arrears carry-forward entries, and approved adjustments (debit/credit view with dated context).
+- **Fee hub navigation:** fee management home now links directly to Recovery Cases and Adjustments workflows.
+
 ### 2026-07-09 — SaaS readiness hardening (payments visibility, offline dead-letter controls, inventory pagination, ops health, CI doc freshness)
 - Status: ✅ Completed.
 - **Payment-mode truthfulness:** hid `online` payment mode in manager POS and school-admin fee collection when gateway is not active (`isOnlinePaymentEnabled` via server actions), with explicit "coming soon" messaging.

@@ -8,7 +8,7 @@ import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Plus, Search, ShoppingCart, Settings2, Package, Tag, Edit, AlertCircle, Upload } from 'lucide-react'
+import { Plus, Search, ShoppingCart, Settings2, Package, Tag, Edit, AlertCircle, Upload, ShieldCheck, FileSpreadsheet, ClipboardList } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import Link from 'next/link'
@@ -101,6 +101,21 @@ export default function InventoryPage() {
                     <Link href="/manager/inventory/pos">
                         <Button variant="outline" className="shadow-soft border-primary text-primary hover:bg-primary/10 hover:scale-105 transition-transform">
                             <ShoppingCart className="w-4 h-4 mr-2" /> POS Sale
+                        </Button>
+                    </Link>
+                    <Link href={'/manager/inventory/sale-controls' as Route}>
+                        <Button variant="outline" className="shadow-soft hover:scale-105 transition-transform">
+                            <ShieldCheck className="w-4 h-4 mr-2" /> Sale Controls
+                        </Button>
+                    </Link>
+                    <Link href={'/manager/inventory/procurement' as Route}>
+                        <Button variant="outline" className="shadow-soft hover:scale-105 transition-transform">
+                            <ClipboardList className="w-4 h-4 mr-2" /> Procurement
+                        </Button>
+                    </Link>
+                    <Link href={'/manager/inventory/reports' as Route}>
+                        <Button variant="outline" className="shadow-soft hover:scale-105 transition-transform">
+                            <FileSpreadsheet className="w-4 h-4 mr-2" /> Reports
                         </Button>
                     </Link>
                     {canManage && (

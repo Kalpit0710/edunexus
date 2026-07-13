@@ -7,7 +7,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { createClient } from '@/lib/supabase/client'
 import { getInitials } from '@/lib/utils'
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, LogOut, Briefcase, Package, ShoppingCart, Users, IndianRupee, ClockAlert, Bell, QrCode } from 'lucide-react'
+import { LayoutDashboard, LogOut, Briefcase, Package, ShoppingCart, Users, IndianRupee, ClockAlert, Bell, QrCode, ShieldCheck, ClipboardList, FileSpreadsheet } from 'lucide-react'
 import { toast } from 'sonner'
 
 const navItems = [
@@ -17,6 +17,9 @@ const navItems = [
     { href: '/school-admin/fees/pending', label: 'Pending Fees', icon: ClockAlert },
     { href: '/manager/inventory', label: 'Inventory', icon: Package },
     { href: '/manager/inventory/pos', label: 'Point of Sale', icon: ShoppingCart },
+    { href: '/manager/inventory/sale-controls', label: 'Sale Controls', icon: ShieldCheck },
+    { href: '/manager/inventory/procurement', label: 'Procurement', icon: ClipboardList },
+    { href: '/manager/inventory/reports', label: 'Inventory Reports', icon: FileSpreadsheet },
     { href: '/manager/notifications', label: 'Notifications', icon: Bell },
     { href: '/manager/qr-scan', label: 'QR Scan', icon: QrCode },
 ]

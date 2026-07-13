@@ -2,21 +2,26 @@
 
 import { useAuthStore } from '@/stores/auth.store'
 import { useEffect, useState } from 'react'
-import { getChildFeeStatus, type ChildFeeStatus } from '../actions'
+import { getChildFeeStatus, getChildFeeStatement, type ChildFeeStatus, type ChildFeeStatement } from '../actions'
 import { IndianRupee, Receipt } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 
 export default function FeesPage() {
   const { school, activeChildId } = useAuthStore()
   const [feeStatus, setFeeStatus] = useState<ChildFeeStatus | null>(null)
+  const [statement, setStatement] = useState<ChildFeeStatement | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const childId = activeChildId
     if (!childId || !school?.id) return
     setLoading(true)
-    getChildFeeStatus(childId, school.id).then(data => {
-      setFeeStatus(data)
+    Promise.all([
+      getChildFeeStatus(childId, school.id),
+      getChildFeeStatement(childId, school.id),
+    ]).then(([statusData, statementData]) => {
+      setFeeStatus(statusData)
+      setStatement(statementData)
       setLoading(false)
     })
   }, [activeChildId, school?.id])
@@ -98,6 +103,35 @@ export default function FeesPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-3">Statement Narrative</p>
+            {statement && statement.entries.length > 0 ? (
+              <div className="space-y-2">
+                {statement.entries.map((entry) => (
+                  <div key={`${entry.eventType}-${entry.id}`} className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm text-zinc-200">{entry.narrative}</p>
+                        <p className="mt-1 text-[11px] text-zinc-500">
+                          {new Date(entry.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          {entry.reference ? ` · ${entry.reference}` : ''}
+                        </p>
+                      </div>
+                      <div className="text-right text-xs">
+                        {entry.debit > 0 && <p className="text-amber-300">Debit: ₹{entry.debit.toLocaleString('en-IN')}</p>}
+                        {entry.credit > 0 && <p className="text-emerald-400">Credit: ₹{entry.credit.toLocaleString('en-IN')}</p>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4 text-sm text-zinc-500">
+                No statement entries yet.
               </div>
             )}
           </div>

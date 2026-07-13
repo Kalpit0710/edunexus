@@ -747,3 +747,355 @@ export async function getAllPayments(
   }))
 }
 
+// ─── Payment recovery workflow ───────────────────────────────────────────────
+
+export interface FeePaymentRecoveryCaseRow {
+  id: string
+  school_id: string
+  student_id: string | null
+  source: 'manual' | 'online_gateway' | 'offline_queue'
+  status: 'open' | 'in_progress' | 'resolved' | 'abandoned'
+  amount: number
+  reference_number: string | null
+  failure_reason: string | null
+  narrative: string | null
+  contact_phone: string | null
+  next_follow_up_at: string | null
+  requested_by: string
+  assigned_to: string | null
+  resolved_payment_id: string | null
+  resolution_notes: string | null
+  resolved_at: string | null
+  closed_at: string | null
+  created_at: string
+  updated_at: string
+  student_name?: string
+  student_admission_number?: string
+}
+
+export interface CreateRecoveryCaseInput {
+  studentId?: string
+  source: FeePaymentRecoveryCaseRow['source']
+  amount: number
+  referenceNumber?: string
+  failureReason?: string
+  narrative?: string
+  contactPhone?: string
+  nextFollowUpAt?: string
+}
+
+type RecoveryCaseJoinedRow = FeePaymentRecoveryCaseRow & {
+  students: Pick<StudentDbRow, 'full_name' | 'admission_number'> | null
+}
+
+export async function getFeePaymentRecoveryCases(
+  schoolId: string,
+  status?: FeePaymentRecoveryCaseRow['status'],
+): Promise<FeePaymentRecoveryCaseRow[]> {
+  const supabase = await createServerSupabaseClient()
+  await requirePermission(supabase, 'fees.collect')
+
+  let query = supabase
+    .from('fee_payment_recovery_cases')
+    .select('*, students(full_name, admission_number)')
+    .eq('school_id', schoolId)
+    .order('created_at', { ascending: false })
+
+  if (status) query = query.eq('status', status)
+
+  const { data, error } = await query
+  if (error) throw new Error(error.message)
+
+  return ((data ?? []) as RecoveryCaseJoinedRow[]).map((row) => ({
+    ...row,
+    student_name: row.students?.full_name ?? undefined,
+    student_admission_number: row.students?.admission_number ?? undefined,
+  }))
+}
+
+export async function createFeePaymentRecoveryCase(
+  schoolId: string,
+  input: CreateRecoveryCaseInput,
+): Promise<FeePaymentRecoveryCaseRow> {
+  const supabase = await createServerSupabaseClient()
+  const actor = await requireActor(supabase, ['school_admin', 'manager', 'cashier'])
+  if (!actor.school_id || actor.school_id !== schoolId) {
+    throw new Error('Not permitted for this school.')
+  }
+
+  if (!Number.isFinite(input.amount) || input.amount <= 0) {
+    throw new Error('Amount must be greater than zero.')
+  }
+
+  const { data, error } = await supabase
+    .from('fee_payment_recovery_cases')
+    .insert({
+      school_id: schoolId,
+      student_id: input.studentId ?? null,
+      source: input.source,
+      amount: input.amount,
+      reference_number: input.referenceNumber?.trim() || null,
+      failure_reason: input.failureReason?.trim() || null,
+      narrative: input.narrative?.trim() || null,
+      contact_phone: input.contactPhone?.trim() || null,
+      next_follow_up_at: input.nextFollowUpAt || null,
+      requested_by: actor.id,
+      assigned_to: actor.id,
+    })
+    .select('*')
+    .single()
+
+  if (error) throw new Error(error.message)
+  return data as FeePaymentRecoveryCaseRow
+}
+
+export async function updateFeePaymentRecoveryCase(
+  schoolId: string,
+  caseId: string,
+  input: {
+    status: FeePaymentRecoveryCaseRow['status']
+    resolutionNotes?: string
+    nextFollowUpAt?: string
+    resolvedPaymentId?: string
+  },
+): Promise<void> {
+  const supabase = await createServerSupabaseClient()
+  const actor = await requireActor(supabase, ['school_admin', 'manager', 'cashier'])
+  if (!actor.school_id || actor.school_id !== schoolId) {
+    throw new Error('Not permitted for this school.')
+  }
+
+  const nowIso = new Date().toISOString()
+  const isClosed = input.status === 'resolved' || input.status === 'abandoned'
+
+  const { error } = await supabase
+    .from('fee_payment_recovery_cases')
+    .update({
+      status: input.status,
+      resolution_notes: input.resolutionNotes?.trim() || null,
+      next_follow_up_at: input.nextFollowUpAt || null,
+      resolved_payment_id: input.resolvedPaymentId || null,
+      assigned_to: actor.id,
+      resolved_at: input.status === 'resolved' ? nowIso : null,
+      closed_at: isClosed ? nowIso : null,
+      updated_at: nowIso,
+    })
+    .eq('id', caseId)
+    .eq('school_id', schoolId)
+
+  if (error) throw new Error(error.message)
+}
+
+// ─── Fee adjustments + approval trail ───────────────────────────────────────
+
+export interface FeeAdjustmentRow {
+  id: string
+  school_id: string
+  student_id: string
+  request_type: 'refund' | 'credit_note' | 'adjustment'
+  direction: 'debit' | 'credit'
+  amount: number
+  status: 'pending' | 'approved' | 'rejected'
+  reason: string | null
+  narrative: string
+  linked_payment_id: string | null
+  requested_by: string
+  reviewed_by: string | null
+  review_notes: string | null
+  reviewed_at: string | null
+  created_at: string
+  updated_at: string
+  student_name?: string
+  student_admission_number?: string
+}
+
+export interface CreateFeeAdjustmentInput {
+  studentId: string
+  requestType: FeeAdjustmentRow['request_type']
+  direction: FeeAdjustmentRow['direction']
+  amount: number
+  reason?: string
+  narrative: string
+  linkedPaymentId?: string
+}
+
+type FeeAdjustmentJoinedRow = FeeAdjustmentRow & {
+  students: Pick<StudentDbRow, 'full_name' | 'admission_number'> | null
+}
+
+export async function getFeeAdjustments(
+  schoolId: string,
+  status?: FeeAdjustmentRow['status'],
+): Promise<FeeAdjustmentRow[]> {
+  const supabase = await createServerSupabaseClient()
+  await requirePermission(supabase, 'fees.collect')
+
+  let query = supabase
+    .from('fee_adjustments')
+    .select('*, students(full_name, admission_number)')
+    .eq('school_id', schoolId)
+    .order('created_at', { ascending: false })
+
+  if (status) query = query.eq('status', status)
+
+  const { data, error } = await query
+  if (error) throw new Error(error.message)
+
+  return ((data ?? []) as FeeAdjustmentJoinedRow[]).map((row) => ({
+    ...row,
+    student_name: row.students?.full_name ?? undefined,
+    student_admission_number: row.students?.admission_number ?? undefined,
+  }))
+}
+
+export async function createFeeAdjustment(
+  schoolId: string,
+  input: CreateFeeAdjustmentInput,
+): Promise<FeeAdjustmentRow> {
+  const supabase = await createServerSupabaseClient()
+  const actor = await requireActor(supabase, ['school_admin', 'manager', 'cashier'])
+  if (!actor.school_id || actor.school_id !== schoolId) {
+    throw new Error('Not permitted for this school.')
+  }
+
+  if (!Number.isFinite(input.amount) || input.amount <= 0) {
+    throw new Error('Amount must be greater than zero.')
+  }
+
+  if (!input.narrative.trim()) {
+    throw new Error('Narrative is required.')
+  }
+
+  const { data, error } = await supabase
+    .from('fee_adjustments')
+    .insert({
+      school_id: schoolId,
+      student_id: input.studentId,
+      request_type: input.requestType,
+      direction: input.direction,
+      amount: input.amount,
+      reason: input.reason?.trim() || null,
+      narrative: input.narrative.trim(),
+      linked_payment_id: input.linkedPaymentId || null,
+      requested_by: actor.id,
+    })
+    .select('*')
+    .single()
+
+  if (error) throw new Error(error.message)
+  return data as FeeAdjustmentRow
+}
+
+export async function reviewFeeAdjustment(
+  schoolId: string,
+  adjustmentId: string,
+  decision: 'approved' | 'rejected',
+  notes?: string,
+): Promise<void> {
+  const supabase = await createServerSupabaseClient()
+  const actor = await requireActor(supabase, ['school_admin'])
+  if (!actor.school_id || actor.school_id !== schoolId) {
+    throw new Error('Not permitted for this school.')
+  }
+
+  const { error } = await supabase
+    .from('fee_adjustments')
+    .update({
+      status: decision,
+      reviewed_by: actor.id,
+      reviewed_at: new Date().toISOString(),
+      review_notes: notes?.trim() || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', adjustmentId)
+    .eq('school_id', schoolId)
+    .eq('status', 'pending')
+
+  if (error) throw new Error(error.message)
+}
+
+// ─── Statement narrative ─────────────────────────────────────────────────────
+
+export interface FeeStatementEntry {
+  id: string
+  date: string
+  eventType: 'payment' | 'carry_forward' | 'adjustment'
+  narrative: string
+  reference: string | null
+  debit: number
+  credit: number
+  status: 'posted' | 'approved'
+}
+
+export async function getStudentFeeStatementNarrative(
+  schoolId: string,
+  studentId: string,
+): Promise<FeeStatementEntry[]> {
+  const supabase = await createServerSupabaseClient()
+  await requirePermission(supabase, 'fees.view')
+
+  const [paymentsRes, arrearsRes, adjustmentsRes] = await Promise.all([
+    supabase
+      .from('fee_payments')
+      .select('id, payment_date, receipt_number, paid_amount, payment_mode')
+      .eq('school_id', schoolId)
+      .eq('student_id', studentId),
+    supabase
+      .from('student_fee_arrears')
+      .select('id, created_at, label, amount')
+      .eq('school_id', schoolId)
+      .eq('student_id', studentId),
+    supabase
+      .from('fee_adjustments')
+      .select('id, created_at, request_type, direction, amount, narrative, status')
+      .eq('school_id', schoolId)
+      .eq('student_id', studentId)
+      .eq('status', 'approved'),
+  ])
+
+  if (paymentsRes.error) throw new Error(paymentsRes.error.message)
+  if (arrearsRes.error) throw new Error(arrearsRes.error.message)
+  if (adjustmentsRes.error) throw new Error(adjustmentsRes.error.message)
+
+  const paymentEntries: FeeStatementEntry[] = (paymentsRes.data ?? []).map((p) => ({
+    id: p.id,
+    date: p.payment_date,
+    eventType: 'payment',
+    narrative: `Payment received via ${String(p.payment_mode).toUpperCase()}.`,
+    reference: p.receipt_number,
+    debit: 0,
+    credit: Number(p.paid_amount),
+    status: 'posted',
+  }))
+
+  const carryEntries: FeeStatementEntry[] = (arrearsRes.data ?? []).map((a) => ({
+    id: a.id,
+    date: a.created_at,
+    eventType: 'carry_forward',
+    narrative: a.label || 'Previous arrears carried forward',
+    reference: null,
+    debit: Number(a.amount),
+    credit: 0,
+    status: 'posted',
+  }))
+
+  const adjustmentEntries: FeeStatementEntry[] = (adjustmentsRes.data ?? []).map((a) => {
+    const amount = Number(a.amount)
+    const isDebit = a.direction === 'debit'
+    return {
+      id: a.id,
+      date: a.created_at,
+      eventType: 'adjustment',
+      narrative: a.narrative,
+      reference: a.request_type,
+      debit: isDebit ? amount : 0,
+      credit: isDebit ? 0 : amount,
+      status: 'approved',
+    }
+  })
+
+  return [...paymentEntries, ...carryEntries, ...adjustmentEntries].sort((a, b) => {
+    return new Date(b.date).getTime() - new Date(a.date).getTime()
+  })
+}
+

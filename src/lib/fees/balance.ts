@@ -85,6 +85,21 @@ export async function computeStudentFeeBalance(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   totalFee += ((arrears ?? []) as any[]).reduce((s, a) => s + Number(a.amount), 0)
 
+  const { data: adjustments } = await db
+    .from('fee_adjustments')
+    .select('amount, direction')
+    .eq('student_id', studentId)
+    .eq('school_id', schoolId)
+    .eq('status', 'approved')
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const adjustmentRows = (adjustments ?? []) as any[]
+  for (const row of adjustmentRows) {
+    const amount = Number(row.amount)
+    if (Number.isNaN(amount) || amount <= 0) continue
+    if (row.direction === 'debit') totalFee += amount
+  }
+
   // Sum every payment for this student — never a limited slice.
   const { data: payments } = await db
     .from('fee_payments')
@@ -95,9 +110,15 @@ export async function computeStudentFeeBalance(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const totalPaid = ((payments ?? []) as any[]).reduce((s, p) => s + Number(p.paid_amount), 0)
 
+  const approvedCredits = adjustmentRows
+    .filter((row) => row.direction === 'credit')
+    .reduce((sum, row) => sum + Number(row.amount), 0)
+
+  const totalPaidWithCredits = totalPaid + approvedCredits
+
   return {
     totalFee,
-    totalPaid,
-    balance: Math.max(0, totalFee - totalPaid),
+    totalPaid: totalPaidWithCredits,
+    balance: Math.max(0, totalFee - totalPaidWithCredits),
   }
 }

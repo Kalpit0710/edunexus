@@ -8,11 +8,12 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft, TrendingUp, Package, AlertCircle, IndianRupee, Download } from 'lucide-react'
 import Link from 'next/link'
-import { getInventorySummary, getInventorySales, getLowStockItems } from '../actions'
+import { getInventorySummary, getInventorySales, getLowStockItems, getInventorySaleControlAuditReport, type InventorySaleControlAuditRow, type InventorySaleControlAuditSummary } from '../actions'
 import { formatCurrency } from '@/lib/utils'
 import * as xlsx from 'xlsx'
 import { ContentAreaLoader } from '@/components/loaders/page-loaders'
 import { DateInput } from '@/components/ui/date-input'
+import { Input } from '@/components/ui/input'
 
 interface InventorySummary {
     stockValue: number
@@ -54,7 +55,10 @@ export default function InventoryReportsPage() {
     const [summary, setSummary] = useState<InventorySummary | null>(null)
     const [sales, setSales] = useState<InventorySaleRow[]>([])
     const [lowStock, setLowStock] = useState<LowStockRow[]>([])
+    const [saleControlAuditRows, setSaleControlAuditRows] = useState<InventorySaleControlAuditRow[]>([])
+    const [saleControlAuditSummary, setSaleControlAuditSummary] = useState<InventorySaleControlAuditSummary | null>(null)
     const [loading, setLoading] = useState(true)
+    const [slaHours, setSlaHours] = useState('24')
 
     const [dateRange, setDateRange] = useState<{ from: string, to: string }>({
         from: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0] || '',
@@ -71,30 +75,46 @@ export default function InventoryReportsPage() {
         if (!school?.id) return
         setLoading(true)
         try {
-            const [sumData, salesData, minStockData] = await Promise.all([
+            const [sumData, salesData, minStockData, auditData] = await Promise.all([
                 getInventorySummary(school.id),
                 getInventorySales(school.id, { fromDate: dateRangeRef.current.from, toDate: dateRangeRef.current.to }),
-                getLowStockItems(school.id, 20)
+                getLowStockItems(school.id, 20),
+                getInventorySaleControlAuditReport(school.id, {
+                    fromDate: dateRangeRef.current.from,
+                    toDate: dateRangeRef.current.to,
+                    slaHours: Math.max(1, Number(slaHours) || 24),
+                }),
             ])
             setSummary((sumData ?? null) as InventorySummary | null)
             setSales((salesData ?? []) as InventorySaleRow[])
             setLowStock((minStockData ?? []) as LowStockRow[])
+            setSaleControlAuditRows(auditData.rows)
+            setSaleControlAuditSummary(auditData.summary)
         } catch (e) {
             toast.error("Failed to load reports: " + getErrorMessage(e))
         } finally {
             setLoading(false)
         }
-    }, [school?.id])
+    }, [school?.id, slaHours])
 
-    const loadSales = useCallback(async () => {
+    const loadSalesAndAudit = useCallback(async () => {
         if (!school?.id) return
         try {
-            const salesData = await getInventorySales(school.id, { fromDate: dateRange.from, toDate: dateRange.to })
+            const [salesData, auditData] = await Promise.all([
+                getInventorySales(school.id, { fromDate: dateRange.from, toDate: dateRange.to }),
+                getInventorySaleControlAuditReport(school.id, {
+                    fromDate: dateRange.from,
+                    toDate: dateRange.to,
+                    slaHours: Math.max(1, Number(slaHours) || 24),
+                }),
+            ])
             setSales((salesData ?? []) as InventorySaleRow[])
+            setSaleControlAuditRows(auditData.rows)
+            setSaleControlAuditSummary(auditData.summary)
         } catch (e) {
-            toast.error("Failed to fetch sales: " + getErrorMessage(e))
+            toast.error("Failed to fetch sales and audit data: " + getErrorMessage(e))
         }
-    }, [school?.id, dateRange.from, dateRange.to])
+    }, [school?.id, dateRange.from, dateRange.to, slaHours])
 
     useEffect(() => {
         loadInitialData()
@@ -106,8 +126,8 @@ export default function InventoryReportsPage() {
             isInitialMount.current = false
             return
         }
-        loadSales()
-    }, [loadSales])
+        loadSalesAndAudit()
+    }, [loadSalesAndAudit])
 
     const exportSales = () => {
         if (!sales.length) return
@@ -124,6 +144,29 @@ export default function InventoryReportsPage() {
         const wb = xlsx.utils.book_new()
         xlsx.utils.book_append_sheet(wb, ws, 'Sales Log')
         xlsx.writeFile(wb, `inventory_sales_${dateRange.from}_to_${dateRange.to}.xlsx`)
+    }
+
+    const exportSaleControlAudit = () => {
+        if (!saleControlAuditRows.length) return
+        const rows = saleControlAuditRows.map((row) => ({
+            'Bill No': row.billNumber ?? row.saleId,
+            'Request Type': row.requestType,
+            Status: row.status,
+            Reason: row.reason,
+            'Reversal Reason': row.reversalReason ?? '',
+            'Requested At': row.requestedAt,
+            'Reviewed At': row.reviewedAt ?? '',
+            'Executed At': row.executedAt ?? '',
+            'Requested By': row.requestedByName ?? '',
+            'Reviewed By': row.reviewedByName ?? '',
+            'Aging Hours': row.agingHours,
+            'Review TAT Hours': row.reviewTatHours ?? '',
+            'Within SLA': row.withinSla ? 'Yes' : 'No',
+        }))
+        const ws = xlsx.utils.json_to_sheet(rows)
+        const wb = xlsx.utils.book_new()
+        xlsx.utils.book_append_sheet(wb, ws, 'Sale Control Audit')
+        xlsx.writeFile(wb, `inventory_sale_control_audit_${dateRange.from}_to_${dateRange.to}.xlsx`)
     }
 
     if (loading) {
@@ -143,6 +186,16 @@ export default function InventoryReportsPage() {
                         <h2 className="text-2xl font-bold tracking-tight">Inventory Reports</h2>
                         <p className="text-muted-foreground">Overview, low stock alerts, and sales history.</p>
                     </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">SLA (hours)</span>
+                    <Input
+                        type="number"
+                        min={1}
+                        className="h-9 w-24"
+                        value={slaHours}
+                        onChange={(event) => setSlaHours(event.target.value)}
+                    />
                 </div>
             </div>
 
@@ -325,6 +378,96 @@ export default function InventoryReportsPage() {
                 </div>
 
             </div>
+
+            <Card className="shadow-soft">
+                <CardHeader className="border-b pb-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <CardTitle>Sale Control Audit</CardTitle>
+                            <p className="text-sm text-muted-foreground">
+                                Tracks void/return request aging, approver turnaround SLA, and reversal reasons.
+                            </p>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={exportSaleControlAudit} disabled={saleControlAuditRows.length === 0}>
+                            <Download className="mr-1 h-4 w-4" /> Export Audit
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent className="space-y-4 pt-4">
+                    <div className="grid gap-3 md:grid-cols-5">
+                        <div className="rounded-md border p-3">
+                            <p className="text-xs text-muted-foreground">Total Requests</p>
+                            <p className="text-xl font-semibold">{saleControlAuditSummary?.total ?? 0}</p>
+                        </div>
+                        <div className="rounded-md border p-3">
+                            <p className="text-xs text-muted-foreground">Pending</p>
+                            <p className="text-xl font-semibold">{saleControlAuditSummary?.pending ?? 0}</p>
+                        </div>
+                        <div className="rounded-md border p-3">
+                            <p className="text-xs text-muted-foreground">Executed</p>
+                            <p className="text-xl font-semibold">{saleControlAuditSummary?.executed ?? 0}</p>
+                        </div>
+                        <div className="rounded-md border p-3">
+                            <p className="text-xs text-muted-foreground">SLA Breaches</p>
+                            <p className="text-xl font-semibold text-red-600">{saleControlAuditSummary?.breaches ?? 0}</p>
+                        </div>
+                        <div className="rounded-md border p-3">
+                            <p className="text-xs text-muted-foreground">Avg Review TAT</p>
+                            <p className="text-xl font-semibold">{saleControlAuditSummary?.avgReviewTatHours ?? 0}h</p>
+                        </div>
+                    </div>
+
+                    {saleControlAuditRows.length === 0 ? (
+                        <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
+                            No sale-control requests found for the selected date range.
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead className="text-xs uppercase text-muted-foreground">
+                                    <tr>
+                                        <th className="px-2 py-2 text-left">Request</th>
+                                        <th className="px-2 py-2 text-left">Status</th>
+                                        <th className="px-2 py-2 text-left">Reason</th>
+                                        <th className="px-2 py-2 text-left">Requested / Reviewed</th>
+                                        <th className="px-2 py-2 text-right">Aging (h)</th>
+                                        <th className="px-2 py-2 text-right">Review TAT (h)</th>
+                                        <th className="px-2 py-2 text-left">SLA</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y">
+                                    {saleControlAuditRows.map((row) => (
+                                        <tr key={row.requestId}>
+                                            <td className="px-2 py-2 align-top">
+                                                <p className="font-medium">{row.billNumber ?? row.saleId}</p>
+                                                <p className="text-xs text-muted-foreground">{row.requestType.toUpperCase()}</p>
+                                                <p className="text-xs text-muted-foreground">Reversal: {row.reversalReason ?? '-'}</p>
+                                            </td>
+                                            <td className="px-2 py-2 align-top capitalize">{row.status}</td>
+                                            <td className="px-2 py-2 align-top text-xs text-muted-foreground">{row.reason}</td>
+                                            <td className="px-2 py-2 align-top text-xs text-muted-foreground">
+                                                <p>{new Date(row.requestedAt).toLocaleString('en-IN')}</p>
+                                                <p>{row.reviewedAt ? new Date(row.reviewedAt).toLocaleString('en-IN') : 'Not reviewed'}</p>
+                                            </td>
+                                            <td className="px-2 py-2 text-right align-top">{row.agingHours.toFixed(2)}</td>
+                                            <td className="px-2 py-2 text-right align-top">{row.reviewTatHours == null ? '-' : row.reviewTatHours.toFixed(2)}</td>
+                                            <td className="px-2 py-2 align-top">
+                                                {row.status === 'pending' ? (
+                                                    <span className="text-xs text-muted-foreground">Waiting</span>
+                                                ) : row.withinSla ? (
+                                                    <span className="text-xs text-green-700">Within SLA</span>
+                                                ) : (
+                                                    <span className="text-xs text-red-700">Breached</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
         </div>
     )
 }

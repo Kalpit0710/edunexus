@@ -27,6 +27,7 @@ const inventoryActionMocks = vi.hoisted(() => ({
   getInventorySummary: vi.fn(),
   getInventorySales: vi.fn(),
   getLowStockItems: vi.fn(),
+  getInventorySaleControlAuditReport: vi.fn(),
 }))
 
 const studentsActionMocks = vi.hoisted(() => ({
@@ -87,6 +88,7 @@ vi.mock('../../../src/app/(manager)/manager/inventory/actions', () => ({
   getInventorySummary: inventoryActionMocks.getInventorySummary,
   getInventorySales: inventoryActionMocks.getInventorySales,
   getLowStockItems: inventoryActionMocks.getLowStockItems,
+  getInventorySaleControlAuditReport: inventoryActionMocks.getInventorySaleControlAuditReport,
 }))
 
 vi.mock('@/app/(school-admin)/school-admin/students/actions', () => ({
@@ -207,6 +209,17 @@ beforeEach(() => {
       low_stock_alert: 5,
     },
   ])
+  inventoryActionMocks.getInventorySaleControlAuditReport.mockResolvedValue({
+    rows: [],
+    summary: {
+      total: 0,
+      pending: 0,
+      breaches: 0,
+      executed: 0,
+      rejected: 0,
+      avgReviewTatHours: 0,
+    },
+  })
 })
 
 afterEach(() => {
